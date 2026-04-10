@@ -1,0 +1,318 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../packages/data-access/generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SportType {
+  GAELIC_FOOTBALL
+}
+
+enum MatchStatus {
+  SCHEDULED
+  WARMUP
+  LIVE
+  PAUSED
+  HALF_TIME
+  SECOND_HALF
+  EXTRA_TIME
+  FINISHED
+  CANCELLED
+  POSTPONED
+}
+
+enum MatchPeriod {
+  WARMUP
+  FIRST_HALF
+  HALF_TIME
+  SECOND_HALF
+  EXTRA_TIME_FIRST
+  EXTRA_TIME_SECOND
+  PENALTIES
+  FULL_TIME
+}
+
+enum BoardSceneType {
+  FORMATION
+  SET_PIECE
+  ANALYSIS
+  REVIEW
+  CUSTOM
+}
+
+enum BoardOrientation {
+  PORTRAIT
+  LANDSCAPE
+}
+
+enum BoardObjectType {
+  MARKER
+  LINE
+  ARROW
+  SHAPE
+  TEXT
+  IMAGE
+  PATH
+  ZONE
+  CUSTOM
+}
+
+enum TeamSide {
+  HOME
+  AWAY
+  NEUTRAL
+}
+
+enum StatEventType {
+  GOAL
+  POINT
+  WIDE
+  FOUL
+  KICKOUT
+  KICKIN
+  TURNOVER
+  SCORE_ASSIST
+  SUBSTITUTION
+  YELLOW_CARD
+  RED_CARD
+  PERIOD_START
+  PERIOD_END
+  CUSTOM
+}
+
+enum PitchZone {
+  DEFENSIVE
+  MIDFIELD
+  ATTACKING
+  WIDE_LEFT
+  WIDE_RIGHT
+  CENTRE
+  GOAL_AREA
+  CUSTOM
+}
+
+enum ReviewSnapshotType {
+  PRE_MATCH
+  LIVE
+  HALF_TIME
+  POST_MATCH
+  CUSTOM
+}
+
+enum EventType {
+  shot_point
+  shot_goal
+  shot_miss
+  kickout_won
+  kickout_lost
+  turnover_won
+  turnover_lost
+  foul_for
+  foul_against
+  note
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  teams Team[]
+
+  @@map("users")
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  name      String
+  sport     SportType @default(GAELIC_FOOTBALL)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  players Player[]
+  matches Match[]
+
+  @@index([userId])
+  @@map("teams")
+}
+
+model Player {
+  id        String   @id @default(cuid())
+  teamId    String   @map("team_id")
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
+  nickname  String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  matchSquadEntries MatchSquadPlayer[]
+  statEvents        StatEvent[]         @relation("StatEventPlayer")
+  linkedStatEvents  StatEvent[]         @relation("StatEventLinkedPlayer")
+  events            Event[]
+
+  @@index([teamId])
+  @@map("players")
+}
+
+model Match {
+  id                  String       @id @default(cuid())
+  teamId              String       @map("team_id")
+  opponentName        String       @map("opponent_name")
+  competition         String?
+  venue               String?
+  matchDate           DateTime     @map("match_date")
+  status              MatchStatus  @default(SCHEDULED)
+  currentPeriod       MatchPeriod? @map("current_period")
+  scoreForGoals       Int          @default(0) @map("score_for_goals")
+  scoreForPoints      Int          @default(0) @map("score_for_points")
+  scoreAgainstGoals   Int          @default(0) @map("score_against_goals")
+  scoreAgainstPoints  Int          @default(0) @map("score_against_points")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  team              Team               @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  squad             MatchSquadPlayer[]
+  boardScenes       BoardScene[]
+  statEvents        StatEvent[]
+  reviewSnapshots   ReviewSnapshot[]
+  events            Event[]
+
+  @@index([teamId])
+  @@index([matchDate])
+  @@index([status])
+  @@map("matches")
+}
+
+model Event {
+  id        String    @id @default(cuid())
+  matchId   String    @map("match_id")
+  playerId  String?   @map("player_id")
+  type      EventType
+  note      String?
+  timestamp DateTime  @default(now()) @map("recorded_at")
+
+  match  Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player Player? @relation(fields: [playerId], references: [id], onDelete: SetNull)
+
+  @@index([matchId])
+  @@index([matchId, timestamp])
+  @@index([playerId])
+  @@map("events")
+}
+
+model MatchSquadPlayer {
+  id         String   @id @default(cuid())
+  matchId    String   @map("match_id")
+  playerId   String   @map("player_id")
+  shirtNumber Int?    @map("shirt_number")
+  isStarter  Boolean  @default(false) @map("is_starter")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, playerId])
+  @@index([matchId])
+  @@index([playerId])
+  @@map("match_squad_players")
+}
+
+model BoardScene {
+  id          String          @id @default(cuid())
+  matchId     String          @map("match_id")
+  sceneType   BoardSceneType  @map("scene_type")
+  name        String
+  sortOrder   Int             @default(0) @map("sort_order")
+  orientation BoardOrientation @default(LANDSCAPE)
+  metadata    Json?
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  match   Match         @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  objects BoardObject[]
+
+  @@index([matchId])
+  @@map("board_scenes")
+}
+
+model BoardObject {
+  id          String           @id @default(cuid())
+  boardSceneId String          @map("board_scene_id")
+  objectType  BoardObjectType  @map("object_type")
+  label       String?
+  teamSide    TeamSide?        @map("team_side")
+  x           Float
+  y           Float
+  width       Float?
+  height      Float?
+  rotation    Float            @default(0)
+  styleJson   Json?            @map("style_json")
+  pathJson    Json?            @map("path_json")
+  metaJson    Json?            @map("meta_json")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  boardScene BoardScene @relation(fields: [boardSceneId], references: [id], onDelete: Cascade)
+
+  @@index([boardSceneId])
+  @@map("board_objects")
+}
+
+model StatEvent {
+  id             String        @id @default(cuid())
+  matchId        String        @map("match_id")
+  playerId       String?       @map("player_id")
+  linkedPlayerId String?       @map("linked_player_id")
+  teamSide       TeamSide      @map("team_side")
+  eventType      StatEventType @map("event_type")
+  eventResult    String?       @map("event_result")
+  period         MatchPeriod
+  minute         Int
+  second         Int?
+  zone           PitchZone?
+  x              Float?
+  y              Float?
+  possessionId   String?       @map("possession_id")
+  notes          String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  match        Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player       Player? @relation("StatEventPlayer", fields: [playerId], references: [id], onDelete: SetNull)
+  linkedPlayer Player? @relation("StatEventLinkedPlayer", fields: [linkedPlayerId], references: [id], onDelete: SetNull)
+
+  @@index([matchId])
+  @@index([playerId])
+  @@index([linkedPlayerId])
+  @@index([eventType])
+  @@index([period])
+  @@map("stat_events")
+}
+
+model ReviewSnapshot {
+  id           String              @id @default(cuid())
+  matchId      String              @map("match_id")
+  snapshotType ReviewSnapshotType  @map("snapshot_type")
+  payload      Json?
+  capturedAt   DateTime?           @map("captured_at")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@index([matchId])
+  @@index([snapshotType])
+  @@map("review_snapshots")
+}
+                  

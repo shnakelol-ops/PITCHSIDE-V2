@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pitchside-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pitchside
+      POSTGRES_PASSWORD: pitchside
+      POSTGRES_DB: pitchside
+    ports:
+      - "5432:5432"
+    volumes:
+      - pitchside_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pitchside -d pitchside"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    container_name: pitchside-web
+    restart: unless-stopped
+    working_dir: /workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://pitchside:pitchside@postgres:5432/pitchside?schema=public
+      APP_URL: http://localhost:3000
+      APP_NAME: Pitchside
+      AUTH_SECRET: replace-with-a-long-random-string
+      AUTH_TRUST_HOST: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/workspace
+      - /workspace/node_modules
+    command: >
+      sh -c "corepack enable &&
+      pnpm install &&
+      pnpm dev"
+
+volumes:
+  pitchside_postgres_data:
