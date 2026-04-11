@@ -6,30 +6,42 @@ export type BoardMarkerState = BoardMarkerInput & { id: string };
 
 /**
  * Gaelic football — landscape inner: x along pitch (0 = own/left goal, 1 = attack/right),
- * y across width (0 = top touchline, 1 = bottom).
+ * y across width (0 = top touchline, 1 = bottom). **y = left→right** on the grass.
  *
- * Default matches the **reference board layout** (same geometry as
- * `DEFAULT_SOCCER_TACTICS_FORMATION` in `soccer-pitch-tactics.tsx`): map reference
- * `nx` = width, `ny` = length with own goal at reference bottom → board
- * `x = 1 - ny`, `y = nx` so the spine, channels, and halfway-line cluster read the same
- * on the left/right Gaelic canvas.
+ * Rows are anchored to pitch lines (145 m length → normalised x = m/145 on inner length):
+ * own 20 m, own 45 m, halfway, opposition 45 m, opposition 20 m. GK just inside own goal.
+ *
+ * Channel rule (jersey L→R on each line): 4–3–2, 7–6–5, 8–9, 12–11–10, 15–14–13 — from
+ * swapping outer pairs (2↔4, 5↔7, 10↔12, 13↔15) on an otherwise symmetric spine (3,6,11,14; 8–9).
  */
+const GAELIC_X_OWN_20M = 20 / 145;
+const GAELIC_X_OWN_45M = 45 / 145;
+const GAELIC_X_MIDFIELD = 0.5;
+const GAELIC_X_OPP_45M = 100 / 145;
+const GAELIC_X_OPP_20M = 125 / 145;
+const GAELIC_X_GOALKEEPER = 0.058;
+const GAELIC_Y_LEFT = 0.18;
+const GAELIC_Y_CENTRE = 0.5;
+const GAELIC_Y_RIGHT = 0.82;
+const GAELIC_Y_MID_LO = 0.22;
+const GAELIC_Y_MID_HI = 0.78;
+
 export const DEFAULT_BOARD_MARKER_GAELIC_SEED: readonly BoardMarkerInput[] = [
-  { x: 0.06, y: 0.14, label: "1", teamSide: "HOME" },
-  { x: 0.88, y: 0.18, label: "2", teamSide: "HOME" },
-  { x: 0.5, y: 0.16, label: "3", teamSide: "HOME" },
-  { x: 0.18, y: 0.22, label: "4", teamSide: "HOME" },
-  { x: 0.89, y: 0.36, label: "5", teamSide: "HOME" },
-  { x: 0.5, y: 0.34, label: "6", teamSide: "HOME" },
-  { x: 0.17, y: 0.5, label: "7", teamSide: "HOME" },
-  { x: 0.62, y: 0.5, label: "8", teamSide: "HOME" },
-  { x: 0.39, y: 0.5, label: "9", teamSide: "HOME" },
-  { x: 0.89, y: 0.64, label: "10", teamSide: "HOME" },
-  { x: 0.5, y: 0.52, label: "11", teamSide: "HOME" },
-  { x: 0.18, y: 0.78, label: "12", teamSide: "HOME" },
-  { x: 0.87, y: 0.82, label: "13", teamSide: "HOME" },
-  { x: 0.5, y: 0.68, label: "14", teamSide: "HOME" },
-  { x: 0.16, y: 0.88, label: "15", teamSide: "HOME" },
+  { x: GAELIC_X_GOALKEEPER, y: GAELIC_Y_CENTRE, label: "1", teamSide: "HOME" },
+  { x: GAELIC_X_OWN_20M, y: GAELIC_Y_RIGHT, label: "2", teamSide: "HOME" },
+  { x: GAELIC_X_OWN_20M, y: GAELIC_Y_CENTRE, label: "3", teamSide: "HOME" },
+  { x: GAELIC_X_OWN_20M, y: GAELIC_Y_LEFT, label: "4", teamSide: "HOME" },
+  { x: GAELIC_X_OWN_45M, y: GAELIC_Y_RIGHT, label: "5", teamSide: "HOME" },
+  { x: GAELIC_X_OWN_45M, y: GAELIC_Y_CENTRE, label: "6", teamSide: "HOME" },
+  { x: GAELIC_X_OWN_45M, y: GAELIC_Y_LEFT, label: "7", teamSide: "HOME" },
+  { x: GAELIC_X_MIDFIELD, y: GAELIC_Y_MID_LO, label: "8", teamSide: "HOME" },
+  { x: GAELIC_X_MIDFIELD, y: GAELIC_Y_MID_HI, label: "9", teamSide: "HOME" },
+  { x: GAELIC_X_OPP_45M, y: GAELIC_Y_RIGHT, label: "10", teamSide: "HOME" },
+  { x: GAELIC_X_OPP_45M, y: GAELIC_Y_CENTRE, label: "11", teamSide: "HOME" },
+  { x: GAELIC_X_OPP_45M, y: GAELIC_Y_LEFT, label: "12", teamSide: "HOME" },
+  { x: GAELIC_X_OPP_20M, y: GAELIC_Y_RIGHT, label: "13", teamSide: "HOME" },
+  { x: GAELIC_X_OPP_20M, y: GAELIC_Y_CENTRE, label: "14", teamSide: "HOME" },
+  { x: GAELIC_X_OPP_20M, y: GAELIC_Y_LEFT, label: "15", teamSide: "HOME" },
 ];
 
 /**
