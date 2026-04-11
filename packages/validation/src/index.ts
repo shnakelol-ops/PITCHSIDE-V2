@@ -28,17 +28,6 @@ export const paginationSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
-export const matchPeriodSchema = z.enum([
-  "WARMUP",
-  "FIRST_HALF",
-  "HALF_TIME",
-  "SECOND_HALF",
-  "EXTRA_TIME_FIRST",
-  "EXTRA_TIME_SECOND",
-  "PENALTIES",
-  "FULL_TIME",
-]);
-
 export const teamSideSchema = z.enum(["HOME", "AWAY", "NEUTRAL"]);
 
 export const pitchZoneSchema = z.enum([

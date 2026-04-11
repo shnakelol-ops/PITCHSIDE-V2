@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+export const matchPeriodSchema = z.enum([
+  "WARMUP",
+  "FIRST_HALF",
+  "HALF_TIME",
+  "SECOND_HALF",
+  "EXTRA_TIME_FIRST",
+  "EXTRA_TIME_SECOND",
+  "PENALTIES",
+  "FULL_TIME",
+]);
+
 export const createMatchSchema = z.object({
   teamId: z
     .string()

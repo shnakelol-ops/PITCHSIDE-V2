@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../packages/data-access/generated/client"
+  provider      = "prisma-client-js"
+  output        = "../packages/data-access/generated/client"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -10,6 +11,8 @@ datasource db {
 
 enum SportType {
   GAELIC_FOOTBALL
+  SOCCER
+  HURLING
 }
 
 enum MatchStatus {
@@ -103,10 +106,13 @@ enum ReviewSnapshotType {
   CUSTOM
 }
 
+/// Live dashboard `/api/events` row types. Snake_case; keep in sync with `packages/validation` `matchEventTypeSchema`.
+/// `phase_change` stores `context.matchPeriod` + optional `context.clockLabel`.
 enum EventType {
   shot_point
   shot_goal
   shot_miss
+  shot_two_pointer
   kickout_won
   kickout_lost
   turnover_won
@@ -114,6 +120,9 @@ enum EventType {
   foul_for
   foul_against
   note
+  phase_change
+  unforced_turnover
+  unforced_error
 }
 
 model User {
@@ -193,12 +202,15 @@ model Match {
   @@map("matches")
 }
 
+/// Match event log (shots, fouls, phase changes, etc.).
+/// `context` is optional JSON: `{ "matchPeriod"?: string, "clockLabel"?: string }` — must match API + UI payloads.
 model Event {
   id        String    @id @default(cuid())
   matchId   String    @map("match_id")
   playerId  String?   @map("player_id")
   type      EventType
   note      String?
+  context   Json?     @map("context")
   timestamp DateTime  @default(now()) @map("recorded_at")
 
   match  Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)

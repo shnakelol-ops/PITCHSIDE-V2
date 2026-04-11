@@ -2,12 +2,22 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { MatchPeriod } from "@pitchside/data-access";
+
+import { PitchCanvas } from "@/components/matches/pitch-canvas";
+import { useMatchWorkspaceLiveOptional } from "@/components/matches/match-workspace-live-context";
 import { Button } from "@/components/ui/button";
+import {
+  getPitchBoardAspectRatio,
+  type PitchSport,
+} from "@/config/pitchConfig";
 import { boardContentSnapshot } from "@/lib/board-snapshot";
 import {
   createDefaultBoardMarkers,
   type BoardMarkerState,
 } from "@/lib/board-v1-defaults";
+import { boardChrome, boardMarkers } from "@/lib/board-tokens";
+import { formatMatchPeriodLabel } from "@/lib/match-period-labels";
 import { cn } from "@pitchside/utils";
 
 export type BoardDrawingState = {
@@ -50,11 +60,66 @@ type DragRef = {
 
 const DRAW_MIN_LEN2 = 1e-6;
 
+const BOARD_PITCH_OPTIONS: { id: PitchSport; label: string }[] = [
+  { id: "soccer", label: "Soccer" },
+  { id: "gaelic", label: "Gaelic football" },
+  { id: "hurling", label: "Hurling" },
+];
+
 type BoardV1PanelProps = {
   matchId: string;
 };
 
 export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
+  const live = useMatchWorkspaceLiveOptional();
+  const [pitchSportFallback, setPitchSportFallback] =
+    useState<PitchSport>("gaelic");
+  const pitchSport = live?.boardPitchSport ?? pitchSportFallback;
+  const setPitchSport = live?.setBoardPitchSport ?? setPitchSportFallback;
+
+  const pitchAspectRatio = useMemo(
+    () => getPitchBoardAspectRatio(pitchSport),
+    [pitchSport],
+  );
+
+  const pitchBezelClass = useMemo(
+    () =>
+      pitchSport === "soccer"
+        ? boardChrome.bezelSoccer
+        : boardChrome.bezelGaa,
+    [pitchSport],
+  );
+
+  const panelShellClass = useMemo(
+    () =>
+      pitchSport === "soccer"
+        ? boardChrome.shellSoccer
+        : boardChrome.shellGaa,
+    [pitchSport],
+  );
+
+  /** Inset ring only for non-run-of-play phases — no change during 1st/2nd half. */
+  const phaseAccentRing = useMemo(() => {
+    if (!live) return null;
+    const p = live.period;
+    if (p === MatchPeriod.HALF_TIME || p === MatchPeriod.FULL_TIME) {
+      return "ring-amber-400/55";
+    }
+    if (p === MatchPeriod.WARMUP) {
+      return "ring-slate-400/35";
+    }
+    if (p === MatchPeriod.PENALTIES) {
+      return "ring-rose-400/45";
+    }
+    if (
+      p === MatchPeriod.EXTRA_TIME_FIRST ||
+      p === MatchPeriod.EXTRA_TIME_SECOND
+    ) {
+      return "ring-violet-400/40";
+    }
+    return null;
+  }, [live]);
+
   const pitchRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragRef>(null);
   const dragDraftRef = useRef<DraftDraw | null>(null);
@@ -142,7 +207,7 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
         setError(
           `Couldn’t load the board. ${result.errorMessage} You can still edit locally; try saving once you’re back online.`,
         );
-        const fb = createDefaultBoardMarkers();
+        const fb = createDefaultBoardMarkers(pitchSport);
         setScenes([]);
         setActiveSceneId(null);
         setMarkers(fb);
@@ -154,7 +219,7 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [commitBoardFromServer, fetchBoardPayload]);
+  }, [commitBoardFromServer, fetchBoardPayload, pitchSport]);
 
   const reloadScene = useCallback(async () => {
     setError(null);
@@ -460,7 +525,7 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
 
   const resetLayout = () => {
     dragRef.current = null;
-    setMarkers(createDefaultBoardMarkers());
+    setMarkers(createDefaultBoardMarkers(pitchSport));
     setSelectedMarkerId(null);
     setDraftDraw(null);
     dragDraftRef.current = null;
@@ -609,7 +674,8 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
   return (
     <div
       className={cn(
-        "relative min-w-0 overflow-hidden rounded-[1.25rem] border border-white/75 bg-gradient-to-b from-white via-white to-slate-50/40 shadow-[0_28px_64px_-28px_rgba(15,118,110,0.22),0_0_0_1px_rgba(15,118,110,0.05)] ring-1 ring-slate-900/[0.03] dark:border-slate-700/85 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900/90 dark:shadow-[0_40px_88px_-36px_rgba(0,0,0,0.58),0_0_0_1px_rgba(255,255,255,0.04)] dark:ring-white/[0.04]",
+        "relative min-w-0 overflow-hidden rounded-[1.25rem] border ring-1",
+        panelShellClass,
         isPresentMode &&
           "fixed inset-0 z-[90] rounded-none border-0 bg-slate-950 shadow-none ring-0 dark:border-0",
       )}
@@ -698,13 +764,105 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
         )}
       >
         {!isPresentMode ? (
-          <p className="mb-3.5 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-pitchside-700 dark:text-pitchside-400">
-            Live canvas
-          </p>
+          <>
+            {live ? (
+              <>
+                <div className="mb-3 rounded-xl border border-slate-200/90 bg-white/85 px-3 py-2.5 shadow-sm ring-1 ring-slate-900/[0.03] backdrop-blur-[2px] dark:border-slate-700/80 dark:bg-slate-900/55 dark:ring-white/[0.04]">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                    Board · live context
+                  </p>
+                  <dl className="mt-2 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Phase
+                      </dt>
+                      <dd className="font-semibold text-slate-900 dark:text-slate-100">
+                        {formatMatchPeriodLabel(live.period)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Score
+                      </dt>
+                      <dd className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+                        {live.scoreGoalsPoints ?? "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Clock
+                      </dt>
+                      <dd className="font-mono text-sm font-bold tabular-nums text-slate-900 dark:text-slate-100">
+                        {live.clockDisplay}
+                      </dd>
+                    </div>
+                    <div className="min-w-0 sm:col-span-2 lg:col-span-1">
+                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Last event
+                      </dt>
+                      <dd
+                        className="truncate font-semibold text-slate-900 dark:text-slate-100"
+                        title={live.lastEventSummary ?? undefined}
+                      >
+                        {live.lastEventSummary ?? "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+                {live.sceneSuggestion ? (
+                  <div className="mb-3 flex flex-col gap-2 rounded-xl border border-pitchside-200/90 bg-pitchside-50/90 px-3 py-2.5 dark:border-pitchside-800/80 dark:bg-pitchside-950/45 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-pitchside-800 dark:text-pitchside-300">
+                        Scene idea · {live.sceneSuggestion.title}
+                      </p>
+                      <p className="mt-0.5 text-[11px] leading-snug text-slate-700 dark:text-slate-300">
+                        {live.sceneSuggestion.hint}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className={cn(controlBtnClass, "min-h-[2.25rem] shrink-0 py-1.5")}
+                      onClick={live.dismissSceneSuggestion}
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+            <div className="mb-3.5 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <p className="text-center text-[10px] font-bold uppercase tracking-[0.22em] text-pitchside-700 dark:text-pitchside-400 sm:text-left">
+                Live canvas
+              </p>
+              <div
+                role="group"
+                aria-label="Pitch sport"
+                className="flex flex-wrap items-center justify-center gap-1.5 sm:justify-end"
+              >
+                {BOARD_PITCH_OPTIONS.map((opt) => (
+                  <Button
+                    key={opt.id}
+                    type="button"
+                    variant="secondary"
+                    disabled={boardBusy}
+                    className={cn(
+                      drawToolBtnClass,
+                      "min-h-[2rem] px-3 py-1.5 text-[10px]",
+                      pitchSport === opt.id && toolActiveClass,
+                    )}
+                    onClick={() => setPitchSport(opt.id)}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </>
         ) : null}
         <div
           className={cn(
-            "rounded-[1.125rem] bg-gradient-to-b from-pitchside-300/45 via-pitchside-600/22 to-slate-900/28 p-[5px] shadow-[0_28px_64px_-20px_rgba(15,118,110,0.48),0_12px_36px_-20px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.28)] ring-1 ring-pitchside-900/20 drop-shadow-[0_10px_36px_-10px_rgba(15,118,110,0.32)] dark:from-pitchside-500/32 dark:via-pitchside-800/28 dark:to-slate-950/55 dark:shadow-[0_32px_72px_-26px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.07)] dark:ring-pitchside-400/22",
+            pitchBezelClass,
             isPresentMode &&
               "flex flex-1 items-center justify-center rounded-none bg-transparent p-0 shadow-none ring-0",
           )}
@@ -721,7 +879,7 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
                 : "cursor-default",
               pitchBlocking && "pointer-events-none",
             )}
-            style={{ aspectRatio: "35 / 24" }}
+            style={{ aspectRatio: pitchAspectRatio }}
           >
           {pitchBlocking ? (
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-5 bg-gradient-to-b from-emerald-950/85 via-emerald-950/75 to-emerald-950/90 px-6 backdrop-blur-[3px]">
@@ -765,145 +923,24 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
               </div>
             </div>
           ) : null}
-            <svg
-              className="pointer-events-none absolute inset-0 h-full w-full"
-              viewBox="0 0 160 100"
-              preserveAspectRatio="none"
-              aria-hidden
-            >
-              <defs>
-                <linearGradient id="pitchGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#14532d" />
-                  <stop offset="55%" stopColor="#166534" />
-                  <stop offset="100%" stopColor="#15803d" />
-                </linearGradient>
-                <pattern
-                  id="pitchGrassMow"
-                  patternUnits="userSpaceOnUse"
-                  width="10"
-                  height="100"
-                >
-                  <rect width="10" height="100" fill="transparent" />
-                  <rect
-                    x="0"
-                    y="0"
-                    width="5"
-                    height="100"
-                    fill="rgb(255,255,255)"
-                    opacity="0.028"
-                  />
-                  <rect
-                    x="5"
-                    y="0"
-                    width="5"
-                    height="100"
-                    fill="rgb(0,0,0)"
-                    opacity="0.04"
-                  />
-                </pattern>
-                <pattern
-                  id="pitchGrassFine"
-                  patternUnits="userSpaceOnUse"
-                  width="3"
-                  height="3"
-                >
-                  <circle cx="0.8" cy="1.2" r="0.35" fill="rgb(255,255,255)" opacity="0.04" />
-                  <circle cx="2.2" cy="2" r="0.25" fill="rgb(0,0,0)" opacity="0.05" />
-                </pattern>
-                <radialGradient id="pitchRadialLight" cx="50%" cy="30%" r="68%">
-                  <stop offset="0%" stopColor="rgb(255,255,255)" stopOpacity="0.2" />
-                  <stop offset="45%" stopColor="rgb(255,255,255)" stopOpacity="0.06" />
-                  <stop offset="100%" stopColor="rgb(255,255,255)" stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="pitchVignette" cx="50%" cy="50%" r="78%">
-                  <stop offset="52%" stopColor="rgb(0,0,0)" stopOpacity="0" />
-                  <stop offset="100%" stopColor="rgb(0,0,0)" stopOpacity="0.38" />
-                </radialGradient>
-                <filter
-                  id="pitchLineGlow"
-                  x="-8%"
-                  y="-8%"
-                  width="116%"
-                  height="116%"
-                >
-                  <feGaussianBlur in="SourceGraphic" stdDeviation="0.35" result="b" />
-                  <feMerge>
-                    <feMergeNode in="b" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-              </defs>
-              <rect width="160" height="100" fill="url(#pitchGrad)" />
-              <rect width="160" height="100" fill="url(#pitchGrassMow)" />
-              <rect width="160" height="100" fill="url(#pitchGrassFine)" opacity="0.85" />
-              <rect width="160" height="100" fill="url(#pitchRadialLight)" />
-              <g filter="url(#pitchLineGlow)">
-                <rect
-                  x="2"
-                  y="2"
-                  width="156"
-                  height="96"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.42)"
-                  strokeWidth="0.55"
-                />
-                <line
-                  x1="80"
-                  y1="2"
-                  x2="80"
-                  y2="98"
-                  stroke="rgba(255,255,255,0.52)"
-                  strokeWidth="0.48"
-                />
-                <circle
-                  cx="80"
-                  cy="50"
-                  r="12"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.46)"
-                  strokeWidth="0.48"
-                />
-                <circle cx="80" cy="50" r="0.85" fill="rgba(255,255,255,0.55)" />
-                <rect
-                  x="55"
-                  y="2"
-                  width="50"
-                  height="18"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.4)"
-                  strokeWidth="0.42"
-                />
-                <rect
-                  x="55"
-                  y="80"
-                  width="50"
-                  height="18"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.4)"
-                  strokeWidth="0.42"
-                />
-                <line
-                  x1="55"
-                  y1="20"
-                  x2="105"
-                  y2="20"
-                  stroke="rgba(255,255,255,0.38)"
-                  strokeWidth="0.36"
-                />
-                <line
-                  x1="55"
-                  y1="80"
-                  x2="105"
-                  y2="80"
-                  stroke="rgba(255,255,255,0.38)"
-                  strokeWidth="0.36"
-                />
-              </g>
-              <rect width="160" height="100" fill="url(#pitchVignette)" />
-            </svg>
+            <PitchCanvas
+              key={pitchSport}
+              sport={pitchSport}
+              pitchHighlight={live?.pitchHighlight ?? null}
+            />
+
+            {phaseAccentRing ? (
+              <div
+                className={cn(
+                  "pointer-events-none absolute inset-0 z-[1] rounded-2xl ring-2 ring-inset",
+                  phaseAccentRing,
+                )}
+                aria-hidden
+              />
+            ) : null}
 
             <svg
-              className="absolute inset-0 h-full w-full touch-none"
+              className="absolute inset-0 z-[2] h-full w-full touch-none"
               viewBox="0 0 100 100"
               preserveAspectRatio="none"
               aria-hidden
@@ -972,16 +1009,11 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
                   key={m.id}
                   type="button"
                   className={cn(
-                    "absolute z-10 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none items-center justify-center rounded-full border-2 text-xs font-bold shadow-md active:cursor-grabbing",
-                    isHome &&
-                      "border-white bg-white/95 text-emerald-900 dark:bg-white",
-                    isAway &&
-                      "border-amber-200 bg-amber-400 text-amber-950 dark:border-amber-300 dark:bg-amber-500",
-                    !isHome &&
-                      !isAway &&
-                      "border-slate-300 bg-slate-200 text-slate-800 dark:border-slate-500 dark:bg-slate-600 dark:text-white",
-                    selected &&
-                      "z-[11] scale-110 ring-[3px] ring-white shadow-[0_0_0_3px_rgb(52,211,153),0_8px_24px_rgba(0,0,0,0.35)] ring-offset-[3px] ring-offset-emerald-900 dark:ring-offset-emerald-950",
+                    boardMarkers.base,
+                    isHome && boardMarkers.home,
+                    isAway && boardMarkers.away,
+                    !isHome && !isAway && boardMarkers.neutral,
+                    selected && boardMarkers.selected,
                   )}
                   style={{
                     left: `${m.x * 100}%`,

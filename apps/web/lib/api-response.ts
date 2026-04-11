@@ -42,14 +42,22 @@ export const apiError = (error: unknown) => {
     );
   }
 
+  console.error("[apiError] unhandled:", error);
+
+  const isDev = process.env.NODE_ENV === "development";
+  const fallbackMessage =
+    isDev && error instanceof Error && error.message.trim().length > 0
+      ? error.message
+      : "Something went wrong.";
+
   return NextResponse.json(
     {
       error: {
         code: "INTERNAL_SERVER_ERROR",
-        message: "Something went wrong."
-      }
+        message: fallbackMessage,
+      },
     },
-    { status: 500 }
+    { status: 500 },
   );
 };
 

@@ -1,6 +1,13 @@
+/* Do not remove the three @tailwind lines — required for the styling pipeline. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* VERIFY pipeline: uncomment → save → hard refresh; you should see a red outline on <html>. Re-comment after.
+html {
+  outline: 3px solid red !important;
+}
+*/
 
 :root {
   --background: #f8fafc;

@@ -1,0 +1,118 @@
+/**
+ * Board-layer colour tokens: grass, striping, line paint, chrome, markers.
+ * Consumed by pitch config, pitch canvas, and board-v1-panel only.
+ */
+
+/** Base grass fills (matte: compressed tonal range, no “plastic” pop). */
+export const boardGrass = {
+  soccer: {
+    top: "#1a4d2e",
+    mid: "#1b5c36",
+    bottom: "#176e3a",
+  },
+  gaelic: {
+    top: "#15382a",
+    mid: "#1b3d2f",
+    bottom: "#1e4d38",
+  },
+} as const;
+
+/** Turf overlay: vertical mow + fine noise opacities (subtle striping). */
+export const boardStripes = {
+  mowPeriod: 12,
+  mowLightOpacity: 0.02,
+  mowDarkOpacity: 0.028,
+  fineOpacity: 0.72,
+  /** Less “graph paper” on GAA boards (Gaelic landscape + hurling portrait). */
+  fineGaaOpacity: 0.42,
+  /** Faint turf blade overlay (Gaelic landscape pitch-canvas). */
+  gaelicBladeOpacity: 0.22,
+  fineWhiteDot: 0.032,
+  fineDarkDot: 0.038,
+} as const;
+
+/** Ambient light over grass (matte = softer specular). */
+export const boardGrassLight = {
+  highlightPeak: 0.1,
+  highlightMid: 0.035,
+  vignetteEdge: 0.34,
+} as const;
+
+/** Gaelic landscape: slightly brighter “floodlight” centre (pitch-canvas only). */
+export const boardGrassLightGaelic = {
+  highlightPeak: 0.14,
+  highlightMid: 0.048,
+  vignetteEdge: 0.3,
+} as const;
+
+/** Pitch line paint (SVG strokes / fills). */
+export const boardLines = {
+  soccer: {
+    touch: "rgba(255,255,255,0.42)",
+    centre: "rgba(255,255,255,0.52)",
+    circle: "rgba(255,255,255,0.46)",
+    penalty: "rgba(255,255,255,0.4)",
+    goalArea: "rgba(255,255,255,0.34)",
+    penaltyEdge: "rgba(255,255,255,0.38)",
+    spot: "rgba(255,255,255,0.55)",
+  },
+  gaelic: {
+    /** ~2px at typical scale; high contrast on #1b3d2f */
+    linePrimary: "rgba(255,255,255,0.94)",
+    /** ~1px; 13 m markers */
+    lineThin: "rgba(255,255,255,0.9)",
+    touch: "rgba(255,255,255,0.94)",
+    centre: "rgba(255,255,255,0.94)",
+    circle: "rgba(255,255,255,0.94)",
+    spot: "rgba(255,255,255,0.85)",
+    grid13: "rgba(255,255,255,0.9)",
+    grid20: "rgba(255,255,255,0.94)",
+    grid45: "rgba(255,255,255,0.94)",
+    largeRect: "rgba(255,255,255,0.94)",
+    smallRect: "rgba(255,255,255,0.94)",
+    arc13: "rgba(255,255,255,0.52)",
+    /** Hurling / metric pitch: 2-point arc from end line (legacy builder). */
+    arc2: "rgba(234, 179, 8, 0.94)",
+    /** Gaelic football normalized board: 2-point arc on 20 m line — muted gold, not neon. */
+    arc2Gaelic: "rgba(186, 148, 62, 0.92)",
+    /** Live stats: yellow arc, lower alpha so it reads as line paint not UI chrome. */
+    arc2Live: "rgba(234, 179, 8, 0.58)",
+    /** Official 40 m 2-point arc — broadcast yellow. */
+    arc2Point: "#FFCC00",
+    /** Soft under-glow for 2-point arc (same hue, drawn wider underneath). */
+    arc2PointGlow: "#FFD700",
+    /** “2PT” micro-label on grass. */
+    arc2PointLabel: "rgba(255, 252, 240, 0.92)",
+  },
+} as const;
+
+export const boardHighlightZone = {
+  fill: "rgba(250, 204, 21, 0.22)",
+  stroke: "rgba(253, 224, 71, 0.88)",
+} as const;
+
+/** Panel shell + pitch bezel (Tailwind class strings). */
+export const boardChrome = {
+  shellSoccer:
+    "border-white/75 bg-gradient-to-b from-white via-white to-slate-50/40 shadow-[0_28px_64px_-28px_rgba(15,118,110,0.22),0_0_0_1px_rgba(15,118,110,0.05)] ring-slate-900/[0.03] dark:border-slate-700/85 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900/90 dark:shadow-[0_40px_88px_-36px_rgba(0,0,0,0.58),0_0_0_1px_rgba(255,255,255,0.04)] dark:ring-white/[0.04]",
+  shellGaa:
+    "border-emerald-900/30 bg-gradient-to-b from-emerald-950/45 via-pitchside-950/35 to-emerald-950/50 shadow-[0_28px_64px_-28px_rgba(6,78,59,0.38),0_0_0_1px_rgba(20,83,45,0.14)] ring-emerald-900/25 dark:border-emerald-800/45 dark:from-emerald-950/58 dark:via-pitchside-950/48 dark:to-black dark:shadow-[0_40px_88px_-36px_rgba(0,0,0,0.55)] dark:ring-emerald-900/35",
+  bezelSoccer:
+    "rounded-[1.125rem] bg-gradient-to-b from-pitchside-300/45 via-pitchside-600/22 to-slate-900/28 p-[5px] shadow-[0_28px_64px_-20px_rgba(15,118,110,0.48),0_12px_36px_-20px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.28)] ring-1 ring-pitchside-900/20 drop-shadow-[0_10px_36px_-10px_rgba(15,118,110,0.32)] dark:from-pitchside-500/32 dark:via-pitchside-800/28 dark:to-slate-950/55 dark:shadow-[0_32px_72px_-26px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.07)] dark:ring-pitchside-400/22",
+  bezelGaa:
+    "rounded-[1.125rem] bg-gradient-to-b from-emerald-950 via-pitchside-950 to-emerald-950 p-1 shadow-[0_32px_72px_-22px_rgba(6,78,59,0.58),0_14px_42px_-18px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.07)] ring-1 ring-emerald-700/45 drop-shadow-[0_14px_44px_-14px_rgba(5,150,105,0.38)] dark:from-emerald-950 dark:via-pitchside-950 dark:to-black dark:ring-emerald-500/30 dark:shadow-[0_38px_88px_-28px_rgba(0,0,0,0.72),inset_0_1px_0_rgba(255,255,255,0.05)]",
+} as const;
+
+/** Player marker button base + team variants (aligned to board greens). */
+export const boardMarkers = {
+  base:
+    "absolute z-10 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none items-center justify-center rounded-full border text-[13px] font-semibold tabular-nums leading-none tracking-tight active:cursor-grabbing",
+  home:
+    "border-emerald-900/55 bg-gradient-to-b from-white to-slate-100 text-emerald-950 shadow-[0_3px_12px_rgba(0,0,0,0.5),0_1px_0_rgba(255,255,255,0.85)_inset] ring-1 ring-white/50 dark:from-white dark:to-slate-100 dark:text-emerald-950",
+  away:
+    "border-amber-400/80 bg-gradient-to-b from-amber-200 to-amber-500 text-amber-950 shadow-[0_3px_12px_rgba(0,0,0,0.45),0_1px_0_rgba(255,255,255,0.35)_inset] ring-1 ring-amber-100/40 dark:from-amber-300 dark:to-amber-600 dark:text-amber-950",
+  neutral:
+    "border-slate-400/80 bg-gradient-to-b from-slate-200 to-slate-400 text-slate-900 shadow-[0_3px_10px_rgba(0,0,0,0.4)] ring-1 ring-white/30 dark:border-slate-500 dark:from-slate-600 dark:to-slate-700 dark:text-white",
+  selected:
+    "z-[11] scale-[1.06] ring-2 ring-white shadow-[0_0_0_2px_rgb(52,211,153),0_12px_28px_rgba(0,0,0,0.5)] ring-offset-2 ring-offset-emerald-950 dark:ring-offset-emerald-950",
+} as const;

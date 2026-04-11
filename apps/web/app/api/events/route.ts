@@ -1,4 +1,5 @@
-import { prisma } from "@pitchside/data-access";
+import { prisma, type EventType } from "@pitchside/data-access";
+import type { Prisma } from "@pitchside/data-access";
 import { createMatchEventSchema } from "@pitchside/validation";
 import { z } from "zod";
 
@@ -17,6 +18,46 @@ function formatPlayerDisplayName(player: {
   const nick = player.nickname?.trim();
   if (nick) return nick;
   return `${player.firstName} ${player.lastName}`.trim();
+}
+
+function parseEventContext(
+  raw: Prisma.JsonValue | null | undefined,
+): {
+  matchPeriod?: string;
+  clockLabel?: string;
+  pitchZone?: string;
+  pitchLane?: string;
+  pitchSide?: string;
+} | null {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  const matchPeriod =
+    typeof o.matchPeriod === "string" ? o.matchPeriod : undefined;
+  const clockLabel =
+    typeof o.clockLabel === "string" ? o.clockLabel : undefined;
+  const pitchZone =
+    typeof o.pitchZone === "string" ? o.pitchZone : undefined;
+  const pitchLane =
+    typeof o.pitchLane === "string" ? o.pitchLane : undefined;
+  const pitchSide =
+    typeof o.pitchSide === "string" ? o.pitchSide : undefined;
+  if (
+    matchPeriod === undefined &&
+    clockLabel === undefined &&
+    pitchZone === undefined &&
+    pitchLane === undefined &&
+    pitchSide === undefined
+  ) {
+    return null;
+  }
+  return {
+    matchPeriod,
+    clockLabel,
+    pitchZone,
+    pitchLane,
+    pitchSide,
+  };
 }
 
 export async function GET(request: Request) {
@@ -38,7 +79,7 @@ export async function GET(request: Request) {
 
     const match = await prisma.match.findUnique({
       where: { id: matchId },
-      select: { id: true },
+      select: { id: true, currentPeriod: true },
     });
 
     if (!match) {
@@ -50,7 +91,7 @@ export async function GET(request: Request) {
 
     const events = await prisma.event.findMany({
       where: { matchId },
-      orderBy: { timestamp: "desc" },
+      orderBy: [{ timestamp: "desc" }, { id: "desc" }],
       include: {
         player: {
           select: {
@@ -73,7 +114,9 @@ export async function GET(request: Request) {
         playerName: row.player
           ? formatPlayerDisplayName(row.player)
           : null,
+        context: parseEventContext(row.context),
       })),
+      currentPeriod: match.currentPeriod,
     });
   } catch (error) {
     return apiError(error);
@@ -113,23 +156,40 @@ export async function POST(request: Request) {
       }
     }
 
-    const created = await prisma.event.create({
-      data: {
-        matchId: input.matchId,
-        type: input.type,
-        playerId: input.playerId ?? null,
-        note: input.note ?? null,
-      },
-      include: {
-        player: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            nickname: true,
+    const contextJson: Prisma.InputJsonValue | undefined =
+      input.context !== undefined
+        ? (input.context as Prisma.InputJsonValue)
+        : undefined;
+
+    const created = await prisma.$transaction(async (tx) => {
+      const event = await tx.event.create({
+        data: {
+          matchId: input.matchId,
+          type: input.type as EventType,
+          playerId: input.playerId ?? null,
+          note: input.note ?? null,
+          context: contextJson ?? undefined,
+        },
+        include: {
+          player: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              nickname: true,
+            },
           },
         },
-      },
+      });
+
+      if (input.type === "phase_change" && input.context?.matchPeriod) {
+        await tx.match.update({
+          where: { id: input.matchId },
+          data: { currentPeriod: input.context.matchPeriod },
+        });
+      }
+
+      return event;
     });
 
     return apiCreated({
@@ -142,6 +202,7 @@ export async function POST(request: Request) {
         playerName: created.player
           ? formatPlayerDisplayName(created.player)
           : null,
+        context: parseEventContext(created.context),
       },
     });
   } catch (error) {

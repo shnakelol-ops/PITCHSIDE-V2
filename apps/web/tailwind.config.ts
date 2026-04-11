@@ -1,9 +1,16 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * Tailwind JIT scans these paths only. If a directory is missing, utilities used
+ * only there are purged → pages look “unstyled”. Do not remove `./lib/**` (board
+ * tokens, etc.) or `./config/**` (future / colocated class strings).
+ */
 const config: Config = {
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
+    "./config/**/*.{js,ts,jsx,tsx,mdx}",
     "./hooks/**/*.{js,ts,jsx,tsx,mdx}",
     "./providers/**/*.{js,ts,jsx,tsx,mdx}",
     "../../packages/ui/src/**/*.{js,ts,jsx,tsx,mdx}",

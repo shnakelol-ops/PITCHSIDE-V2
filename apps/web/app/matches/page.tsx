@@ -1,9 +1,9 @@
 import Link from "next/link";
+import { cn } from "@pitchside/utils";
 
 import { prisma } from "@pitchside/data-access";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { Button } from "@/components/ui/button";
 import { formatMatchDate } from "@/lib/format-date";
 import { formatOpponentForDisplay } from "@/lib/format-display-name";
 
@@ -38,9 +38,15 @@ export default async function MatchesPage() {
           <p className="text-sm text-slate-600 dark:text-slate-400">
             {matches.length} {matches.length === 1 ? "match" : "matches"}
           </p>
-          <Button asChild>
-            <Link href="/matches/new">New Match</Link>
-          </Button>
+          <Link
+            href="/matches/new"
+            className={cn(
+              "inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 disabled:hover:shadow-none",
+              "bg-pitchside-600 text-white shadow-[0_4px_16px_-4px_rgba(5,150,105,0.5)] hover:bg-pitchside-700 hover:shadow-[0_8px_28px_-6px_rgba(5,150,105,0.45)] active:scale-[0.97] dark:shadow-[0_4px_20px_-4px_rgba(5,150,105,0.4)] dark:hover:shadow-[0_10px_32px_-6px_rgba(5,150,105,0.35)]"
+            )}
+          >
+            New Match
+          </Link>
         </div>
 
         {matches.length === 0 ? (
