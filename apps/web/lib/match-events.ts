@@ -6,6 +6,13 @@ export type MatchEventContextClient = {
   pitchZone?: string;
   pitchLane?: string;
   pitchSide?: string;
+  logEventType?: string;
+  logSubAction?: string;
+  logNormX?: number;
+  logNormY?: number;
+  logDerivedZone?: string;
+  logTacticalPhase?: string;
+  logPlayerNumber?: number;
 } | null;
 
 /** Row shape returned by GET /api/events (single source of truth for the live dashboard). */
@@ -66,6 +73,37 @@ export function normalizeLoggedEventRows(input: unknown): LoggedEventRow[] {
                 pitchSide:
                   typeof item.context.pitchSide === "string"
                     ? item.context.pitchSide
+                    : undefined,
+                logEventType:
+                  typeof item.context.logEventType === "string"
+                    ? item.context.logEventType
+                    : undefined,
+                logSubAction:
+                  typeof item.context.logSubAction === "string"
+                    ? item.context.logSubAction
+                    : undefined,
+                logNormX:
+                  typeof item.context.logNormX === "number" &&
+                  Number.isFinite(item.context.logNormX)
+                    ? item.context.logNormX
+                    : undefined,
+                logNormY:
+                  typeof item.context.logNormY === "number" &&
+                  Number.isFinite(item.context.logNormY)
+                    ? item.context.logNormY
+                    : undefined,
+                logDerivedZone:
+                  typeof item.context.logDerivedZone === "string"
+                    ? item.context.logDerivedZone
+                    : undefined,
+                logTacticalPhase:
+                  typeof item.context.logTacticalPhase === "string"
+                    ? item.context.logTacticalPhase
+                    : undefined,
+                logPlayerNumber:
+                  typeof item.context.logPlayerNumber === "number" &&
+                  Number.isFinite(item.context.logPlayerNumber)
+                    ? item.context.logPlayerNumber
                     : undefined,
               }
             : null,

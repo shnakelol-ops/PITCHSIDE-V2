@@ -96,25 +96,26 @@ export default async function MatchWorkspacePage({
     <AppShell
       title="Match workspace"
       subtitle={pageTitleForShell}
-      mainClassName="bg-gradient-to-b from-slate-100/95 via-slate-50 to-white dark:from-slate-950 dark:via-slate-950 dark:to-slate-950"
+      mainClassName="flex min-h-0 flex-col bg-gradient-to-b from-slate-100/95 via-slate-50 to-white dark:from-slate-950 dark:via-slate-950 dark:to-slate-950"
     >
-      <div className="mx-auto flex max-w-[92rem] flex-col gap-10 pb-12 lg:gap-12">
-        <MatchWorkspaceHero
-          teamName={teamName}
-          opponentDisplay={opponentDisplay}
-          formattedDate={formattedDate}
-          competition={match.competition}
-          venue={match.venue}
-          sportLabel={sportLabel}
-        />
-
-        <MatchSummaryCard
-          teamName={teamName}
-          opponentDisplay={opponentDisplay}
-          competition={displayText(match.competition)}
-          venue={displayText(match.venue)}
-          matchDate={formattedDate}
-        />
+      <div className="mx-auto flex min-h-0 w-full max-w-[92rem] flex-1 flex-col gap-6 pb-10 lg:gap-8 lg:pb-12">
+        <div className="shrink-0 space-y-4">
+          <MatchWorkspaceHero
+            teamName={teamName}
+            opponentDisplay={opponentDisplay}
+            formattedDate={formattedDate}
+            competition={match.competition}
+            venue={match.venue}
+            sportLabel={sportLabel}
+          />
+          <MatchSummaryCard
+            teamName={teamName}
+            opponentDisplay={opponentDisplay}
+            competition={displayText(match.competition)}
+            venue={displayText(match.venue)}
+            matchDate={formattedDate}
+          />
+        </div>
 
         <MatchWorkspaceLiveProvider
           matchId={match.id}
@@ -123,15 +124,17 @@ export default async function MatchWorkspacePage({
           players={roster}
           initialPeriod={match.currentPeriod}
         >
-          <div className="grid min-w-0 grid-cols-1 gap-10 lg:grid-cols-12 lg:items-start lg:gap-x-0 lg:gap-y-10">
-            <div className="relative min-w-0 lg:col-span-8 lg:border-r lg:border-slate-200/90 lg:pr-8 xl:pr-12 dark:lg:border-slate-800/90">
-              <div className="relative rounded-[1.25rem] bg-gradient-to-br from-pitchside-600/[0.12] via-pitchside-500/[0.04] to-transparent p-[3px] shadow-[0_20px_44px_-24px_rgba(15,118,110,0.32)] ring-1 ring-pitchside-900/[0.06] dark:from-pitchside-500/[0.14] dark:via-pitchside-600/[0.06] dark:shadow-[0_26px_52px_-22px_rgba(0,0,0,0.48)] dark:ring-white/[0.06]">
-                <BoardV1Panel matchId={match.id} />
-              </div>
-            </div>
-            <div className="flex min-h-0 min-w-0 flex-col gap-5 border-t border-slate-200/80 pt-10 lg:sticky lg:top-24 lg:col-span-4 lg:self-start lg:border-t-0 lg:pl-8 lg:pt-0 xl:pl-10 dark:border-slate-800 dark:lg:border-t-0">
-              <MatchLiveSidebar />
-              <MatchReviewTeaser />
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:min-h-[calc(100dvh-14rem)]">
+            <div className="relative flex min-h-[22rem] flex-1 flex-col rounded-[1.25rem] bg-gradient-to-br from-pitchside-600/[0.12] via-pitchside-500/[0.04] to-transparent p-[3px] shadow-[0_20px_44px_-24px_rgba(15,118,110,0.32)] ring-1 ring-pitchside-900/[0.06] dark:from-pitchside-500/[0.14] dark:via-pitchside-600/[0.06] dark:shadow-[0_26px_52px_-22px_rgba(0,0,0,0.48)] dark:ring-white/[0.06] lg:min-h-0">
+              <BoardV1Panel
+                matchId={match.id}
+                rightPanel={
+                  <div className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto overscroll-contain px-1 py-2 sm:px-2">
+                    <MatchLiveSidebar />
+                    <MatchReviewTeaser />
+                  </div>
+                }
+              />
             </div>
           </div>
         </MatchWorkspaceLiveProvider>

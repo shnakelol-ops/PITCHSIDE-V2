@@ -23,12 +23,8 @@ import {
   usesGaelicScoring,
 } from "@/lib/match-live-stats";
 import { formatMatchPeriodLabel } from "@/lib/match-period-labels";
-import {
-  formatPitchLocationLabel,
-  PITCH_LANES,
-  PITCH_SIDES,
-  PITCH_ZONES,
-} from "@/lib/pitch-location";
+import { buildMatchEventLogContext } from "@/lib/match-event-pipeline";
+import { formatPitchLocationLabel } from "@/lib/pitch-location";
 import { cn } from "@pitchside/utils";
 
 export type { MatchWorkspaceRosterPlayer as MatchRosterPlayer } from "@/components/matches/match-workspace-live-context";
@@ -255,6 +251,8 @@ export function LiveMatchDashboard() {
     setLoadError,
     scrollToPhaseControl,
     handleRefresh,
+    pendingBoardLogContext,
+    clearPendingBoardLogContext,
   } = useMatchWorkspaceLive();
 
   const actionClusters = useMemo(
@@ -263,11 +261,7 @@ export function LiveMatchDashboard() {
   );
 
   const [pending, setPending] = useState<MatchEventType | "note" | null>(null);
-  const [selectedPlayerId, setSelectedPlayerId] = useState("");
   const [noteDraft, setNoteDraft] = useState("");
-  const [pitchZone, setPitchZone] = useState("");
-  const [pitchLane, setPitchLane] = useState("");
-  const [pitchSide, setPitchSide] = useState("");
   const [timelineFilter, setTimelineFilter] =
     useState<TimelineFilter>("all");
 
@@ -276,23 +270,6 @@ export function LiveMatchDashboard() {
     [events, teamSport],
   );
 
-  const buildEventContext =
-    (): NonNullable<CreateMatchEventInput["context"]> => {
-      const ctx: NonNullable<CreateMatchEventInput["context"]> = {
-        clockLabel: getClockLabel(),
-      };
-      if (pitchZone === "attack" || pitchZone === "midfield" || pitchZone === "defence") {
-        ctx.pitchZone = pitchZone;
-      }
-      if (pitchLane === "left" || pitchLane === "centre" || pitchLane === "right") {
-        ctx.pitchLane = pitchLane;
-      }
-      if (pitchSide === "own" || pitchSide === "opp" || pitchSide === "neutral") {
-        ctx.pitchSide = pitchSide;
-      }
-      return ctx;
-    };
-
   const gaelic = usesGaelicScoring(teamSport);
 
   const filteredTimeline = useMemo(() => {
@@ -300,9 +277,17 @@ export function LiveMatchDashboard() {
     return filterTimeline(events, timelineFilter);
   }, [events, timelineFilter]);
 
-  const runPost = async (input: Omit<CreateMatchEventInput, "matchId">) => {
-    await postMatchEvent(input);
-  };
+  /**
+   * Single live-event entrypoint: `postMatchEvent` then clear board-armed context
+   * so the next log needs a fresh pitch tap.
+   */
+  const runPost = useCallback(
+    async (input: Omit<CreateMatchEventInput, "matchId">) => {
+      await postMatchEvent(input);
+      clearPendingBoardLogContext();
+    },
+    [postMatchEvent, clearPendingBoardLogContext],
+  );
 
   const logAction = async (type: MatchEventType) => {
     setPending(type);
@@ -310,10 +295,14 @@ export function LiveMatchDashboard() {
     try {
       const payload: Omit<CreateMatchEventInput, "matchId"> = {
         type,
-        context: buildEventContext(),
+        context: buildMatchEventLogContext({
+          clockLabel: getClockLabel(),
+          pendingBoardLogContext,
+        }),
       };
-      if (selectedPlayerId.trim() !== "") {
-        payload.playerId = selectedPlayerId.trim();
+      const fromBoard = pendingBoardLogContext?.playerId;
+      if (fromBoard && fromBoard.length > 0) {
+        payload.playerId = fromBoard;
       }
       const trimmedNote = noteDraft.trim();
       if (trimmedNote !== "") {
@@ -344,7 +333,10 @@ export function LiveMatchDashboard() {
       await runPost({
         type: "note",
         note: trimmed,
-        context: buildEventContext(),
+        context: buildMatchEventLogContext({
+          clockLabel: getClockLabel(),
+          pendingBoardLogContext,
+        }),
       });
       setNoteDraft("");
     } catch (e) {
@@ -358,7 +350,6 @@ export function LiveMatchDashboard() {
     }
   };
 
-  const hasRoster = players.length > 0;
   const busy = pending !== null;
   /** Block concurrent POSTs while a phase change is persisting (shared pipeline). */
   const pipelineBusy = busy || phaseWritePending;
@@ -466,102 +457,19 @@ export function LiveMatchDashboard() {
           <LivePanelCard
             eyebrow="Tagging"
             title="Event actions"
-            description="Large taps for match-day speed. Optional player, pitch area, and note apply to the next log."
+            description="Select tool on the board → tap the pitch to set zone, lane, side, and nearest player (within range). Then tap an event here. Optional note still attaches to the next log."
             bodyClassName="!pt-3"
           >
             <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="live-dash-player">Player</Label>
-                  {!hasRoster ? (
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      No players on roster.
-                    </p>
-                  ) : null}
-                  <select
-                    id="live-dash-player"
-                    value={selectedPlayerId}
-                    onChange={(e) => setSelectedPlayerId(e.target.value)}
-                    disabled={!hasRoster}
-                    className={cn(
-                      selectClassName,
-                      "mt-1.5",
-                      !hasRoster && "cursor-not-allowed opacity-60",
-                    )}
-                  >
-                    <option value="">No player</option>
-                    {players.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="live-dash-note">Note</Label>
-                  <Input
-                    id="live-dash-note"
-                    value={noteDraft}
-                    onChange={(e) => setNoteDraft(e.target.value)}
-                    placeholder="Optional — attaches to next tap"
-                    className="mt-1.5 rounded-xl border-slate-200/90 text-sm shadow-sm dark:border-slate-700"
-                  />
-                </div>
-              </div>
               <div>
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                  Pitch area (optional — flashes on board when logged)
-                </p>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div>
-                    <Label htmlFor="live-dash-zone">Zone</Label>
-                    <select
-                      id="live-dash-zone"
-                      value={pitchZone}
-                      onChange={(e) => setPitchZone(e.target.value)}
-                      className={cn(selectClassName, "mt-1.5")}
-                    >
-                      <option value="">Any</option>
-                      {PITCH_ZONES.map((z) => (
-                        <option key={z.value} value={z.value}>
-                          {z.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <Label htmlFor="live-dash-lane">Lane</Label>
-                    <select
-                      id="live-dash-lane"
-                      value={pitchLane}
-                      onChange={(e) => setPitchLane(e.target.value)}
-                      className={cn(selectClassName, "mt-1.5")}
-                    >
-                      <option value="">Any</option>
-                      {PITCH_LANES.map((l) => (
-                        <option key={l.value} value={l.value}>
-                          {l.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <Label htmlFor="live-dash-side">Side</Label>
-                    <select
-                      id="live-dash-side"
-                      value={pitchSide}
-                      onChange={(e) => setPitchSide(e.target.value)}
-                      className={cn(selectClassName, "mt-1.5")}
-                    >
-                      <option value="">Any</option>
-                      {PITCH_SIDES.map((s) => (
-                        <option key={s.value} value={s.value}>
-                          {s.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                <Label htmlFor="live-dash-note">Note</Label>
+                <Input
+                  id="live-dash-note"
+                  value={noteDraft}
+                  onChange={(e) => setNoteDraft(e.target.value)}
+                  placeholder="Optional — attaches to next tap"
+                  className="mt-1.5 rounded-xl border-slate-200/90 text-sm shadow-sm dark:border-slate-700"
+                />
               </div>
 
               <div className="space-y-5">
@@ -708,6 +616,24 @@ export function LiveMatchDashboard() {
                               {EVENT_LABELS[row.type] ?? row.type}
                             </p>
                           )}
+                          {row.context?.logEventType ? (
+                            <p className="text-[11px] font-medium leading-snug text-slate-600 dark:text-slate-400">
+                              Quick · {row.context.logEventType}
+                              {row.context.logSubAction
+                                ? ` · ${row.context.logSubAction.replace(/_/g, " ")}`
+                                : ""}
+                              {row.context.logDerivedZone
+                                ? ` · ${row.context.logDerivedZone.replace(/_/g, " ")}`
+                                : ""}
+                              {row.context.logTacticalPhase
+                                ? ` · ${row.context.logTacticalPhase.replace(/_/g, " ")}`
+                                : ""}
+                              {row.context.logNormX != null &&
+                              row.context.logNormY != null
+                                ? ` · (${row.context.logNormX.toFixed(2)}, ${row.context.logNormY.toFixed(2)})`
+                                : ""}
+                            </p>
+                          ) : null}
                           {row.playerName ? (
                             <p className="text-sm leading-relaxed text-slate-700 break-words dark:text-slate-300">
                               {row.playerName}

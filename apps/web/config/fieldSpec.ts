@@ -67,7 +67,8 @@ const L = 145;
 const W = 90;
 
 /**
- * Hurling — same 145×90 m board reference; far line 65 m from each end (yn = 65/145).
+ * Hurling — same 145×90 m as football; far line 65 m from each end (yn = 65/145).
+ * Board canvas draws hurling in landscape (goals left/right); `yn` is used by pitchConfig only.
  */
 export const HURLING_FIELD_SPEC = {
   id: "hurling",

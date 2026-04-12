@@ -26,6 +26,13 @@ const optionalPlayerIdSchema = z
   .optional()
   .transform((v) => (v === "" || v === undefined ? undefined : v));
 
+export const logTacticalPhaseSchema = z.enum([
+  "attack",
+  "defence",
+  "transition",
+  "set_play",
+]);
+
 export const matchEventContextSchema = z
   .object({
     matchPeriod: matchPeriodSchema.optional(),
@@ -33,6 +40,14 @@ export const matchEventContextSchema = z
     pitchZone: z.enum(["attack", "midfield", "defence"]).optional(),
     pitchLane: z.enum(["left", "centre", "right"]).optional(),
     pitchSide: z.enum(["own", "opp", "neutral"]).optional(),
+    /** Event-first quick log (optional JSON fields for analytics / maps). */
+    logEventType: z.string().trim().max(32).optional(),
+    logSubAction: z.string().trim().max(64).optional(),
+    logNormX: z.number().min(0).max(1).optional(),
+    logNormY: z.number().min(0).max(1).optional(),
+    logDerivedZone: z.string().trim().max(64).optional(),
+    logTacticalPhase: logTacticalPhaseSchema.optional(),
+    logPlayerNumber: z.number().int().min(0).max(99).optional(),
   })
   .strict();
 

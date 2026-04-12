@@ -396,8 +396,8 @@ function buildGaelicFootballLandscapeMarkings(): PitchMarking[] {
   const w13 = 0.32;
   const wEnd = 0.46;
   const wEndInner = 0.42;
-  const wD = 0.48;
-  const w2Point = 0.48;
+  const wD = 0.6;
+  const w2Point = 0.6;
 
   const cx = ix + 0.5 * playW;
   const cy = iy + 0.5 * playH;
@@ -589,7 +589,6 @@ function buildGaelicFootballLandscapeMarkings(): PitchMarking[] {
       stroke: Lg.arc2Point,
       strokeWidth: w2Point,
       strokeLinecap: "round",
-      opacity: 0.92,
       skipLineGlow: true,
     },
     {
@@ -598,13 +597,12 @@ function buildGaelicFootballLandscapeMarkings(): PitchMarking[] {
       stroke: Lg.arc2Point,
       strokeWidth: w2Point,
       strokeLinecap: "round",
-      opacity: 0.92,
       skipLineGlow: true,
     },
     {
       kind: "path",
       d: dLeft,
-      stroke: Lg.lineGridMid,
+      stroke: Lg.lineCentre,
       strokeWidth: wD,
       strokeLinecap: "round",
       skipLineGlow: true,
@@ -612,7 +610,7 @@ function buildGaelicFootballLandscapeMarkings(): PitchMarking[] {
     {
       kind: "path",
       d: dRight,
-      stroke: Lg.lineGridMid,
+      stroke: Lg.lineCentre,
       strokeWidth: wD,
       strokeLinecap: "round",
       skipLineGlow: true,

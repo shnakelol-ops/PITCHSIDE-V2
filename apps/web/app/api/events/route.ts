@@ -28,6 +28,13 @@ function parseEventContext(
   pitchZone?: string;
   pitchLane?: string;
   pitchSide?: string;
+  logEventType?: string;
+  logSubAction?: string;
+  logNormX?: number;
+  logNormY?: number;
+  logDerivedZone?: string;
+  logTacticalPhase?: string;
+  logPlayerNumber?: number;
 } | null {
   if (raw === null || raw === undefined) return null;
   if (typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -42,12 +49,40 @@ function parseEventContext(
     typeof o.pitchLane === "string" ? o.pitchLane : undefined;
   const pitchSide =
     typeof o.pitchSide === "string" ? o.pitchSide : undefined;
+  const logEventType =
+    typeof o.logEventType === "string" ? o.logEventType : undefined;
+  const logSubAction =
+    typeof o.logSubAction === "string" ? o.logSubAction : undefined;
+  const logNormX =
+    typeof o.logNormX === "number" && Number.isFinite(o.logNormX)
+      ? o.logNormX
+      : undefined;
+  const logNormY =
+    typeof o.logNormY === "number" && Number.isFinite(o.logNormY)
+      ? o.logNormY
+      : undefined;
+  const logDerivedZone =
+    typeof o.logDerivedZone === "string" ? o.logDerivedZone : undefined;
+  const logTacticalPhase =
+    typeof o.logTacticalPhase === "string" ? o.logTacticalPhase : undefined;
+  const logPlayerNumber =
+    typeof o.logPlayerNumber === "number" &&
+    Number.isFinite(o.logPlayerNumber)
+      ? o.logPlayerNumber
+      : undefined;
   if (
     matchPeriod === undefined &&
     clockLabel === undefined &&
     pitchZone === undefined &&
     pitchLane === undefined &&
-    pitchSide === undefined
+    pitchSide === undefined &&
+    logEventType === undefined &&
+    logSubAction === undefined &&
+    logNormX === undefined &&
+    logNormY === undefined &&
+    logDerivedZone === undefined &&
+    logTacticalPhase === undefined &&
+    logPlayerNumber === undefined
   ) {
     return null;
   }
@@ -57,6 +92,13 @@ function parseEventContext(
     pitchZone,
     pitchLane,
     pitchSide,
+    logEventType,
+    logSubAction,
+    logNormX,
+    logNormY,
+    logDerivedZone,
+    logTacticalPhase,
+    logPlayerNumber,
   };
 }
 

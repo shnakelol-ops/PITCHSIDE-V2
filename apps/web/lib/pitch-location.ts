@@ -22,50 +22,55 @@ export const PITCH_SIDES: { value: PitchSide; label: string }[] = [
 ];
 
 /**
- * Map rough pitch tags to a highlight rectangle. Attack = top of vertical pitch.
- * When only `side` is set (no zone/lane), flashes a full-width band: opp → attack
- * third, own → defence third, neutral → midfield.
- * Returns null if nothing is set.
+ * Map pitch tags to a highlight rectangle in legacy inner space (x∈[2,158], y∈[2,98],
+ * w=156, h=96) — same frame as the tactical board: goals left/right, length on +x,
+ * width on +y. Zone = along length (thirds on X); lane = across width (thirds on Y).
+ * Side-only: full-height strip at attack / defence / midfield along X.
  */
 export function buildPitchHighlightRect(
   zone?: PitchZone | string | null,
   lane?: PitchLane | string | null,
   side?: PitchSide | string | null,
 ): { x: number; y: number; w: number; h: number } | null {
-  const zBand =
+  const zBandX =
     zone === "attack"
-      ? { y: 2, h: 36 }
+      ? { x: 106, w: 52 }
       : zone === "midfield"
-        ? { y: 38, h: 24 }
+        ? { x: 54, w: 52 }
         : zone === "defence"
-          ? { y: 62, h: 36 }
+          ? { x: 2, w: 52 }
           : null;
-  const lBand =
+  const lBandY =
     lane === "left"
-      ? { x: 2, w: 50 }
+      ? { y: 2, h: 32 }
       : lane === "centre"
-        ? { x: 52, w: 56 }
+        ? { y: 34, h: 32 }
         : lane === "right"
-          ? { x: 108, w: 50 }
+          ? { y: 66, h: 32 }
           : null;
 
-  if (zBand && lBand) {
-    return { x: lBand.x, y: zBand.y, w: lBand.w, h: zBand.h };
+  if (zBandX && lBandY) {
+    return {
+      x: zBandX.x,
+      y: lBandY.y,
+      w: zBandX.w,
+      h: lBandY.h,
+    };
   }
-  if (zBand) {
-    return { x: 2, y: zBand.y, w: 156, h: zBand.h };
+  if (zBandX) {
+    return { x: zBandX.x, y: 2, w: zBandX.w, h: 96 };
   }
-  if (lBand) {
-    return { x: lBand.x, y: 2, w: lBand.w, h: 96 };
+  if (lBandY) {
+    return { x: 2, y: lBandY.y, w: 156, h: lBandY.h };
   }
   if (side === "opp") {
-    return { x: 2, y: 2, w: 156, h: 36 };
+    return { x: 106, y: 2, w: 52, h: 96 };
   }
   if (side === "own") {
-    return { x: 2, y: 62, w: 156, h: 36 };
+    return { x: 2, y: 2, w: 52, h: 96 };
   }
   if (side === "neutral") {
-    return { x: 2, y: 38, w: 156, h: 24 };
+    return { x: 54, y: 2, w: 52, h: 96 };
   }
   return null;
 }

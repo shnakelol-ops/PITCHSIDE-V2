@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { MatchPeriod } from "@pitchside/data-access";
 
@@ -16,6 +23,10 @@ import {
   createDefaultBoardMarkers,
   type BoardMarkerState,
 } from "@/lib/board-v1-defaults";
+import {
+  deriveBoardTapZones,
+  resolveBoardTapPlayer,
+} from "@/lib/board-log-tap";
 import { boardChrome, boardMarkers } from "@/lib/board-tokens";
 import { formatMatchPeriodLabel } from "@/lib/match-period-labels";
 import { cn } from "@pitchside/utils";
@@ -68,9 +79,18 @@ const BOARD_PITCH_OPTIONS: { id: PitchSport; label: string }[] = [
 
 type BoardV1PanelProps = {
   matchId: string;
+  /** Coach workspace: live events / KPI (must stay under the same live provider as the board). */
+  rightPanel?: ReactNode;
+  /** Optional override for the left rail; default draws Select/Line/Arrow/Erase + squad controls. */
+  leftPanel?: ReactNode | null;
 };
 
-export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
+export function BoardV1Panel({
+  matchId,
+  rightPanel,
+  leftPanel,
+}: BoardV1PanelProps) {
+  const coachWorkspace = rightPanel != null;
   const live = useMatchWorkspaceLiveOptional();
   const [pitchSportFallback, setPitchSportFallback] =
     useState<PitchSport>("gaelic");
@@ -145,6 +165,8 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [isPresentMode, setIsPresentMode] = useState(false);
+  const [logPickMarkerId, setLogPickMarkerId] = useState<string | null>(null);
+  const logPickFlashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const commitBoardFromServer = useCallback((data: BoardLoadResponse) => {
     dragRef.current = null;
@@ -320,6 +342,14 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
   }, [loadBoard]);
 
   useEffect(() => {
+    return () => {
+      if (logPickFlashRef.current != null) {
+        clearTimeout(logPickFlashRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isPresentMode) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -346,13 +376,22 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
     };
   }, []);
 
+  /** Normalised 0–1 in stored board space (length on x, width on y — same mapping for all pitch sports). */
+  const boardNormFromClient = useCallback(
+    (clientX: number, clientY: number) => {
+      const { x: nx, y: ny } = normFromClient(clientX, clientY);
+      return { x: nx, y: ny };
+    },
+    [normFromClient],
+  );
+
   const onPointerDownMarker = useCallback(
     (e: React.PointerEvent, id: string) => {
       e.preventDefault();
       e.stopPropagation();
       setSelectedMarkerId(id);
       setSelectedDrawingId(null);
-      const { x: nx, y: ny } = normFromClient(e.clientX, e.clientY);
+      const { x: nx, y: ny } = boardNormFromClient(e.clientX, e.clientY);
       const m = markers.find((k) => k.id === id);
       if (!m) return;
       dragRef.current = {
@@ -362,14 +401,14 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
       };
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
     },
-    [markers, normFromClient],
+    [markers, boardNormFromClient],
   );
 
   const onPointerMoveMarker = useCallback(
     (e: React.PointerEvent) => {
       if (!dragRef.current || e.buttons !== 1) return;
       const { id, offsetX, offsetY } = dragRef.current;
-      const { x: nx, y: ny } = normFromClient(e.clientX, e.clientY);
+      const { x: nx, y: ny } = boardNormFromClient(e.clientX, e.clientY);
       setMarkers((prev) =>
         prev.map((m) =>
           m.id === id
@@ -382,7 +421,7 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
         ),
       );
     },
-    [normFromClient],
+    [boardNormFromClient],
   );
 
   const onPointerUpMarker = useCallback((e: React.PointerEvent) => {
@@ -401,12 +440,38 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
       if (activeTool === "select") {
         setSelectedMarkerId(null);
         setSelectedDrawingId(null);
+        if (live && !(loading || sceneSwitching)) {
+          const p = boardNormFromClient(e.clientX, e.clientY);
+          const { third, lane, side } = deriveBoardTapZones(p.x, p.y);
+          const { playerId, markerId } = resolveBoardTapPlayer(
+            markers,
+            p.x,
+            p.y,
+            live.players,
+          );
+          live.applyBoardLogPick({
+            x: p.x,
+            y: p.y,
+            third,
+            lane,
+            side,
+            playerId,
+          });
+          setLogPickMarkerId(markerId);
+          if (logPickFlashRef.current != null) {
+            clearTimeout(logPickFlashRef.current);
+          }
+          logPickFlashRef.current = setTimeout(() => {
+            setLogPickMarkerId(null);
+            logPickFlashRef.current = null;
+          }, 1600);
+        }
         return;
       }
 
       if (activeTool === "line" || activeTool === "arrow") {
         e.preventDefault();
-        const p = normFromClient(e.clientX, e.clientY);
+        const p = boardNormFromClient(e.clientX, e.clientY);
         const kind: DraftDraw["kind"] =
           activeTool === "arrow" ? "arrow" : "line";
         const start: DraftDraw = {
@@ -421,13 +486,13 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
         e.currentTarget.setPointerCapture(e.pointerId);
       }
     },
-    [activeTool, normFromClient],
+    [activeTool, boardNormFromClient, live, markers, loading, sceneSwitching],
   );
 
   const onDrawLayerBgPointerMove = useCallback(
     (e: React.PointerEvent<SVGRectElement>) => {
       if (!dragDraftRef.current) return;
-      const p = normFromClient(e.clientX, e.clientY);
+      const p = boardNormFromClient(e.clientX, e.clientY);
       const next = {
         ...dragDraftRef.current,
         x2: p.x,
@@ -436,7 +501,7 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
       dragDraftRef.current = next;
       setDraftDraw(next);
     },
-    [normFromClient],
+    [boardNormFromClient],
   );
 
   const onDrawLayerBgPointerUp = useCallback(
@@ -483,15 +548,20 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
     [activeTool],
   );
 
-  const saveScene = async () => {
+  const saveScene = async (opts?: {
+    markers?: BoardMarkerState[];
+    successMessage?: string;
+    errorPrefix?: string;
+  }) => {
     if (saving || !activeSceneId) return;
+    const markersForPut = opts?.markers ?? markers;
     setSaving(true);
     setMessage(null);
     setError(null);
     try {
       const body = {
         sceneId: activeSceneId,
-        markers: markers.map(({ id: _id, ...rest }) => rest),
+        markers: markersForPut.map(({ id: _id, ...rest }) => rest),
         drawings: drawings.map(({ id: _id, ...rest }) => rest),
       };
       const res = await fetch(`/api/matches/${matchId}/board`, {
@@ -504,11 +574,19 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
 
       if (!res.ok) {
         const err = json as { error?: { message?: string } };
-        setError(
-          err.error?.message
-            ? `Couldn’t save. ${err.error.message}`
-            : "Couldn’t save the board. Check your connection and try again.",
-        );
+        if (opts?.errorPrefix) {
+          setError(
+            err.error?.message
+              ? `${opts.errorPrefix} ${err.error.message}`
+              : `${opts.errorPrefix} Check your connection and try again.`,
+          );
+        } else {
+          setError(
+            err.error?.message
+              ? `Couldn’t save. ${err.error.message}`
+              : "Couldn’t save the board. Check your connection and try again.",
+          );
+        }
         return;
       }
 
@@ -516,21 +594,35 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
       if (ok.data) {
         commitBoardFromServer(ok.data);
       }
-      setMessage("Saved ✔");
+      setMessage(opts?.successMessage ?? "Saved ✔");
       window.setTimeout(() => setMessage(null), 2000);
     } finally {
       setSaving(false);
     }
   };
 
-  const resetLayout = () => {
+  const resetLayout = async () => {
     dragRef.current = null;
-    setMarkers(createDefaultBoardMarkers(pitchSport));
+    dragDraftRef.current = null;
+    setError(null);
+    setMessage(null);
+    const nextMarkers = createDefaultBoardMarkers(pitchSport);
+    setMarkers(nextMarkers);
     setSelectedMarkerId(null);
     setDraftDraw(null);
-    dragDraftRef.current = null;
-    setMessage("Layout reset");
-    window.setTimeout(() => setMessage(null), 2000);
+
+    if (!activeSceneId) {
+      setSavedSnapshot(boardContentSnapshot(nextMarkers, drawings));
+      setMessage("Layout reset");
+      window.setTimeout(() => setMessage(null), 2000);
+      return;
+    }
+
+    await saveScene({
+      markers: nextMarkers,
+      successMessage: "Layout reset · saved",
+      errorPrefix: "Couldn’t save reset layout.",
+    });
   };
 
   const addMarker = () => {
@@ -607,14 +699,12 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
   const sceneSelectClass =
     "min-h-[2.75rem] min-w-[10rem] rounded-full border border-slate-200/95 bg-white px-4 py-2 text-xs font-semibold text-slate-800 shadow-sm outline-none transition duration-200 focus-visible:border-pitchside-500 focus-visible:ring-2 focus-visible:ring-pitchside-500/30 hover:border-slate-300 hover:shadow-md sm:min-h-[2.5rem] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-slate-500";
 
-  const toSvg = (n: number) => n * 100;
-
   const renderDrawingLine = (d: BoardDrawingState | DraftDraw, key: string) => {
     const sel = "id" in d && d.id === selectedDrawingId;
-    const x1 = toSvg(d.x1);
-    const y1 = toSvg(d.y1);
-    const x2 = toSvg(d.x2);
-    const y2 = toSvg(d.y2);
+    const x1 = d.x1 * 100;
+    const y1 = d.y1 * 100;
+    const x2 = d.x2 * 100;
+    const y2 = d.y2 * 100;
     const isArrow = d.kind === "arrow";
     const isDraft = !("id" in d);
 
@@ -671,216 +761,32 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
     );
   };
 
-  return (
+  const drawToolColumnClass =
+    "flex w-full flex-col items-stretch gap-1 px-0.5 py-1";
+
+  const renderPitchSurface = (centerMaxClass?: string) => (
     <div
       className={cn(
-        "relative min-w-0 overflow-hidden rounded-[1.25rem] border ring-1",
-        panelShellClass,
+        pitchBezelClass,
+        centerMaxClass,
         isPresentMode &&
-          "fixed inset-0 z-[90] rounded-none border-0 bg-slate-950 shadow-none ring-0 dark:border-0",
+          "flex flex-1 items-center justify-center rounded-none bg-transparent p-0 shadow-none ring-0",
       )}
     >
-      {isPresentMode ? (
-        <div className="relative z-20 flex items-center justify-between border-b border-white/15 px-4 py-3 sm:px-6">
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/75">
-            Presentation mode
-          </p>
-          <Button
-            type="button"
-            variant="secondary"
-            className={controlBtnClass}
-            onClick={() => setIsPresentMode(false)}
-          >
-            Exit
-          </Button>
-        </div>
-      ) : (
-        <>
-          <div
-            className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-pitchside-500/[0.13] via-pitchside-600/[0.04] to-transparent dark:from-pitchside-400/[0.14] dark:via-pitchside-600/[0.06]"
-            aria-hidden
-          />
-
-          <div className="relative border-b border-slate-100/95 px-5 pb-6 pt-7 dark:border-slate-800/80 sm:px-7 sm:pt-8 lg:px-9">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 items-start gap-4">
-            <div
-              className="mt-1 hidden h-[4.25rem] w-1.5 shrink-0 rounded-full bg-gradient-to-b from-pitchside-400 via-pitchside-600 to-pitchside-800 shadow-[0_0_28px_rgba(52,211,153,0.35)] sm:block"
-              aria-hidden
-            />
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
-                Tactical workspace
-              </p>
-              <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl sm:leading-[1.1]">
-                Pitch canvas
-              </h2>
-              <p className="pt-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
-                Primary surface · scenes persist when you save
-              </p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              className={controlBtnClass}
-              onClick={() => setIsPresentMode(true)}
-            >
-              Present Mode
-            </Button>
-          {hasUnsavedChanges ? (
-            <span className="inline-flex shrink-0 items-center rounded-full border border-amber-400/50 bg-amber-50 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-900 shadow-sm dark:border-amber-700/50 dark:bg-amber-950/90 dark:text-amber-100">
-              Unsaved changes
-            </span>
-          ) : null}
-          </div>
-        </div>
-
-        {error ? (
-          <div
-            role="alert"
-            className="mt-5 rounded-[1.125rem] border border-red-200/90 bg-gradient-to-br from-red-50 to-red-50/70 px-4 py-3 text-sm leading-snug text-red-800 shadow-sm dark:border-red-900/55 dark:from-red-950/50 dark:to-red-950/30 dark:text-red-100"
-          >
-            {error}
-          </div>
-        ) : null}
-        {message ? (
-          <div
-            role="status"
-            className="mt-5 rounded-[1.125rem] border border-pitchside-200/90 bg-gradient-to-br from-pitchside-50 to-emerald-50/50 px-4 py-3 text-sm font-medium text-pitchside-900 shadow-sm dark:border-pitchside-800 dark:from-pitchside-950/55 dark:to-emerald-950/30 dark:text-pitchside-100"
-          >
-            {message}
-          </div>
-        ) : null}
-      </div>
-        </>
-      )}
-
       <div
+        ref={pitchRef}
+        role="presentation"
+        aria-busy={pitchBlocking}
+        aria-label="Tactical pitch"
         className={cn(
-          "relative mx-auto min-h-0 w-full px-3 pb-3 sm:px-5 sm:pb-6 lg:px-7",
-          isPresentMode && "flex h-[calc(100vh-4.5rem)] flex-col px-0 pb-0 sm:px-0",
+          "relative w-full overflow-hidden rounded-2xl border-[3px] border-pitchside-950/70 bg-emerald-950 shadow-[inset_0_0_0_2px_rgba(0,0,0,0.18),inset_0_2px_0_rgba(255,255,255,0.12),inset_0_-24px_64px_rgba(0,0,0,0.28)] dark:border-emerald-400/18 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1),inset_0_-28px_72px_rgba(0,0,0,0.38)]",
+          activeTool === "line" || activeTool === "arrow"
+            ? "cursor-crosshair"
+            : "cursor-default",
+          pitchBlocking && "pointer-events-none",
         )}
+        style={{ aspectRatio: pitchAspectRatio }}
       >
-        {!isPresentMode ? (
-          <>
-            {live ? (
-              <>
-                <div className="mb-3 rounded-xl border border-slate-200/90 bg-white/85 px-3 py-2.5 shadow-sm ring-1 ring-slate-900/[0.03] backdrop-blur-[2px] dark:border-slate-700/80 dark:bg-slate-900/55 dark:ring-white/[0.04]">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                    Board · live context
-                  </p>
-                  <dl className="mt-2 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
-                    <div>
-                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                        Phase
-                      </dt>
-                      <dd className="font-semibold text-slate-900 dark:text-slate-100">
-                        {formatMatchPeriodLabel(live.period)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                        Score
-                      </dt>
-                      <dd className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">
-                        {live.scoreGoalsPoints ?? "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                        Clock
-                      </dt>
-                      <dd className="font-mono text-sm font-bold tabular-nums text-slate-900 dark:text-slate-100">
-                        {live.clockDisplay}
-                      </dd>
-                    </div>
-                    <div className="min-w-0 sm:col-span-2 lg:col-span-1">
-                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                        Last event
-                      </dt>
-                      <dd
-                        className="truncate font-semibold text-slate-900 dark:text-slate-100"
-                        title={live.lastEventSummary ?? undefined}
-                      >
-                        {live.lastEventSummary ?? "—"}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-                {live.sceneSuggestion ? (
-                  <div className="mb-3 flex flex-col gap-2 rounded-xl border border-pitchside-200/90 bg-pitchside-50/90 px-3 py-2.5 dark:border-pitchside-800/80 dark:bg-pitchside-950/45 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-pitchside-800 dark:text-pitchside-300">
-                        Scene idea · {live.sceneSuggestion.title}
-                      </p>
-                      <p className="mt-0.5 text-[11px] leading-snug text-slate-700 dark:text-slate-300">
-                        {live.sceneSuggestion.hint}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className={cn(controlBtnClass, "min-h-[2.25rem] shrink-0 py-1.5")}
-                      onClick={live.dismissSceneSuggestion}
-                    >
-                      Dismiss
-                    </Button>
-                  </div>
-                ) : null}
-              </>
-            ) : null}
-            <div className="mb-3.5 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <p className="text-center text-[10px] font-bold uppercase tracking-[0.22em] text-pitchside-700 dark:text-pitchside-400 sm:text-left">
-                Live canvas
-              </p>
-              <div
-                role="group"
-                aria-label="Pitch sport"
-                className="flex flex-wrap items-center justify-center gap-1.5 sm:justify-end"
-              >
-                {BOARD_PITCH_OPTIONS.map((opt) => (
-                  <Button
-                    key={opt.id}
-                    type="button"
-                    variant="secondary"
-                    disabled={boardBusy}
-                    className={cn(
-                      drawToolBtnClass,
-                      "min-h-[2rem] px-3 py-1.5 text-[10px]",
-                      pitchSport === opt.id && toolActiveClass,
-                    )}
-                    onClick={() => setPitchSport(opt.id)}
-                  >
-                    {opt.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </>
-        ) : null}
-        <div
-          className={cn(
-            pitchBezelClass,
-            isPresentMode &&
-              "flex flex-1 items-center justify-center rounded-none bg-transparent p-0 shadow-none ring-0",
-          )}
-        >
-          <div
-            ref={pitchRef}
-            role="presentation"
-            aria-busy={pitchBlocking}
-            aria-label="Tactical pitch"
-            className={cn(
-              "relative w-full overflow-hidden rounded-2xl border-[3px] border-pitchside-950/70 bg-emerald-950 shadow-[inset_0_0_0_2px_rgba(0,0,0,0.18),inset_0_2px_0_rgba(255,255,255,0.12),inset_0_-24px_64px_rgba(0,0,0,0.28)] dark:border-emerald-400/18 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1),inset_0_-28px_72px_rgba(0,0,0,0.38)]",
-              activeTool === "line" || activeTool === "arrow"
-                ? "cursor-crosshair"
-                : "cursor-default",
-              pitchBlocking && "pointer-events-none",
-            )}
-            style={{ aspectRatio: pitchAspectRatio }}
-          >
           {pitchBlocking ? (
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-5 bg-gradient-to-b from-emerald-950/85 via-emerald-950/75 to-emerald-950/90 px-6 backdrop-blur-[3px]">
               <div
@@ -1014,6 +920,8 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
                     isAway && boardMarkers.away,
                     !isHome && !isAway && boardMarkers.neutral,
                     selected && boardMarkers.selected,
+                    logPickMarkerId === m.id &&
+                      "z-[3] ring-2 ring-amber-400 ring-offset-2 ring-offset-emerald-950",
                   )}
                   style={{
                     left: `${m.x * 100}%`,
@@ -1031,9 +939,497 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
             })}
           </div>
         </div>
-      </div>
+  );
 
-      {!isPresentMode ? (
+  const defaultLeftRail = (
+    <>
+      <p className={dockLabelClass}>Draw</p>
+      <div className={drawToolColumnClass}>
+        <Button
+          type="button"
+          variant="secondary"
+          className={cn(
+            drawToolBtnClass,
+            "min-h-7 px-0.5 text-[8px] font-bold leading-tight",
+            activeTool === "select" && toolActiveClass,
+          )}
+          disabled={boardBusy}
+          onClick={() => {
+            setActiveTool("select");
+            setDraftDraw(null);
+          }}
+        >
+          Select
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          className={cn(
+            drawToolBtnClass,
+            "min-h-7 px-0.5 text-[8px] font-bold leading-tight",
+            activeTool === "line" && toolActiveClass,
+          )}
+          disabled={boardBusy}
+          onClick={() => {
+            setActiveTool("line");
+            setDraftDraw(null);
+          }}
+        >
+          Line
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          className={cn(
+            drawToolBtnClass,
+            "min-h-7 px-0.5 text-[8px] font-bold leading-tight",
+            activeTool === "arrow" && toolActiveClass,
+          )}
+          disabled={boardBusy}
+          onClick={() => {
+            setActiveTool("arrow");
+            setDraftDraw(null);
+          }}
+        >
+          Arrow
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          className={cn(drawToolBtnClass, "min-h-7 px-0.5 text-[8px] font-bold leading-tight")}
+          disabled={boardBusy || !selectedDrawingId}
+          onClick={eraseSelectedDrawing}
+        >
+          Erase
+        </Button>
+      </div>
+      {live ? (
+        <p className="mt-1.5 max-w-[4.5rem] text-[8px] leading-snug text-slate-600 dark:text-slate-400">
+          Select + tap pitch to arm the next event.
+        </p>
+      ) : null}
+      <p className={cn(dockLabelClass, "mt-3")}>Squad</p>
+      <div className={drawToolColumnClass}>
+        <Button
+          type="button"
+          variant="secondary"
+          className={cn(controlBtnClass, "min-h-7 px-0.5 text-[8px] font-bold")}
+          disabled={boardBusy || markers.length >= 40}
+          onClick={addMarker}
+        >
+          Add
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          className={cn(controlBtnClass, "min-h-7 px-0.5 text-[8px] font-bold")}
+          disabled={boardBusy || !selectedMarkerId}
+          onClick={removeSelectedMarker}
+        >
+          Remove
+        </Button>
+      </div>
+    </>
+  );
+
+  const bottomSceneBar = (
+    <div className="flex h-full min-w-0 flex-nowrap items-center justify-center gap-1.5 px-1 sm:gap-2 sm:px-3">
+      <span className="shrink-0 text-[10px] font-bold tabular-nums text-slate-600 dark:text-slate-400">
+        {markers.length}p · {drawings.length}L
+      </span>
+      <label htmlFor="board-scene" className="sr-only">
+        Scene
+      </label>
+      <select
+        id="board-scene"
+        className={cn(sceneSelectClass, "h-9 min-w-[6.5rem] max-w-[9rem] shrink text-[10px]")}
+        value={activeSceneId ?? ""}
+        disabled={boardBusy || scenes.length === 0}
+        onChange={(e) => void switchToScene(e.target.value)}
+      >
+        {scenes.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </select>
+      <Button
+        type="button"
+        variant="secondary"
+        className={cn(sceneOutlineBtnClass, "h-9 shrink-0 px-2 text-[10px]")}
+        disabled={boardBusy || !activeSceneId}
+        onClick={() => void createNewScene()}
+      >
+        {creatingScene ? "…" : "+ New"}
+      </Button>
+      <Button
+        type="button"
+        variant="primary"
+        className={cn(saveSceneBtnClass, "h-9 shrink-0 px-3 text-[10px]")}
+        disabled={saving || boardBusy || !activeSceneId}
+        aria-busy={saving}
+        aria-label={saving ? "Saving board" : "Save scene"}
+        onClick={() => void saveScene()}
+      >
+        {saving ? "…" : "Save scene"}
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        className={cn(sceneOutlineBtnClass, "h-9 shrink-0 px-2 text-[10px]")}
+        disabled={boardBusy || !activeSceneId}
+        aria-busy={reloadBusy}
+        onClick={() => void reloadScene()}
+      >
+        {reloadBusy ? "…" : "Reload"}
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        className={cn(sceneOutlineBtnClass, "h-9 shrink-0 px-2 text-[10px]")}
+        disabled={boardBusy || drawings.length === 0}
+        onClick={clearDrawings}
+      >
+        Clear
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        className={cn(sceneOutlineBtnClass, "h-9 shrink-0 px-2 text-[10px]")}
+        disabled={boardBusy || saving}
+        onClick={() => void resetLayout()}
+      >
+        Reset Layout
+      </Button>
+    </div>
+  );
+
+  return (
+    <div
+      className={cn(
+        "relative min-w-0 overflow-hidden rounded-[1.25rem] border ring-1",
+        panelShellClass,
+        coachWorkspace && !isPresentMode && "flex h-full min-h-0 flex-col",
+        isPresentMode &&
+          "fixed inset-0 z-[90] rounded-none border-0 bg-slate-950 shadow-none ring-0 dark:border-0",
+      )}
+    >
+      {isPresentMode ? (
+        <div className="relative z-20 flex items-center justify-between border-b border-white/15 px-4 py-3 sm:px-6">
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/75">
+            Presentation mode
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            className={controlBtnClass}
+            onClick={() => setIsPresentMode(false)}
+          >
+            Exit
+          </Button>
+        </div>
+      ) : coachWorkspace ? null : (
+        <>
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-pitchside-500/[0.13] via-pitchside-600/[0.04] to-transparent dark:from-pitchside-400/[0.14] dark:via-pitchside-600/[0.06]"
+            aria-hidden
+          />
+
+          <div className="relative border-b border-slate-100/95 px-5 pb-6 pt-7 dark:border-slate-800/80 sm:px-7 sm:pt-8 lg:px-9">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex min-w-0 items-start gap-4">
+                <div
+                  className="mt-1 hidden h-[4.25rem] w-1.5 shrink-0 rounded-full bg-gradient-to-b from-pitchside-400 via-pitchside-600 to-pitchside-800 shadow-[0_0_28px_rgba(52,211,153,0.35)] sm:block"
+                  aria-hidden
+                />
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
+                    Tactical workspace
+                  </p>
+                  <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl sm:leading-[1.1]">
+                    Pitch canvas
+                  </h2>
+                  <p className="pt-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
+                    Primary surface · scenes persist when you save
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className={controlBtnClass}
+                  onClick={() => setIsPresentMode(true)}
+                >
+                  Present Mode
+                </Button>
+                {hasUnsavedChanges ? (
+                  <span className="inline-flex shrink-0 items-center rounded-full border border-amber-400/50 bg-amber-50 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-900 shadow-sm dark:border-amber-700/50 dark:bg-amber-950/90 dark:text-amber-100">
+                    Unsaved changes
+                  </span>
+                ) : null}
+              </div>
+            </div>
+
+            {error ? (
+              <div
+                role="alert"
+                className="mt-5 rounded-[1.125rem] border border-red-200/90 bg-gradient-to-br from-red-50 to-red-50/70 px-4 py-3 text-sm leading-snug text-red-800 shadow-sm dark:border-red-900/55 dark:from-red-950/50 dark:to-red-950/30 dark:text-red-100"
+              >
+                {error}
+              </div>
+            ) : null}
+            {message ? (
+              <div
+                role="status"
+                className="mt-5 rounded-[1.125rem] border border-pitchside-200/90 bg-gradient-to-br from-pitchside-50 to-emerald-50/50 px-4 py-3 text-sm font-medium text-pitchside-900 shadow-sm dark:border-pitchside-800 dark:from-pitchside-950/55 dark:to-emerald-950/30 dark:text-pitchside-100"
+              >
+                {message}
+              </div>
+            ) : null}
+          </div>
+        </>
+      )}
+
+      <div
+        className={cn(
+          "relative mx-auto min-h-0 w-full",
+          coachWorkspace && !isPresentMode
+            ? "flex flex-1 min-h-0 flex-col overflow-hidden px-0 pb-0"
+            : "px-3 pb-3 sm:px-5 sm:pb-6 lg:px-7",
+          isPresentMode && "flex h-[calc(100vh-4.5rem)] flex-col px-0 pb-0 sm:px-0",
+        )}
+      >
+        {!isPresentMode && coachWorkspace ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {error ? (
+              <div
+                role="alert"
+                className="relative z-10 mx-2 mt-2 shrink-0 rounded-lg border border-red-200/90 bg-red-50/95 px-2 py-1.5 text-xs text-red-800 dark:border-red-900/55 dark:bg-red-950/50 dark:text-red-100"
+              >
+                {error}
+              </div>
+            ) : null}
+            {message ? (
+              <div
+                role="status"
+                className="relative z-10 mx-2 mt-2 shrink-0 rounded-lg border border-pitchside-200/90 bg-pitchside-50/95 px-2 py-1.5 text-xs text-pitchside-900 dark:border-pitchside-800 dark:bg-pitchside-950/50 dark:text-pitchside-100"
+              >
+                {message}
+              </div>
+            ) : null}
+            <div className="relative z-10 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 px-2 py-1.5 dark:border-slate-700/80">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className={cn(controlBtnClass, "h-8 shrink-0 px-2 text-[10px]")}
+                  onClick={() => setIsPresentMode(true)}
+                >
+                  Present
+                </Button>
+                {hasUnsavedChanges ? (
+                  <span className="inline-flex shrink-0 items-center rounded-full border border-amber-400/50 bg-amber-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/90 dark:text-amber-100">
+                    Unsaved
+                  </span>
+                ) : null}
+              </div>
+              <div
+                role="group"
+                aria-label="Pitch sport"
+                className="flex shrink-0 flex-wrap items-center justify-end gap-1"
+              >
+                {BOARD_PITCH_OPTIONS.map((opt) => (
+                  <Button
+                    key={opt.id}
+                    type="button"
+                    variant="secondary"
+                    disabled={boardBusy}
+                    className={cn(
+                      drawToolBtnClass,
+                      "h-8 px-2 py-0.5 text-[9px]",
+                      pitchSport === opt.id && toolActiveClass,
+                    )}
+                    onClick={() => setPitchSport(opt.id)}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            {live ? (
+              <div className="relative z-10 shrink-0 border-b border-slate-200/80 px-2 py-1 dark:border-slate-700/80">
+                {live.sceneSuggestion ? (
+                  <div className="mb-1 flex flex-wrap items-center justify-between gap-1 rounded border border-pitchside-200/80 bg-pitchside-50/90 px-2 py-1 dark:border-pitchside-800/60 dark:bg-pitchside-950/40">
+                    <p className="min-w-0 text-[9px] font-semibold text-pitchside-900 dark:text-pitchside-100">
+                      {live.sceneSuggestion.title}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="h-7 shrink-0 px-2 text-[9px]"
+                      onClick={live.dismissSceneSuggestion}
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                ) : null}
+                <dl className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] sm:grid-cols-4">
+                  <div>
+                    <dt className="font-semibold text-slate-500 dark:text-slate-400">
+                      Phase
+                    </dt>
+                    <dd className="font-semibold text-slate-900 dark:text-slate-100">
+                      {formatMatchPeriodLabel(live.period)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold text-slate-500 dark:text-slate-400">
+                      Score
+                    </dt>
+                    <dd className="tabular-nums font-semibold text-slate-900 dark:text-slate-100">
+                      {live.scoreGoalsPoints ?? "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold text-slate-500 dark:text-slate-400">
+                      Clock
+                    </dt>
+                    <dd className="font-mono text-[11px] font-bold tabular-nums text-slate-900 dark:text-slate-100">
+                      {live.clockDisplay}
+                    </dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="font-semibold text-slate-500 dark:text-slate-400">
+                      Last
+                    </dt>
+                    <dd
+                      className="truncate font-semibold text-slate-900 dark:text-slate-100"
+                      title={live.lastEventSummary ?? undefined}
+                    >
+                      {live.lastEventSummary ?? "—"}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            ) : null}
+            <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row">
+              <aside className="relative z-10 flex w-full shrink-0 flex-row flex-wrap items-center justify-center gap-1 border-b border-slate-200/80 py-1 lg:w-[80px] lg:flex-col lg:flex-nowrap lg:items-stretch lg:justify-start lg:border-b-0 lg:border-r lg:py-2 dark:border-slate-700/80">
+                {leftPanel ?? defaultLeftRail}
+              </aside>
+              <div className="relative z-0 flex-1 min-h-0 min-w-0">
+                <div className="flex h-full w-full min-h-0 items-center justify-center p-1 sm:p-2">
+                  {renderPitchSurface("max-h-full max-w-full")}
+                </div>
+              </div>
+              <aside className="relative z-10 flex min-h-0 w-full min-w-0 shrink-0 flex-col border-t border-slate-200/80 lg:w-[260px] lg:border-l lg:border-t-0 dark:border-slate-700/80">
+                <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+                  {rightPanel}
+                </div>
+              </aside>
+            </div>
+            <div className="relative z-10 flex h-[64px] shrink-0 flex-col justify-center border-t border-slate-200/80 bg-white/90 dark:border-slate-700/80 dark:bg-slate-950/90">
+              {bottomSceneBar}
+            </div>
+          </div>
+        ) : !isPresentMode ? (
+          <>
+            {live ? (
+              <>
+                <div className="mb-3 rounded-xl border border-slate-200/90 bg-white/85 px-3 py-2.5 shadow-sm ring-1 ring-slate-900/[0.03] backdrop-blur-[2px] dark:border-slate-700/80 dark:bg-slate-900/55 dark:ring-white/[0.04]">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                    Board · live context
+                  </p>
+                  <dl className="mt-2 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Phase
+                      </dt>
+                      <dd className="font-semibold text-slate-900 dark:text-slate-100">
+                        {formatMatchPeriodLabel(live.period)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Score
+                      </dt>
+                      <dd className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+                        {live.scoreGoalsPoints ?? "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Clock
+                      </dt>
+                      <dd className="font-mono text-sm font-bold tabular-nums text-slate-900 dark:text-slate-100">
+                        {live.clockDisplay}
+                      </dd>
+                    </div>
+                    <div className="min-w-0 sm:col-span-2 lg:col-span-1">
+                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Last event
+                      </dt>
+                      <dd
+                        className="truncate font-semibold text-slate-900 dark:text-slate-100"
+                        title={live.lastEventSummary ?? undefined}
+                      >
+                        {live.lastEventSummary ?? "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+                {live.sceneSuggestion ? (
+                  <div className="mb-3 flex flex-col gap-2 rounded-xl border border-pitchside-200/90 bg-pitchside-50/90 px-3 py-2.5 dark:border-pitchside-800/80 dark:bg-pitchside-950/45 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-pitchside-800 dark:text-pitchside-300">
+                        Scene idea · {live.sceneSuggestion.title}
+                      </p>
+                      <p className="mt-0.5 text-[11px] leading-snug text-slate-700 dark:text-slate-300">
+                        {live.sceneSuggestion.hint}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className={cn(controlBtnClass, "min-h-[2.25rem] shrink-0 py-1.5")}
+                      onClick={live.dismissSceneSuggestion}
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+            <div className="mb-3.5 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <p className="text-center text-[10px] font-bold uppercase tracking-[0.22em] text-pitchside-700 dark:text-pitchside-400 sm:text-left">
+                Live canvas
+              </p>
+              <div
+                role="group"
+                aria-label="Pitch sport"
+                className="flex flex-wrap items-center justify-center gap-1.5 sm:justify-end"
+              >
+                {BOARD_PITCH_OPTIONS.map((opt) => (
+                  <Button
+                    key={opt.id}
+                    type="button"
+                    variant="secondary"
+                    disabled={boardBusy}
+                    className={cn(
+                      drawToolBtnClass,
+                      "min-h-[2rem] px-3 py-1.5 text-[10px]",
+                      pitchSport === opt.id && toolActiveClass,
+                    )}
+                    onClick={() => setPitchSport(opt.id)}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : null}
+        {!isPresentMode && !coachWorkspace ? (
         <div className="mx-3 mt-7 sm:mx-5 lg:mx-8">
         <p className="mb-3.5 text-[10px] font-bold uppercase tracking-[0.24em] text-slate-600 dark:text-slate-400">
           Coaching control panel
@@ -1097,6 +1493,11 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
                 Erase
               </Button>
             </div>
+            {live ? (
+              <p className="mt-2 max-w-[22rem] text-[11px] leading-snug text-slate-600 dark:text-slate-400">
+                Select + tap the pitch surface to arm zone, lane, side, and nearest token for the next match-panel event.
+              </p>
+            ) : null}
           </div>
 
           <div className={toolGroupClass}>
@@ -1160,6 +1561,15 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
                 >
                   Clear lines
                 </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className={sceneOutlineBtnClass}
+                  disabled={boardBusy || saving}
+                  onClick={() => void resetLayout()}
+                >
+                  Reset Layout
+                </Button>
               </div>
             </div>
           </div>
@@ -1167,15 +1577,6 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
           <div className={toolGroupClass}>
             <p className={dockLabelClass}>Squad markers</p>
             <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                className={controlBtnClass}
-                disabled={boardBusy}
-                onClick={resetLayout}
-              >
-                Reset
-              </Button>
               <Button
                 type="button"
                 variant="secondary"
@@ -1200,18 +1601,35 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
       </div>
       ) : null}
 
-      {!isPresentMode ? (
-        <div className="mx-5 mt-7 rounded-2xl border border-slate-200/75 bg-gradient-to-b from-slate-100/90 to-slate-100/50 px-4 py-3.5 text-center shadow-inner ring-1 ring-slate-900/[0.03] dark:border-slate-700/75 dark:from-slate-900/70 dark:to-slate-900/50 dark:ring-white/[0.04] sm:mx-7 lg:mx-9">
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-          Canvas status
-        </p>
-        <p className="mt-1.5 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-100">
-          {markers.length}{" "}
-          {markers.length === 1 ? "player" : "players"} · {drawings.length}{" "}
-          {drawings.length === 1 ? "line" : "lines"}
-        </p>
-      </div>
+      {!isPresentMode && !coachWorkspace ? (
+        <div className="relative z-0 flex flex-1 min-h-0 min-w-0">
+          <div className="flex h-full min-h-0 w-full items-center justify-center px-1 pb-6 sm:px-2">
+            {renderPitchSurface()}
+          </div>
+        </div>
       ) : null}
+
+      {isPresentMode ? (
+        <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="flex h-full min-h-0 w-full flex-1 items-center justify-center p-2">
+            {renderPitchSurface()}
+          </div>
+        </div>
+      ) : null}
+
+      {!isPresentMode && !coachWorkspace ? (
+        <div className="mx-5 mt-7 rounded-2xl border border-slate-200/75 bg-gradient-to-b from-slate-100/90 to-slate-100/50 px-4 py-3.5 text-center shadow-inner ring-1 ring-slate-900/[0.03] dark:border-slate-700/75 dark:from-slate-900/70 dark:to-slate-900/50 dark:ring-white/[0.04] sm:mx-7 lg:mx-9">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+            Canvas status
+          </p>
+          <p className="mt-1.5 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+            {markers.length}{" "}
+            {markers.length === 1 ? "player" : "players"} · {drawings.length}{" "}
+            {drawings.length === 1 ? "line" : "lines"}
+          </p>
+        </div>
+      ) : null}
+    </div>
     </div>
   );
 }

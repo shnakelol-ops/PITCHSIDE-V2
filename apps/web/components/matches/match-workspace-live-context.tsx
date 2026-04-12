@@ -22,6 +22,13 @@ import {
   teamSportToPitchSport,
 } from "@/lib/board-pitch-sport";
 import {
+  thirdLaneToApiPitch,
+  type BoardPitchLane,
+  type BoardPitchSide,
+  type BoardPitchThird,
+} from "@/lib/board-log-tap";
+import { buildMatchEventPostBody } from "@/lib/match-event-pipeline";
+import {
   normalizeLoggedEventRows,
   type LoggedEventRow,
 } from "@/lib/match-events";
@@ -43,6 +50,19 @@ export type PitchHighlightRect = {
   y: number;
   w: number;
   h: number;
+};
+
+/** Armed by a board tap (Select tool); consumed when an event button logs. */
+export type PendingBoardLogContext = {
+  x: number;
+  y: number;
+  /** Composite e.g. `defensive_left` for timeline / maps. */
+  zone: string;
+  third: BoardPitchThird;
+  lane: BoardPitchLane;
+  side: BoardPitchSide;
+  playerId: string | null;
+  timestamp: number;
 };
 
 const EVENT_LABELS: Record<string, string> = {
@@ -107,6 +127,10 @@ export type MatchWorkspaceLiveValue = {
   /** Board pitch rendering (markers/drawings stay in normalized space; switching sport does not reset them). */
   boardPitchSport: PitchSport;
   setBoardPitchSport: (sport: PitchSport) => void;
+  /** Last board tap under Select — not an event until a sidebar button fires `runPost`. */
+  pendingBoardLogContext: PendingBoardLogContext | null;
+  applyBoardLogPick: (pick: Omit<PendingBoardLogContext, "zone" | "timestamp">) => void;
+  clearPendingBoardLogContext: () => void;
 };
 
 const MatchWorkspaceLiveContext = createContext<
@@ -147,9 +171,15 @@ export function MatchWorkspaceLiveProvider({
     teamSportToPitchSport(teamSport),
   );
 
+  const [pendingBoardLogContext, setPendingBoardLogContext] =
+    useState<PendingBoardLogContext | null>(null);
+
   const clockLabelRef = useRef("00:00");
   const eventsFetchGenRef = useRef(0);
   const pitchFlashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const boardTapFlashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
 
@@ -157,6 +187,9 @@ export function MatchWorkspaceLiveProvider({
     return () => {
       if (pitchFlashTimeoutRef.current != null) {
         clearTimeout(pitchFlashTimeoutRef.current);
+      }
+      if (boardTapFlashTimeoutRef.current != null) {
+        clearTimeout(boardTapFlashTimeoutRef.current);
       }
     };
   }, []);
@@ -230,24 +263,44 @@ export function MatchWorkspaceLiveProvider({
     setSceneSuggestion(null);
   }, []);
 
+  const clearPendingBoardLogContext = useCallback(() => {
+    setPendingBoardLogContext(null);
+  }, []);
+
+  const applyBoardLogPick = useCallback(
+    (pick: Omit<PendingBoardLogContext, "zone" | "timestamp">) => {
+      const zone = `${pick.third}_${pick.lane}`;
+      setPendingBoardLogContext({
+        ...pick,
+        zone,
+        timestamp: Date.now(),
+      });
+
+      const { pitchZone, pitchLane } = thirdLaneToApiPitch(pick.third, pick.lane);
+      const rect = buildPitchHighlightRect(pitchZone, pitchLane);
+      if (rect) {
+        if (boardTapFlashTimeoutRef.current != null) {
+          clearTimeout(boardTapFlashTimeoutRef.current);
+        }
+        setPitchHighlight(rect);
+        boardTapFlashTimeoutRef.current = setTimeout(() => {
+          setPitchHighlight(null);
+          boardTapFlashTimeoutRef.current = null;
+        }, 1600);
+      }
+    },
+    [],
+  );
+
   const postMatchEvent = useCallback(
     async (input: Omit<CreateMatchEventInput, "matchId">) => {
-      const clockLabel =
-        input.context?.clockLabel?.trim() || clockLabelRef.current;
-
-      const mergedContext = {
-        ...input.context,
-        clockLabel,
-        matchPeriod: input.context?.matchPeriod ?? period,
-      };
-
-      const body: CreateMatchEventInput = {
+      const body = buildMatchEventPostBody(
         matchId,
-        type: input.type,
-        ...(input.playerId ? { playerId: input.playerId } : {}),
-        ...(input.note?.trim() ? { note: input.note.trim() } : {}),
-        context: mergedContext,
-      };
+        period,
+        clockLabelRef.current,
+        input,
+      );
+      const mergedContext = body.context ?? {};
 
       const response = await fetch("/api/events", {
         method: "POST",
@@ -302,7 +355,14 @@ export function MatchWorkspaceLiveProvider({
         });
       }
 
-      await fetchEvents();
+      try {
+        await fetchEvents();
+      } catch (err) {
+        console.warn(
+          "[match-live] POST succeeded but event list refresh failed; timeline already updated optimistically.",
+          err,
+        );
+      }
     },
     [matchId, fetchEvents, period],
   );
@@ -402,6 +462,9 @@ export function MatchWorkspaceLiveProvider({
       scrollToPhaseControl,
       boardPitchSport,
       setBoardPitchSport,
+      pendingBoardLogContext,
+      applyBoardLogPick,
+      clearPendingBoardLogContext,
     }),
     [
       matchId,
@@ -428,6 +491,9 @@ export function MatchWorkspaceLiveProvider({
       scrollToPhaseControl,
       boardPitchSport,
       setBoardPitchSport,
+      pendingBoardLogContext,
+      applyBoardLogPick,
+      clearPendingBoardLogContext,
     ],
   );
 

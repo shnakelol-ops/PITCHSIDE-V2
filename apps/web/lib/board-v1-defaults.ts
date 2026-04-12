@@ -13,8 +13,10 @@ export type BoardMarkerState = BoardMarkerInput & { id: string };
  * for all `m` measured from the left goal line). Halfway = 72.5 m → **x = 0.5**.
  *
  * GK: half the official small-rectangle depth (4.5 m) from the goal line — **2.25/145** on x, **y = 0.5**.
- * Each outfield triple: **y ∈ {1/6, 1/2, 5/6}** (even sixths, left / centre / right).
- * Midfield pair **8–9**: **x = 0.5**, **y = 1/3** and **2/3** (symmetric on halfway, not on wing sixths).
+ * Lines of three use **y**: team **right** = high y (`GAELIC_Y_RIGHT`), **centre**, **left** = low y
+ * (own goal left, attack to the right). Midfield **8–9** sit on halfway with a vertical split.
+ *
+ * Labels: 1 GK · 2–4 full backs · 5–7 half backs · 8–9 midfield · 10–12 half forwards · 13–15 full forwards.
  */
 const GAELIC_LEN_M = 145;
 const gaelicXFromLeftGoalM = (m: number) => m / GAELIC_LEN_M;
@@ -26,58 +28,59 @@ const GAELIC_X_MIDFIELD = gaelicXFromLeftGoalM(72.5);
 const GAELIC_X_OPP_45M = gaelicXFromLeftGoalM(100);
 const GAELIC_X_OPP_20M = gaelicXFromLeftGoalM(125);
 
-const GAELIC_Y_LEFT = 1 / 6;
+const GAELIC_Y_LEFT = 0.18;
 const GAELIC_Y_CENTRE = 1 / 2;
-const GAELIC_Y_RIGHT = 5 / 6;
-const GAELIC_Y_MID_A = 1 / 3;
-const GAELIC_Y_MID_B = 2 / 3;
+const GAELIC_Y_RIGHT = 0.82;
+const GAELIC_Y_MID_A = 0.34;
+const GAELIC_Y_MID_B = 0.66;
 
 export const DEFAULT_BOARD_MARKER_GAELIC_SEED: readonly BoardMarkerInput[] = [
+  /* 1 — goalkeeper */
   { x: GAELIC_X_GK, y: GAELIC_Y_CENTRE, label: "1", teamSide: "HOME" },
-  { x: GAELIC_X_OWN_20M, y: GAELIC_Y_LEFT, label: "2", teamSide: "HOME" },
+  /* 2–4 — right / centre / left full back (own 20 m) */
+  { x: GAELIC_X_OWN_20M, y: GAELIC_Y_RIGHT, label: "2", teamSide: "HOME" },
   { x: GAELIC_X_OWN_20M, y: GAELIC_Y_CENTRE, label: "3", teamSide: "HOME" },
-  { x: GAELIC_X_OWN_20M, y: GAELIC_Y_RIGHT, label: "4", teamSide: "HOME" },
-  { x: GAELIC_X_OWN_45M, y: GAELIC_Y_LEFT, label: "5", teamSide: "HOME" },
+  { x: GAELIC_X_OWN_20M, y: GAELIC_Y_LEFT, label: "4", teamSide: "HOME" },
+  /* 5–7 — right / centre / left half back (own 45 m) */
+  { x: GAELIC_X_OWN_45M, y: GAELIC_Y_RIGHT, label: "5", teamSide: "HOME" },
   { x: GAELIC_X_OWN_45M, y: GAELIC_Y_CENTRE, label: "6", teamSide: "HOME" },
-  { x: GAELIC_X_OWN_45M, y: GAELIC_Y_RIGHT, label: "7", teamSide: "HOME" },
+  { x: GAELIC_X_OWN_45M, y: GAELIC_Y_LEFT, label: "7", teamSide: "HOME" },
+  /* 8–9 — midfield (halfway) */
   { x: GAELIC_X_MIDFIELD, y: GAELIC_Y_MID_A, label: "8", teamSide: "HOME" },
   { x: GAELIC_X_MIDFIELD, y: GAELIC_Y_MID_B, label: "9", teamSide: "HOME" },
-  { x: GAELIC_X_OPP_45M, y: GAELIC_Y_LEFT, label: "10", teamSide: "HOME" },
+  /* 10–12 — right / centre / left half forward (opp 45 m) */
+  { x: GAELIC_X_OPP_45M, y: GAELIC_Y_RIGHT, label: "10", teamSide: "HOME" },
   { x: GAELIC_X_OPP_45M, y: GAELIC_Y_CENTRE, label: "11", teamSide: "HOME" },
-  { x: GAELIC_X_OPP_45M, y: GAELIC_Y_RIGHT, label: "12", teamSide: "HOME" },
-  { x: GAELIC_X_OPP_20M, y: GAELIC_Y_LEFT, label: "13", teamSide: "HOME" },
+  { x: GAELIC_X_OPP_45M, y: GAELIC_Y_LEFT, label: "12", teamSide: "HOME" },
+  /* 13–15 — right / centre / left full forward (opp 20 m) */
+  { x: GAELIC_X_OPP_20M, y: GAELIC_Y_RIGHT, label: "13", teamSide: "HOME" },
   { x: GAELIC_X_OPP_20M, y: GAELIC_Y_CENTRE, label: "14", teamSide: "HOME" },
-  { x: GAELIC_X_OPP_20M, y: GAELIC_Y_RIGHT, label: "15", teamSide: "HOME" },
+  { x: GAELIC_X_OPP_20M, y: GAELIC_Y_LEFT, label: "15", teamSide: "HOME" },
 ];
 
 /**
- * Soccer **4-4-2** — eleven players only (no 12–15 on default seed).
- * Authored in Gaelic-style visual frame (x = length, y = width), then stored as
- * `x = visual.y`, `y = visual.x` for `board-v1-panel` soccer display swap.
+ * Soccer **4-4-2** — eleven players. **x** = toward opposition goal (0 own line), **y** = width
+ * (0 top touchline). Hand-tuned to sit just outside the penalty box band, clear of centre spot,
+ * with a balanced bank of four and two forwards — visual-first, not metre-perfect.
  */
-const DEFAULT_BOARD_MARKER_SOCCER_GAELIC_VISUAL: readonly BoardMarkerInput[] = [
-  { x: 0.085, y: 0.5, label: "1", teamSide: "HOME" },
-  { x: 0.248, y: 0.18, label: "2", teamSide: "HOME" },
-  { x: 0.248, y: 0.393, label: "3", teamSide: "HOME" },
-  { x: 0.248, y: 0.607, label: "4", teamSide: "HOME" },
-  { x: 0.248, y: 0.82, label: "5", teamSide: "HOME" },
-  { x: 0.448, y: 0.18, label: "6", teamSide: "HOME" },
-  { x: 0.448, y: 0.393, label: "7", teamSide: "HOME" },
-  { x: 0.448, y: 0.607, label: "8", teamSide: "HOME" },
-  { x: 0.448, y: 0.82, label: "9", teamSide: "HOME" },
-  { x: 0.72, y: 0.38, label: "10", teamSide: "HOME" },
-  { x: 0.72, y: 0.62, label: "11", teamSide: "HOME" },
+export const DEFAULT_BOARD_MARKER_SOCCER_SEED: readonly BoardMarkerInput[] = [
+  { x: 0.045, y: 0.5, label: "1", teamSide: "HOME" },
+  { x: 0.18, y: 0.14, label: "2", teamSide: "HOME" },
+  { x: 0.18, y: 0.36, label: "3", teamSide: "HOME" },
+  { x: 0.18, y: 0.64, label: "4", teamSide: "HOME" },
+  { x: 0.18, y: 0.86, label: "5", teamSide: "HOME" },
+  { x: 0.4, y: 0.14, label: "6", teamSide: "HOME" },
+  { x: 0.4, y: 0.36, label: "7", teamSide: "HOME" },
+  { x: 0.4, y: 0.64, label: "8", teamSide: "HOME" },
+  { x: 0.4, y: 0.86, label: "9", teamSide: "HOME" },
+  { x: 0.7, y: 0.4, label: "10", teamSide: "HOME" },
+  { x: 0.7, y: 0.6, label: "11", teamSide: "HOME" },
 ];
 
-export const DEFAULT_BOARD_MARKER_SEED: readonly BoardMarkerInput[] =
-  DEFAULT_BOARD_MARKER_SOCCER_GAELIC_VISUAL.map(({ x, y, label, teamSide }) => ({
-    x: y,
-    y: x,
-    label,
-    teamSide,
-  }));
+/** Alias for server playbook bootstrap (`/api/matches/.../board`); same coordinates as soccer seed. */
+export const DEFAULT_BOARD_MARKER_SEED = DEFAULT_BOARD_MARKER_SOCCER_SEED;
 
-/** Hurling — same default layout as Gaelic on the shared canvas. */
+/** Hurling — copy of Gaelic default layout on the shared canvas. */
 export const DEFAULT_BOARD_MARKER_HURLING_SEED = DEFAULT_BOARD_MARKER_GAELIC_SEED;
 
 /** Normalised pitch coordinates: x,y in [0,1] from top-left of playing area. */
@@ -86,8 +89,8 @@ export function createDefaultBoardMarkers(
 ): BoardMarkerState[] {
   const seed =
     sport === "soccer"
-      ? DEFAULT_BOARD_MARKER_SEED
-      : DEFAULT_BOARD_MARKER_GAELIC_SEED;
+      ? DEFAULT_BOARD_MARKER_SOCCER_SEED
+      : DEFAULT_BOARD_MARKER_HURLING_SEED;
   return seed.map((m) => ({
     ...m,
     id: crypto.randomUUID(),
