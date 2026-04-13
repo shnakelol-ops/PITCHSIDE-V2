@@ -1,4 +1,4 @@
-generator client {"
+generator client {
   provider      = "prisma-client-js"
   output        = "../packages/data-access/generated/client"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
@@ -281,6 +281,8 @@ model BoardObject {
   @@map("board_objects")
 }
 
+/// Legacy stats row shape. V1 live logging from the simulator STATS UI targets `Event` via `POST /api/events`
+/// (same pipeline as match workspace). Prefer `Event` + `EventType` for new work unless product revives this model.
 model StatEvent {
   id             String        @id @default(cuid())
   matchId        String        @map("match_id")

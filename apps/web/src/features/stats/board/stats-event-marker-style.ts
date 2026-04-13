@@ -1,9 +1,12 @@
 import type { StatsLoggedEvent } from "@src/features/stats/model/stats-logged-event";
+import {
+  isStatsV1ScoreKind,
+  type StatsV1ScoreKind,
+} from "@src/features/stats/model/stats-v1-event-kind";
 import type { StatsReviewMode } from "@src/features/stats/types/stats-review-mode";
 
 /**
- * Thin view derived from `StatsLoggedEvent` for Konva circles only.
- * No duplicate coordinate math — positions still come from `boardNormToWorld`.
+ * View styles for `StatsLoggedEvent` pitch markers — consumed by Pixi (`stats-event-graphics`) and legacy Konva.
  */
 export type StatsEventMarkerStyle = {
   radius: number;
@@ -20,16 +23,38 @@ export type StatsMarkerStyleOptions = {
   density?: "comfortable" | "compact";
 };
 
-type EmphasisKind = "wide" | "shot" | "turnover" | "score" | "field_other";
+type EmphasisKind =
+  | "wide"
+  | "shot"
+  | "turnover"
+  | "kickout"
+  | "free"
+  | "score";
 
 function emphasisKind(event: StatsLoggedEvent): EmphasisKind {
-  if (event.domain === "score") return "score";
-  if (event.fieldType === "wide") return "wide";
-  if (event.fieldType === "shot") return "shot";
-  if (event.fieldType === "turnover_won" || event.fieldType === "turnover_lost") {
-    return "turnover";
+  switch (event.kind) {
+    case "WIDE":
+      return "wide";
+    case "SHOT":
+      return "shot";
+    case "TURNOVER_WON":
+    case "TURNOVER_LOST":
+      return "turnover";
+    case "KICKOUT_WON":
+    case "KICKOUT_LOST":
+      return "kickout";
+    case "FREE_WON":
+    case "FREE_CONCEDED":
+      return "free";
+    case "GOAL":
+    case "POINT":
+    case "TWO_POINT":
+      return "score";
+    default: {
+      const _e: never = event.kind;
+      return _e;
+    }
   }
-  return "field_other";
 }
 
 function applyReviewEmphasis(
@@ -42,15 +67,17 @@ function applyReviewEmphasis(
     wide: 1.44,
     shot: 1.22,
     turnover: 1.26,
+    kickout: 1.14,
+    free: 1.1,
     score: 1.16,
-    field_other: 1.06,
   };
   const kindStroke: Record<EmphasisKind, number> = {
     wide: 1.32,
     shot: 1.18,
     turnover: 1.2,
+    kickout: 1.1,
+    free: 1.08,
     score: 1.12,
-    field_other: 1.06,
   };
   const rMul = kindRadius[kind] * phaseBoost;
   const swMul = kindStroke[kind] * phaseBoost;
@@ -62,78 +89,127 @@ function applyReviewEmphasis(
   };
 }
 
+/** Scores: green-forward family (distinct per type). */
 function scoreStyle(
-  scoreType: "goal" | "point" | "two_point",
+  scoreKind: StatsV1ScoreKind,
   attributed: boolean,
 ): StatsEventMarkerStyle {
   const soft = !attributed;
-  switch (scoreType) {
-    case "goal":
+  switch (scoreKind) {
+    case "GOAL":
       return {
-        radius: soft ? 2.95 : 3.1,
-        fill: soft ? "rgba(250, 204, 21, 0.82)" : "rgb(250 204 21)",
-        stroke: soft ? "rgba(146, 64, 14, 0.55)" : "rgb(146 64 14)",
-        strokeWidth: soft ? 0.38 : 0.5,
-        shadowBlur: soft ? 2 : 4,
-        shadowColor: "rgba(0,0,0,0.35)",
+        radius: soft ? 3.35 : 3.65,
+        fill: soft ? "rgba(34, 197, 94, 0.88)" : "rgb(22 163 74)",
+        stroke: soft ? "rgba(250, 204, 21, 0.75)" : "rgb(250 204 21)",
+        strokeWidth: soft ? 0.52 : 0.78,
+        shadowBlur: soft ? 2.5 : 5,
+        shadowColor: "rgba(0,0,0,0.38)",
       };
-    case "point":
+    case "POINT":
       return {
-        radius: soft ? 2.7 : 2.85,
-        fill: soft ? "rgba(236, 253, 245, 0.88)" : "rgb(236 253 245)",
-        stroke: soft ? "rgba(4, 120, 87, 0.45)" : "rgb(4 120 87)",
-        strokeWidth: soft ? 0.4 : 0.55,
-        shadowBlur: soft ? 2 : 3,
-        shadowColor: "rgba(0,0,0,0.25)",
-      };
-    case "two_point":
-      return {
-        radius: soft ? 2.85 : 3,
-        fill: soft ? "rgba(237, 233, 254, 0.88)" : "rgb(237 233 254)",
-        stroke: soft ? "rgba(109, 40, 217, 0.5)" : "rgb(109 40 217)",
+        radius: soft ? 2.48 : 2.62,
+        fill: soft ? "rgba(204, 251, 241, 0.92)" : "rgb(153 246 228)",
+        stroke: soft ? "rgba(13, 148, 136, 0.55)" : "rgb(15 118 110)",
         strokeWidth: soft ? 0.38 : 0.5,
-        shadowBlur: soft ? 2 : 4,
-        shadowColor: "rgba(0,0,0,0.3)",
+        shadowBlur: soft ? 1.8 : 3,
+        shadowColor: "rgba(0,0,0,0.24)",
+      };
+    case "TWO_POINT":
+      return {
+        radius: soft ? 2.62 : 2.78,
+        fill: soft ? "rgba(52, 211, 153, 0.9)" : "rgb(16 185 129)",
+        stroke: soft ? "rgba(124, 58, 237, 0.65)" : "rgb(109 40 217)",
+        strokeWidth: soft ? 0.4 : 0.54,
+        shadowBlur: soft ? 2 : 3.5,
+        shadowColor: "rgba(0,0,0,0.28)",
       };
   }
 }
 
 function liveMarkerStyle(event: StatsLoggedEvent): StatsEventMarkerStyle {
-  if (event.domain === "score") {
-    const attributed = event.scorerId != null && event.scorerId.length > 0;
-    return scoreStyle(event.scoreType, attributed);
+  if (isStatsV1ScoreKind(event.kind)) {
+    const attributed = event.playerId != null && event.playerId.length > 0;
+    return scoreStyle(event.kind, attributed);
   }
 
-  if (event.fieldType === "wide") {
-    return {
-      radius: 3,
-      fill: "rgb(239 68 68)",
-      stroke: "rgb(153 27 27)",
-      strokeWidth: 0.6,
-      shadowBlur: 4,
-      shadowColor: "rgba(0,0,0,0.45)",
-    };
+  switch (event.kind) {
+    case "WIDE":
+      return {
+        radius: 3.42,
+        fill: "rgb(220 38 38)",
+        stroke: "rgb(127 29 29)",
+        strokeWidth: 0.72,
+        shadowBlur: 4.5,
+        shadowColor: "rgba(0,0,0,0.45)",
+      };
+    case "SHOT":
+      return {
+        radius: 2.78,
+        fill: "rgba(248 250 252, 0.96)",
+        stroke: "rgb(29 78 216)",
+        strokeWidth: 0.52,
+        shadowBlur: 2.8,
+        shadowColor: "rgba(0,0,0,0.28)",
+      };
+    case "TURNOVER_WON":
+      return {
+        radius: 2.55,
+        fill: "rgb(6 182 212)",
+        stroke: "rgb(14 116 144)",
+        strokeWidth: 0.5,
+        shadowBlur: 2.5,
+        shadowColor: "rgba(0,0,0,0.26)",
+      };
+    case "TURNOVER_LOST":
+      return {
+        radius: 2.55,
+        fill: "rgb(251 113 133)",
+        stroke: "rgb(190 18 60)",
+        strokeWidth: 0.5,
+        shadowBlur: 2.5,
+        shadowColor: "rgba(0,0,0,0.26)",
+      };
+    case "KICKOUT_WON":
+      return {
+        radius: 2.45,
+        fill: "rgb(56 189 248)",
+        stroke: "rgb(3 105 161)",
+        strokeWidth: 0.48,
+        shadowBlur: 2.2,
+        shadowColor: "rgba(0,0,0,0.22)",
+      };
+    case "KICKOUT_LOST":
+      return {
+        radius: 2.45,
+        fill: "rgb(165 180 252)",
+        stroke: "rgb(67 56 202)",
+        strokeWidth: 0.48,
+        shadowBlur: 2.2,
+        shadowColor: "rgba(0,0,0,0.22)",
+      };
+    case "FREE_WON":
+      return {
+        radius: 2.4,
+        fill: "rgb(251 191 36)",
+        stroke: "rgb(180 83 9)",
+        strokeWidth: 0.46,
+        shadowBlur: 2,
+        shadowColor: "rgba(0,0,0,0.22)",
+      };
+    case "FREE_CONCEDED":
+      return {
+        radius: 2.4,
+        fill: "rgb(168 162 158)",
+        stroke: "rgb(87 83 78)",
+        strokeWidth: 0.46,
+        shadowBlur: 2,
+        shadowColor: "rgba(0,0,0,0.22)",
+      };
+    default: {
+      const _x: never = event.kind;
+      return _x;
+    }
   }
-
-  if (event.fieldType === "shot") {
-    return {
-      radius: 2.65,
-      fill: "rgba(248 250 252, 0.96)",
-      stroke: "rgb(37 99 235)",
-      strokeWidth: 0.55,
-      shadowBlur: 3,
-      shadowColor: "rgba(0,0,0,0.28)",
-    };
-  }
-
-  return {
-    radius: 2.35,
-    fill: "rgba(254 243 199, 0.95)",
-    stroke: "rgba(180, 83, 9, 0.85)",
-    strokeWidth: 0.45,
-    shadowBlur: 2,
-    shadowColor: "rgba(0,0,0,0.22)",
-  };
 }
 
 function applyDensity(
@@ -158,9 +234,9 @@ export function getStatsEventMarkerStyle(
 ): StatsEventMarkerStyle {
   const base = liveMarkerStyle(event);
   const mode = opts?.reviewMode ?? "live";
-  const kind = emphasisKind(event);
+  const ek = emphasisKind(event);
   const afterReview =
-    mode === "live" ? base : applyReviewEmphasis(base, mode, kind);
+    mode === "live" ? base : applyReviewEmphasis(base, mode, ek);
   const density = opts?.density ?? "comfortable";
-  return applyDensity(afterReview, density, kind);
+  return applyDensity(afterReview, density, ek);
 }

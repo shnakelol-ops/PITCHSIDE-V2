@@ -9,35 +9,24 @@ import { StatsVoiceStrip } from "@src/features/stats/controls/stats-voice-strip"
 import { useStatsEventLog } from "@src/features/stats/hooks/use-stats-event-log";
 import { useStatsVoiceRecorder } from "@src/features/stats/hooks/use-stats-voice-recorder";
 import { findLatestScorePendingScorer } from "@src/features/stats/model/stats-scorer-utils";
-import type { StatsFieldEventType, StatsScoreType } from "@src/features/stats/model/stats-logged-event";
+import {
+  STATS_V1_FIELD_KINDS,
+  STATS_V1_SCORE_KINDS,
+} from "@src/features/stats/model/stats-v1-event-kind";
 import type { StatsRosterPlayer } from "@src/features/stats/types/stats-roster";
 import { STATS_DEV_PLACEHOLDER_ROSTER } from "@src/features/stats/types/stats-roster";
 import type { StatsReviewMode } from "@src/features/stats/types/stats-review-mode";
 import { cn } from "@pitchside/utils";
 
-const FIELD_TYPES: StatsFieldEventType[] = [
-  "turnover_won",
-  "turnover_lost",
-  "kickout_won",
-  "kickout_lost",
-  "free_won",
-  "free_conceded",
-  "wide",
-  "shot",
-];
-
-const SCORE_TYPES: StatsScoreType[] = ["goal", "point", "two_point"];
-
 const REVIEW_CHIPS: { mode: StatsReviewMode; label: string }[] = [
   { mode: "live", label: "Live" },
-  { mode: "halftime", label: "HT review" },
-  { mode: "full_time", label: "FT review" },
+  { mode: "halftime", label: "Review · HT" },
+  { mode: "full_time", label: "Review · FT" },
 ];
 
 function armLabel(arm: ReturnType<typeof useStatsEventLog>["arm"]): string {
   if (!arm) return "Select a type, then tap the pitch";
-  if (arm.domain === "field") return arm.fieldType.replace(/_/g, " ");
-  return arm.scoreType.replace(/_/g, " ");
+  return arm.replace(/_/g, " ").toLowerCase();
 }
 
 function chipClass(active: boolean) {
@@ -63,22 +52,20 @@ export type StatsBoardPhase6Props = {
 };
 
 /**
- * Phase 6: Phase 5 + in-memory voice clips linked via `voiceNoteId` or moment list (no backend).
+ * Stats V1: pitch logging, persistent active scorer, voice, review modes (in-memory; no backend).
  */
 export function StatsBoardPhase6({ players = STATS_DEV_PLACEHOLDER_ROSTER }: StatsBoardPhase6Props) {
   const {
     events,
     arm,
-    preferredScorerId,
+    activeScorerId,
     reviewMode,
     voiceMomentIds,
-    armField,
-    armScore,
+    armKind,
     clearArm,
     logTap,
     resetEvents,
-    pickScorer,
-    clearPreferredScorer,
+    setActiveScorer,
     setReviewMode,
     storeVoiceBlob,
     removeVoiceBlob,
@@ -95,7 +82,7 @@ export function StatsBoardPhase6({ players = STATS_DEV_PLACEHOLDER_ROSTER }: Sta
   const pending = useMemo(() => findLatestScorePendingScorer(events), [events]);
   const pendingLabel = useMemo(() => {
     if (!pending) return null;
-    return `Tag ${pending.scoreType.replace(/_/g, " ")}`;
+    return `Tag ${pending.kind.replace(/_/g, " ").toLowerCase()}`;
   }, [pending]);
 
   const lastEvent = events.length > 0 ? events[events.length - 1] : undefined;
@@ -159,7 +146,7 @@ export function StatsBoardPhase6({ players = STATS_DEV_PLACEHOLDER_ROSTER }: Sta
       <div className="relative z-10 flex shrink-0 flex-col gap-2 border-b border-white/[0.08] px-2 py-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-200/80">
-            Stats · Phase 6
+            Stats · live
           </p>
           <div className="flex flex-wrap items-center gap-1">
             <button
@@ -194,8 +181,8 @@ export function StatsBoardPhase6({ players = STATS_DEV_PLACEHOLDER_ROSTER }: Sta
         </div>
         {!isLive ? (
           <p className="text-[9px] font-medium leading-snug text-amber-100/85">
-            Review: reds = wides; amber = turnovers; blue ring = shots; gold/mint/violet = scores.
-            Switch to Live to log.
+            Review: red = wides; cyan vs pink = turnover won/lost; sky vs violet = kickout won/lost;
+            amber vs grey = free won/conceded; blue ring = shots; greens = scores. Switch to Live to log.
           </p>
         ) : null}
 
@@ -218,26 +205,26 @@ export function StatsBoardPhase6({ players = STATS_DEV_PLACEHOLDER_ROSTER }: Sta
         <div className={cn(!isLive && "pointer-events-none opacity-[0.38]")}>
           <p className="text-[10px] text-emerald-100/70">{armLabel(arm)}</p>
           <div className="mt-1 flex flex-wrap gap-1">
-            {FIELD_TYPES.map((t) => (
+            {STATS_V1_FIELD_KINDS.map((t) => (
               <button
                 key={t}
                 type="button"
-                className={chipClass(arm?.domain === "field" && arm.fieldType === t)}
-                onClick={() => armField(t)}
+                className={chipClass(arm === t)}
+                onClick={() => armKind(t)}
               >
-                {t.replace(/_/g, " ")}
+                {t.replace(/_/g, " ").toLowerCase()}
               </button>
             ))}
           </div>
           <div className="mt-1.5 flex flex-wrap gap-1 border-t border-white/[0.06] pt-1.5">
-            {SCORE_TYPES.map((t) => (
+            {STATS_V1_SCORE_KINDS.map((t) => (
               <button
                 key={t}
                 type="button"
-                className={chipClass(arm?.domain === "score" && arm.scoreType === t)}
-                onClick={() => armScore(t)}
+                className={chipClass(arm === t)}
+                onClick={() => armKind(t)}
               >
-                {t.replace(/_/g, " ")}
+                {t.replace(/_/g, " ").toLowerCase()}
               </button>
             ))}
           </div>
@@ -245,9 +232,8 @@ export function StatsBoardPhase6({ players = STATS_DEV_PLACEHOLDER_ROSTER }: Sta
             <StatsScorerStrip
               players={players}
               pendingLabel={pendingLabel}
-              preferredScorerId={preferredScorerId}
-              onPickPlayer={pickScorer}
-              onClearPreferred={clearPreferredScorer}
+              activeScorerId={activeScorerId}
+              onSetActiveScorer={setActiveScorer}
             />
           </div>
         </div>

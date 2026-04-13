@@ -33,16 +33,20 @@ export type { StatsArmSelection } from "@src/features/stats/hooks/use-stats-even
 export {
   createStatsLoggedEvent,
   type CreateStatsLoggedEventInput,
-  type StatsEventSelection,
-  type StatsFieldEventType,
-  type StatsFieldLoggedEvent,
   type StatsLoggedEvent,
-  type StatsLoggedEventBase,
   type StatsPeriodPhase,
-  type StatsScoreLoggedEvent,
-  type StatsScoreType,
   type StatsTeamContext,
 } from "@src/features/stats/model/stats-logged-event";
+export {
+  STATS_V1_EVENT_KINDS,
+  STATS_V1_FIELD_KINDS,
+  STATS_V1_SCORE_KINDS,
+  isStatsV1ScoreKind,
+  statsV1KindToLogEventType,
+  type StatsV1EventKind,
+  type StatsV1FieldKind,
+  type StatsV1ScoreKind,
+} from "@src/features/stats/model/stats-v1-event-kind";
 
 export {
   assignScorerToEvents,

@@ -8,7 +8,10 @@ import {
 } from "@src/features/simulator/model/micro-athlete";
 
 const R = MICRO_ATHLETE_RADIUS_WORLD;
-const DIR_TIP = R * 1.62;
+/** Visual extent ~ max distance from origin for selection halo. */
+const R_VIS = R * 1.08;
+const DIR_TIP = R * 1.58;
+const DIR_X0 = R * 0.62;
 
 const SCALE_IDLE = 1;
 const SCALE_SELECTED = 1.065;
@@ -16,35 +19,60 @@ const SCALE_DRAGGING = 1.05;
 const SCALE_LERP = 0.26;
 
 function teamBodyGradient(team: MicroAthlete["team"]): FillGradient {
+  /** Light from forward-above (+x, -y local) — highlight on chest/head, shade on rear/shield. */
   if (team === "home") {
     return new FillGradient({
       type: "radial",
-      center: { x: 0.4, y: 0.32 },
+      center: { x: 0.52, y: 0.26 },
       innerRadius: 0,
       outerRadius: 1,
-      outerCenter: { x: 0.4, y: 0.32 },
+      outerCenter: { x: 0.52, y: 0.26 },
       textureSpace: "local",
       colorStops: [
-        { offset: 0, color: "#ecfdf8" },
-        { offset: 0.22, color: "#6ee7c5" },
-        { offset: 0.55, color: "#0f9a7a" },
-        { offset: 1, color: "#064e45" },
+        { offset: 0, color: "#f0fdf8" },
+        { offset: 0.18, color: "#86efbd" },
+        { offset: 0.42, color: "#14b897" },
+        { offset: 0.72, color: "#0d8068" },
+        { offset: 1, color: "#042f2a" },
       ],
     });
   }
   return new FillGradient({
     type: "radial",
-    center: { x: 0.4, y: 0.32 },
+    center: { x: 0.52, y: 0.26 },
     innerRadius: 0,
     outerRadius: 1,
-    outerCenter: { x: 0.4, y: 0.32 },
+    outerCenter: { x: 0.52, y: 0.26 },
     textureSpace: "local",
     colorStops: [
       { offset: 0, color: "#fffbeb" },
-      { offset: 0.22, color: "#fcd34d" },
-      { offset: 0.55, color: "#c2410c" },
-      { offset: 1, color: "#7c2d12" },
+      { offset: 0.18, color: "#fde047" },
+      { offset: 0.42, color: "#ea580c" },
+      { offset: 0.72, color: "#9a3412" },
+      { offset: 1, color: "#431407" },
     ],
+  });
+}
+
+/**
+ * One closed path: compact head-forward silhouette, tapered shield base (+x = facing).
+ */
+function drawAthleteSilhouette(g: Graphics, gradient: FillGradient, m: number): void {
+  g.moveTo(-0.52 * m, 0.52 * m);
+  g.quadraticCurveTo(-0.58 * m, 0.22 * m, -0.5 * m, -0.08 * m);
+  g.quadraticCurveTo(-0.44 * m, -0.36 * m, -0.22 * m, -0.46 * m);
+  g.quadraticCurveTo(0.08 * m, -0.54 * m, 0.4 * m, -0.44 * m);
+  g.quadraticCurveTo(0.68 * m, -0.32 * m, 0.78 * m, -0.04 * m);
+  g.quadraticCurveTo(0.86 * m, 0.2 * m, 0.68 * m, 0.38 * m);
+  g.quadraticCurveTo(0.4 * m, 0.54 * m, 0.08 * m, 0.58 * m);
+  g.quadraticCurveTo(-0.22 * m, 0.58 * m, -0.52 * m, 0.52 * m);
+  g.closePath();
+  g.fill(gradient);
+  g.stroke({
+    width: 0.32,
+    color: "rgba(255,255,255,0.34)",
+    join: "round",
+    cap: "round",
   });
 }
 
@@ -59,7 +87,7 @@ export type MicroAthleteView = {
 };
 
 /**
- * Premium micro-athlete: turf-contact shadow, lit body, directional wedge, selection halo.
+ * Micro-athlete token: layered ground shadow, silhouette body with radial depth, forward wedge.
  */
 export function createMicroAthleteView(): MicroAthleteView {
   const container = new Container();
@@ -93,53 +121,48 @@ export function createMicroAthleteView(): MicroAthleteView {
     bodyGradient?.destroy();
     bodyGradient = teamBodyGradient(team);
     body.clear();
-    body.circle(0, 0, R).fill(bodyGradient);
-    body.circle(0, 0, R).stroke({
-      width: 0.38,
-      color: "rgba(255,255,255,0.42)",
-    });
-    body.circle(0, 0, R).stroke({
-      width: 0.12,
-      color: "rgba(0,0,0,0.18)",
-    });
+    drawAthleteSilhouette(body, bodyGradient, R);
   };
 
   const redrawShadow = () => {
     shadow.clear();
     shadow
-      .ellipse(0.38, 0.58, R * 1.14, R * 0.68)
-      .fill({ color: 0x020617, alpha: 0.14 });
+      .ellipse(0.18 * R, 0.68 * R, R * 1.22, R * 0.74)
+      .fill({ color: 0x020617, alpha: 0.11 });
     shadow
-      .ellipse(0.32, 0.48, R * 0.55, R * 0.36)
-      .fill({ color: 0x020617, alpha: 0.22 });
+      .ellipse(0.12 * R, 0.58 * R, R * 0.62, R * 0.38)
+      .fill({ color: 0x020617, alpha: 0.2 });
+    shadow
+      .ellipse(0.06 * R, 0.52 * R, R * 0.32, R * 0.2)
+      .fill({ color: 0x020617, alpha: 0.26 });
   };
 
   const redrawDirection = () => {
     direction.clear();
-    const yHalf = R * 0.34;
-    const xBase = R * 0.72;
+    const yHalf = R * 0.28;
+    const xBase = DIR_X0;
     direction
       .moveTo(xBase, -yHalf)
       .lineTo(xBase, yHalf)
       .lineTo(DIR_TIP, 0)
       .closePath()
-      .fill({ color: "rgba(15, 23, 42, 0.82)" });
+      .fill({ color: "rgba(15, 23, 42, 0.72)" });
     direction
       .moveTo(xBase, -yHalf)
       .lineTo(xBase, yHalf)
       .lineTo(DIR_TIP, 0)
       .closePath()
       .stroke({
-        width: 0.24,
-        color: "rgba(255,255,255,0.55)",
+        width: 0.22,
+        color: "rgba(255,255,255,0.45)",
         join: "round",
       });
     direction
-      .moveTo(R * 0.12, 0)
-      .lineTo(xBase + 0.04, 0)
+      .moveTo(R * 0.08, 0)
+      .lineTo(xBase + 0.02, 0)
       .stroke({
-        width: 0.16,
-        color: "rgba(255,255,255,0.26)",
+        width: 0.14,
+        color: "rgba(255,255,255,0.22)",
         cap: "round",
       });
   };
@@ -170,13 +193,13 @@ export function createMicroAthleteView(): MicroAthleteView {
       selection.clear();
       if (selected) {
         selection
-          .circle(0, 0, R + 1.12)
+          .circle(0, 0, R_VIS + 1.12)
           .stroke({ width: 0.55, color: "rgba(16, 185, 129, 0.22)" });
         selection
-          .circle(0, 0, R + 0.95)
+          .circle(0, 0, R_VIS + 0.95)
           .stroke({ width: 0.38, color: "rgba(52, 211, 153, 0.75)" });
         selection
-          .circle(0, 0, R + 0.76)
+          .circle(0, 0, R_VIS + 0.76)
           .stroke({ width: 0.14, color: "rgba(255,255,255,0.55)" });
       }
     }

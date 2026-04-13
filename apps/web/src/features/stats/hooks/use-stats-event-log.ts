@@ -1,15 +1,16 @@
 "use client";
 
-import { useCallback, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 
 import type { StatsPitchTapPayload } from "@src/features/stats/types/stats-pitch-tap";
 import {
   createStatsLoggedEvent,
-  type StatsEventSelection,
-  type StatsFieldEventType,
   type StatsLoggedEvent,
-  type StatsScoreType,
 } from "@src/features/stats/model/stats-logged-event";
+import {
+  isStatsV1ScoreKind,
+  type StatsV1EventKind,
+} from "@src/features/stats/model/stats-v1-event-kind";
 import {
   assignScorerToEvents,
   findLatestScorePendingScorer,
@@ -17,25 +18,29 @@ import {
 import { assignVoiceNoteToEvents } from "@src/features/stats/model/stats-voice-utils";
 import type { StatsReviewMode } from "@src/features/stats/types/stats-review-mode";
 
-export type StatsArmSelection = StatsEventSelection | null;
+const ACTIVE_SCORER_STORAGE_KEY = "pitchside.stats.activeScorerId";
+
+export type StatsArmSelection = StatsV1EventKind | null;
 
 type State = {
   events: StatsLoggedEvent[];
   arm: StatsArmSelection;
-  preferredScorerId: string | null;
+  /** Persists until changed; applied to every score tap (null = no player). */
+  activeScorerId: string | null;
   reviewMode: StatsReviewMode;
   /** Voice clips with no linked event (moment-only). */
   voiceMomentIds: string[];
 };
 
 type Action =
-  | { type: "arm"; selection: StatsEventSelection }
+  | { type: "arm"; kind: StatsV1EventKind }
   | { type: "clearArm" }
   | { type: "logTap"; payload: StatsPitchTapPayload }
+  | { type: "undoLastEvent" }
   | { type: "resetEvents" }
-  | { type: "pickScorer"; playerId: string }
-  | { type: "clearPreferredScorer" }
-  | { type: "assignScorer"; eventId: string; scorerId: string | null }
+  | { type: "setActiveScorer"; playerId: string | null }
+  | { type: "restoreActiveScorer"; playerId: string | null }
+  | { type: "assignScorer"; eventId: string; playerId: string | null }
   | { type: "setReviewMode"; mode: StatsReviewMode }
   | { type: "attachVoiceNoteToEvent"; eventId: string; voiceNoteId: string }
   | { type: "addVoiceMoment"; voiceNoteId: string };
@@ -43,25 +48,23 @@ type Action =
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "arm":
-      return { ...state, arm: action.selection };
+      return { ...state, arm: action.kind };
     case "clearArm":
       return { ...state, arm: null };
-    case "clearPreferredScorer":
-      return { ...state, preferredScorerId: null };
     case "setReviewMode":
       return { ...state, reviewMode: action.mode };
     case "resetEvents":
       return {
         ...state,
         events: [],
-        preferredScorerId: null,
+        activeScorerId: null,
         reviewMode: "live",
         voiceMomentIds: [],
       };
     case "assignScorer":
       return {
         ...state,
-        events: assignScorerToEvents(state.events, action.eventId, action.scorerId),
+        events: assignScorerToEvents(state.events, action.eventId, action.playerId),
       };
     case "attachVoiceNoteToEvent":
       return {
@@ -79,48 +82,105 @@ function reducer(state: State, action: Action): State {
         voiceMomentIds: [...state.voiceMomentIds, action.voiceNoteId],
       };
     }
-    case "pickScorer": {
+    case "restoreActiveScorer":
+      return { ...state, activeScorerId: action.playerId };
+    case "setActiveScorer": {
       const pending = findLatestScorePendingScorer(state.events);
-      if (pending) {
-        return {
-          ...state,
-          events: assignScorerToEvents(state.events, pending.id, action.playerId),
-        };
-      }
-      return { ...state, preferredScorerId: action.playerId };
+      const events = pending
+        ? assignScorerToEvents(state.events, pending.id, action.playerId)
+        : state.events;
+      return { ...state, events, activeScorerId: action.playerId };
     }
     case "logTap": {
       if (!state.arm) return state;
-      const scorerForScore =
-        state.arm.domain === "score" ? state.preferredScorerId : undefined;
+      const playerForScore =
+        isStatsV1ScoreKind(state.arm) ? state.activeScorerId : undefined;
       const event = createStatsLoggedEvent({
-        selection: state.arm,
+        kind: state.arm,
         nx: action.payload.nx,
         ny: action.payload.ny,
         timestampMs: action.payload.atMs,
-        scorerId: scorerForScore ?? undefined,
+        playerId: playerForScore === undefined ? undefined : playerForScore,
       });
       return {
         ...state,
         events: [...state.events, event],
-        preferredScorerId:
-          state.arm.domain === "score" ? null : state.preferredScorerId,
       };
     }
+    case "undoLastEvent":
+      if (state.events.length === 0) return state;
+      return { ...state, events: state.events.slice(0, -1) };
   }
 }
 
 const initialState: State = {
   events: [],
   arm: null,
-  preferredScorerId: null,
+  activeScorerId: null,
   reviewMode: "live",
   voiceMomentIds: [],
 };
 
-export function useStatsEventLog() {
+function readStoredActiveScorerId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(ACTIVE_SCORER_STORAGE_KEY);
+    if (raw == null || raw === "") return null;
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
+export type UseStatsEventLogOptions = {
+  onStatsEventLogged?: (event: StatsLoggedEvent) => void;
+};
+
+export function useStatsEventLog(options?: UseStatsEventLogOptions) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const voiceBlobsRef = useRef<Map<string, Blob>>(new Map());
+  const voicePlaybackRef = useRef<HTMLAudioElement | null>(null);
+  const voicePlaybackUrlRef = useRef<string | null>(null);
+  const skipNextPersistRef = useRef(true);
+  const onStatsEventLoggedRef = useRef(options?.onStatsEventLogged);
+  onStatsEventLoggedRef.current = options?.onStatsEventLogged;
+  const prevEventCountRef = useRef(0);
+
+  useEffect(() => {
+    const n = state.events.length;
+    if (
+      n > prevEventCountRef.current &&
+      n > 0 &&
+      onStatsEventLoggedRef.current
+    ) {
+      const added = state.events[n - 1];
+      if (added) onStatsEventLoggedRef.current(added);
+    }
+    prevEventCountRef.current = n;
+  }, [state.events]);
+
+  useEffect(() => {
+    const id = readStoredActiveScorerId();
+    if (id != null) {
+      dispatch({ type: "restoreActiveScorer", playerId: id });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (skipNextPersistRef.current) {
+      skipNextPersistRef.current = false;
+      return;
+    }
+    try {
+      if (state.activeScorerId == null) {
+        window.sessionStorage.removeItem(ACTIVE_SCORER_STORAGE_KEY);
+      } else {
+        window.sessionStorage.setItem(ACTIVE_SCORER_STORAGE_KEY, state.activeScorerId);
+      }
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, [state.activeScorerId]);
 
   const storeVoiceBlob = useCallback((id: string, blob: Blob) => {
     voiceBlobsRef.current.set(id, blob);
@@ -133,24 +193,49 @@ export function useStatsEventLog() {
   const playVoiceNote = useCallback((id: string) => {
     const blob = voiceBlobsRef.current.get(id);
     if (!blob) return;
+    const prevA = voicePlaybackRef.current;
+    const prevUrl = voicePlaybackUrlRef.current;
+    if (prevA) {
+      prevA.pause();
+      prevA.src = "";
+    }
+    if (prevUrl) URL.revokeObjectURL(prevUrl);
     const url = URL.createObjectURL(blob);
+    voicePlaybackUrlRef.current = url;
     const audio = new Audio(url);
-    const revoke = () => URL.revokeObjectURL(url);
+    voicePlaybackRef.current = audio;
+    const revoke = () => {
+      if (voicePlaybackUrlRef.current === url) {
+        voicePlaybackUrlRef.current = null;
+        voicePlaybackRef.current = null;
+      }
+      URL.revokeObjectURL(url);
+    };
     audio.addEventListener("ended", revoke, { once: true });
     audio.addEventListener("error", revoke, { once: true });
     void audio.play().catch(() => revoke());
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      const a = voicePlaybackRef.current;
+      const u = voicePlaybackUrlRef.current;
+      voicePlaybackRef.current = null;
+      voicePlaybackUrlRef.current = null;
+      if (a) {
+        a.pause();
+        a.src = "";
+      }
+      if (u) URL.revokeObjectURL(u);
+    };
   }, []);
 
   const clearAllVoiceBlobs = useCallback(() => {
     voiceBlobsRef.current.clear();
   }, []);
 
-  const armField = useCallback((fieldType: StatsFieldEventType) => {
-    dispatch({ type: "arm", selection: { domain: "field", fieldType } });
-  }, []);
-
-  const armScore = useCallback((scoreType: StatsScoreType) => {
-    dispatch({ type: "arm", selection: { domain: "score", scoreType } });
+  const armKind = useCallback((kind: StatsV1EventKind) => {
+    dispatch({ type: "arm", kind });
   }, []);
 
   const clearArm = useCallback(() => {
@@ -161,21 +246,21 @@ export function useStatsEventLog() {
     dispatch({ type: "logTap", payload });
   }, []);
 
+  const undoLastEvent = useCallback(() => {
+    dispatch({ type: "undoLastEvent" });
+  }, []);
+
   const resetEvents = useCallback(() => {
     clearAllVoiceBlobs();
     dispatch({ type: "resetEvents" });
   }, [clearAllVoiceBlobs]);
 
-  const pickScorer = useCallback((playerId: string) => {
-    dispatch({ type: "pickScorer", playerId });
+  const setActiveScorer = useCallback((playerId: string | null) => {
+    dispatch({ type: "setActiveScorer", playerId });
   }, []);
 
-  const clearPreferredScorer = useCallback(() => {
-    dispatch({ type: "clearPreferredScorer" });
-  }, []);
-
-  const assignScorerToEvent = useCallback((eventId: string, scorerId: string | null) => {
-    dispatch({ type: "assignScorer", eventId, scorerId });
+  const assignScorerToEvent = useCallback((eventId: string, playerId: string | null) => {
+    dispatch({ type: "assignScorer", eventId, playerId });
   }, []);
 
   const setReviewMode = useCallback((mode: StatsReviewMode) => {
@@ -193,16 +278,15 @@ export function useStatsEventLog() {
   return {
     events: state.events,
     arm: state.arm,
-    preferredScorerId: state.preferredScorerId,
+    activeScorerId: state.activeScorerId,
     reviewMode: state.reviewMode,
     voiceMomentIds: state.voiceMomentIds,
-    armField,
-    armScore,
+    armKind,
     clearArm,
     logTap,
+    undoLastEvent,
     resetEvents,
-    pickScorer,
-    clearPreferredScorer,
+    setActiveScorer,
     assignScorerToEvent,
     setReviewMode,
     storeVoiceBlob,

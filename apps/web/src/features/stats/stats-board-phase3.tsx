@@ -3,26 +3,15 @@
 import { StatsBoardShell } from "@src/features/stats/board/stats-board-shell";
 import { StatsPitchSurface } from "@src/features/stats/board/stats-pitch-surface";
 import { useStatsEventLog } from "@src/features/stats/hooks/use-stats-event-log";
-import type { StatsFieldEventType, StatsScoreType } from "@src/features/stats/model/stats-logged-event";
+import {
+  STATS_V1_FIELD_KINDS,
+  STATS_V1_SCORE_KINDS,
+} from "@src/features/stats/model/stats-v1-event-kind";
 import { cn } from "@pitchside/utils";
-
-const FIELD_TYPES: StatsFieldEventType[] = [
-  "turnover_won",
-  "turnover_lost",
-  "kickout_won",
-  "kickout_lost",
-  "free_won",
-  "free_conceded",
-  "wide",
-  "shot",
-];
-
-const SCORE_TYPES: StatsScoreType[] = ["goal", "point", "two_point"];
 
 function armLabel(arm: ReturnType<typeof useStatsEventLog>["arm"]): string {
   if (!arm) return "Select a type, then tap the pitch";
-  if (arm.domain === "field") return arm.fieldType.replace(/_/g, " ");
-  return arm.scoreType.replace(/_/g, " ");
+  return arm.replace(/_/g, " ").toLowerCase();
 }
 
 function chipClass(active: boolean) {
@@ -38,7 +27,7 @@ function chipClass(active: boolean) {
  * Phase 3: Phase 2 logging + Konva marker layer (typed dots, wides red, scores distinct).
  */
 export function StatsBoardPhase3() {
-  const { events, arm, armField, armScore, clearArm, logTap, resetEvents } = useStatsEventLog();
+  const { events, arm, armKind, clearArm, logTap, resetEvents } = useStatsEventLog();
 
   return (
     <StatsBoardShell className="min-h-[28rem]">
@@ -66,26 +55,26 @@ export function StatsBoardPhase3() {
         </div>
         <p className="text-[10px] text-emerald-100/70">{armLabel(arm)}</p>
         <div className="flex flex-wrap gap-1">
-          {FIELD_TYPES.map((t) => (
+          {STATS_V1_FIELD_KINDS.map((t) => (
             <button
               key={t}
               type="button"
-              className={chipClass(arm?.domain === "field" && arm.fieldType === t)}
-              onClick={() => armField(t)}
+              className={chipClass(arm === t)}
+              onClick={() => armKind(t)}
             >
-              {t.replace(/_/g, " ")}
+              {t.replace(/_/g, " ").toLowerCase()}
             </button>
           ))}
         </div>
         <div className="flex flex-wrap gap-1 border-t border-white/[0.06] pt-1.5">
-          {SCORE_TYPES.map((t) => (
+          {STATS_V1_SCORE_KINDS.map((t) => (
             <button
               key={t}
               type="button"
-              className={chipClass(arm?.domain === "score" && arm.scoreType === t)}
-              onClick={() => armScore(t)}
+              className={chipClass(arm === t)}
+              onClick={() => armKind(t)}
             >
-              {t.replace(/_/g, " ")}
+              {t.replace(/_/g, " ").toLowerCase()}
             </button>
           ))}
         </div>

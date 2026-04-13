@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 function pickMimeType(): string {
   const candidates = [
@@ -41,7 +41,18 @@ export function useStatsVoiceRecorder(): UseStatsVoiceRecorderResult {
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
       streamRef.current = stream;
       chunksRef.current = [];
       const mimeType = pickMimeType();
@@ -83,6 +94,24 @@ export function useStatsVoiceRecorder(): UseStatsVoiceRecorderResult {
       };
       rec.stop();
     });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      const rec = recorderRef.current;
+      recorderRef.current = null;
+      const stream = streamRef.current;
+      streamRef.current = null;
+      if (rec && rec.state !== "inactive") {
+        try {
+          rec.stop();
+        } catch {
+          /* ignore */
+        }
+      }
+      stream?.getTracks().forEach((t) => t.stop());
+      chunksRef.current = [];
+    };
   }, []);
 
   return { isRecording, error, startRecording, stopRecording };

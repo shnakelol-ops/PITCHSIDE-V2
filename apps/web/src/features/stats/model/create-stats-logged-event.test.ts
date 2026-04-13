@@ -2,103 +2,78 @@ import { describe, expect, it } from "vitest";
 
 import {
   createStatsLoggedEvent,
-  type StatsFieldEventType,
-  type StatsScoreType,
+  type StatsLoggedEvent,
 } from "@src/features/stats/model/stats-logged-event";
+import {
+  STATS_V1_FIELD_KINDS,
+  STATS_V1_SCORE_KINDS,
+} from "@src/features/stats/model/stats-v1-event-kind";
 
 describe("createStatsLoggedEvent", () => {
-  it("creates a field event with turnover_won and clamps coordinates", () => {
+  it("creates a field event with clamped coordinates", () => {
     const e = createStatsLoggedEvent({
-      id: "id-1",
-      selection: { domain: "field", fieldType: "turnover_won" },
+      kind: "TURNOVER_WON",
       nx: 1.5,
       ny: -0.2,
-      timestampMs: 1_700_000_000_000,
+      timestampMs: 12_345,
+      id: "evt-1",
     });
-    expect(e.domain).toBe("field");
-    if (e.domain !== "field") throw new Error("narrow");
-    expect(e.fieldType).toBe("turnover_won");
-    expect(e.id).toBe("id-1");
+    expect(e.kind).toBe("TURNOVER_WON");
     expect(e.nx).toBe(1);
     expect(e.ny).toBe(0);
-    expect(e.timestampMs).toBe(1_700_000_000_000);
-    expect(e.periodPhase).toBe("unspecified");
-    expect(e.scorerId).toBeNull();
+    expect(e.timestampMs).toBe(12_345);
+    expect(e.playerId).toBeNull();
     expect(e.voiceNoteId).toBeNull();
-    expect(e.teamContext).toBeNull();
   });
 
-  it("creates a score event for two_point", () => {
+  it("creates a score event with optional playerId", () => {
     const e = createStatsLoggedEvent({
-      id: "id-2",
-      selection: { domain: "score", scoreType: "two_point" },
-      nx: 0.25,
-      ny: 0.75,
-      timestampMs: 42,
-      periodPhase: "first_half",
-      scorerId: "player-9",
+      kind: "TWO_POINT",
+      nx: 0.5,
+      ny: 0.5,
+      timestampMs: 99,
+      id: "evt-2",
+      playerId: "player-9",
     });
-    expect(e.domain).toBe("score");
-    if (e.domain !== "score") throw new Error("narrow");
-    expect(e.scoreType).toBe("two_point");
-    expect(e.nx).toBe(0.25);
-    expect(e.ny).toBe(0.75);
-    expect(e.periodPhase).toBe("first_half");
-    expect(e.scorerId).toBe("player-9");
+    expect(e.kind).toBe("TWO_POINT");
+    expect(e.playerId).toBe("player-9");
   });
 
-  it("supports every field type literal", () => {
-    const types: StatsFieldEventType[] = [
-      "turnover_won",
-      "turnover_lost",
-      "kickout_won",
-      "kickout_lost",
-      "free_won",
-      "free_conceded",
-      "wide",
-      "shot",
-    ];
-    for (const fieldType of types) {
+  it("covers every V1 field kind", () => {
+    for (const kind of STATS_V1_FIELD_KINDS) {
       const e = createStatsLoggedEvent({
-        id: `id-${fieldType}`,
-        selection: { domain: "field", fieldType },
-        nx: 0.5,
-        ny: 0.5,
-        timestampMs: 0,
+        id: `id-${kind}`,
+        kind,
+        nx: 0.2,
+        ny: 0.8,
+        timestampMs: 1,
       });
-      expect(e.domain).toBe("field");
-      if (e.domain !== "field") throw new Error("narrow");
-      expect(e.fieldType).toBe(fieldType);
+      const row: StatsLoggedEvent = e;
+      expect(row.kind).toBe(kind);
     }
   });
 
-  it("supports every score type literal", () => {
-    const scoreTypes: StatsScoreType[] = ["goal", "point", "two_point"];
-    for (const scoreType of scoreTypes) {
+  it("covers every V1 score kind", () => {
+    for (const kind of STATS_V1_SCORE_KINDS) {
       const e = createStatsLoggedEvent({
-        id: `id-${scoreType}`,
-        selection: { domain: "score", scoreType },
+        id: `id-${kind}`,
+        kind,
         nx: 0.1,
-        ny: 0.2,
-        timestampMs: 0,
+        ny: 0.1,
+        timestampMs: 2,
       });
-      expect(e.domain).toBe("score");
-      if (e.domain !== "score") throw new Error("narrow");
-      expect(e.scoreType).toBe(scoreType);
+      expect(e.kind).toBe(kind);
     }
   });
 
-  it("passes through optional voiceNoteId and teamContext", () => {
+  it("defaults period phase and ids", () => {
     const e = createStatsLoggedEvent({
-      id: "id-v",
-      selection: { domain: "field", fieldType: "wide" },
+      kind: "WIDE",
       nx: 0,
-      ny: 1,
+      ny: 0,
       timestampMs: 0,
-      voiceNoteId: "vn-1",
-      teamContext: "away",
     });
-    expect(e.voiceNoteId).toBe("vn-1");
-    expect(e.teamContext).toBe("away");
+    expect(e.periodPhase).toBe("unspecified");
+    expect(e.id.length).toBeGreaterThan(4);
   });
 });

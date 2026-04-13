@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * @deprecated V1 match logging renders on the shared Pixi pitch (`SimulatorPixiSurface` STATS mode).
+ * Kept for dev routes/tests only — do not wire new product flows to Konva stats.
+ */
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Circle, Group, Layer, Line, Rect, Stage } from "react-konva";
 
@@ -19,6 +24,8 @@ import {
 import type { StatsPitchTapPayload } from "@src/features/stats/types/stats-pitch-tap";
 
 const COMPACT_VIEWPORT_W = 480;
+/** Keep dots readable when the letterboxed scale is small (narrow layouts). */
+const MIN_MARKER_SCREEN_PX = 3.35;
 
 export type StatsPitchSurfaceProps = {
   className?: string;
@@ -120,9 +127,22 @@ export function StatsPitchSurface({
       events.map((e) => {
         const p = boardNormToWorld(e.nx, e.ny);
         const st = getStatsEventMarkerStyle(e, markerOpts);
-        return { id: e.id, p, st };
+        const safeScale = Math.max(scale, 0.004);
+        const minWorldR = MIN_MARKER_SCREEN_PX / safeScale;
+        const effR = Math.max(st.radius, minWorldR);
+        const rMul = effR / st.radius;
+        return {
+          id: e.id,
+          p,
+          st: {
+            ...st,
+            radius: effR,
+            strokeWidth: Math.min(1.2, st.strokeWidth * Math.min(1.15, rMul)),
+            shadowBlur: st.shadowBlur * Math.min(1.12, rMul),
+          },
+        };
       }),
-    [events, markerOpts],
+    [events, markerOpts, scale],
   );
 
   const rehearsalCircles = useMemo(

@@ -7,29 +7,29 @@ describe("assignVoiceNoteToEvents", () => {
   it("sets voiceNoteId on the matching event only", () => {
     const a = createStatsLoggedEvent({
       id: "a",
-      selection: { domain: "field", fieldType: "wide" },
+      kind: "WIDE",
       nx: 0.1,
       ny: 0.1,
       timestampMs: 1,
     });
     const b = createStatsLoggedEvent({
       id: "b",
-      selection: { domain: "score", scoreType: "goal" },
+      kind: "GOAL",
       nx: 0.2,
       ny: 0.2,
       timestampMs: 2,
     });
-    const next = assignVoiceNoteToEvents([a, b], "b", "vn-1");
-    expect(next[0]?.voiceNoteId).toBeNull();
-    expect(next[1]?.voiceNoteId).toBe("vn-1");
+    const next = assignVoiceNoteToEvents([a, b], "a", "vn-1");
+    expect(next[0]?.voiceNoteId).toBe("vn-1");
+    expect(next[1]?.voiceNoteId).toBeNull();
   });
 
-  it("can clear voiceNoteId with null", () => {
+  it("can clear voice note", () => {
     const e = createStatsLoggedEvent({
       id: "x",
-      selection: { domain: "field", fieldType: "shot" },
-      nx: 0.5,
-      ny: 0.5,
+      kind: "SHOT",
+      nx: 0,
+      ny: 0,
       timestampMs: 0,
       voiceNoteId: "old",
     });

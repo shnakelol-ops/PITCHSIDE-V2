@@ -13,7 +13,7 @@ Pitchside V1 is **two separate engines** plus a **shared foundation**. Nothing e
 | Engine | Identity | Runtime | Purpose |
 |--------|----------|---------|---------|
 | **Simulator** | Premium Coaching Simulation Engine | **PixiJS** (GPU) | Tactics, movement teaching, session design, path recording & playback |
-| **Stats** | Live Visual Stats Engine (pitch-first) | **Konva.js** | Live match logging, spatial events, halftime/full-time review |
+| **Stats** | Live Visual Stats Engine (pitch-first) | **PixiJS** (shared pitch stage) | Live match logging, spatial dots, review emphasis — same canvas as simulator in STATS mode |
 
 **Forbidden globally (V1):** dashboards, spreadsheets, AI features, video systems, social, chat, prediction, complex analytics, duplicate event systems, parallel coordinate models, “helpful” features not listed in §2–3.
 
@@ -35,7 +35,7 @@ Pitchside V1 is **two separate engines** plus a **shared foundation**. Nothing e
 
 ### 2.3 Simulator forbidden
 
-- Stats logging, voice notes, dashboards, analytics, any non-simulation feature.
+- Dashboards, analytics, any non-simulation feature **except** the **STATS surface mode** on the same Pixi pitch (tap-to-log dots, voice UX owned by stats hooks — see §3).
 
 ### 2.4 Visual standard (simulator)
 
@@ -59,7 +59,7 @@ Pitchside V1 is **two separate engines** plus a **shared foundation**. Nothing e
 
 ### 3.2 Rendering (mandatory)
 
-- **Konva.js** only for stats pitch surface and event dots.
+- **PixiJS** on the **shared** pitch stage for stats event dots and hit layer (no second canvas, no DOM canvas for event markers).
 
 ### 3.3 Stats forbidden
 
@@ -69,7 +69,7 @@ Pitchside V1 is **two separate engines** plus a **shared foundation**. Nothing e
 
 - Same premium bar as §6: depth, texture, lighting hierarchy; instant tap feedback; clear dot semantics.
 
-**Code location:** `src/features/stats/**` only for stats domain logic, Konva lifecycle, tap-to-log, voice attachment UX tied to stats events.
+**Code location:** `src/features/stats/**` for stats domain logic, hooks, and voice/scorer UX; **Pixi drawing** for logged dots lives under `src/features/simulator/pixi/**` (shared stage) and must call into stats style helpers — no parallel stats renderer.
 
 ---
 
@@ -86,7 +86,7 @@ Pitchside V1 is **two separate engines** plus a **shared foundation**. Nothing e
 
 ### 4.3 Performance
 
-- Smooth drag (simulator); **instant** tap response (stats). Avoid main-thread blocking; batch Konva/Pixi updates deliberately.
+- Smooth drag (simulator); **instant** tap response (stats). Avoid main-thread blocking; batch Pixi updates deliberately.
 
 ---
 
@@ -106,7 +106,7 @@ Pitchside V1 is **two separate engines** plus a **shared foundation**. Nothing e
 
 **Do not:** flat white as the dominant UI; harsh flat fills without depth; childish or low-end styling for core surfaces.
 
-**Token rule:** shared colours/spacing for **both** engines’ chrome should converge on **one** Tailwind + design-token approach in `src/styles` and `src/components/ui`; engine canvases may use engine-specific APIs (Pixi/Konva) but **must** consume the same semantic colours where applicable.
+**Token rule:** shared colours/spacing for **both** engines’ chrome should converge on **one** Tailwind + design-token approach in `src/styles` and `src/components/ui`; the pitch canvas uses **Pixi** only; stats dot colours **must** align with the shared semantic palette where applicable.
 
 ---
 
@@ -114,8 +114,7 @@ Pitchside V1 is **two separate engines** plus a **shared foundation**. Nothing e
 
 | Layer | Technology |
 |-------|------------|
-| Simulator canvas | **PixiJS** |
-| Stats canvas | **Konva.js** |
+| Pitch canvas (simulator + stats) | **PixiJS** (single stage; mode toggles interaction) |
 | App | **React**, **TypeScript** |
 | Styling | **Tailwind** |
 | UI primitives | **shadcn/ui** (`src/components/ui`) |
@@ -158,8 +157,8 @@ All new V1 code follows:
 
 | Agent / role | May touch | Must not touch |
 |--------------|-----------|----------------|
-| **Simulator** | `src/features/simulator/**`, shared helpers if needed for coords only | Stats feature, stats event persistence, Konva roots |
-| **Stats** | `src/features/stats/**`, shared types/constants for events | Pixi simulator core, path playback, shadow-run logic |
+| **Simulator** | `src/features/simulator/**`, shared helpers if needed for coords only | Stats domain hooks/UI in `src/features/stats/**` except shared-stage stats overlay wiring |
+| **Stats** | `src/features/stats/**`, shared types/constants for events, shared Pixi stats overlay touchpoints | Duplicate pitch canvas, Konva stats surface in product routes |
 | **Debug / infra** | Tests, CI, logging hooks, non-feature config | Product semantics, event schema, coordinate contract |
 | **Layout / app** | `src/app` or `src/pages`, shell composition | Engine internals |
 
@@ -197,7 +196,7 @@ Changes to this document are **architectural decisions**: version the change (da
 ## 14. Implementation rules (binding)
 
 - Keep **simulator** and **stats** separate (`src/features/simulator` vs `src/features/stats`).
-- Keep **rendering** (Pixi / Konva) **isolated** from **UI shell** (routes, layout, chrome): shells compose feature components; they do not own engine internals.
+- Keep **rendering** (Pixi pitch) **isolated** from **UI shell** (routes, layout, chrome): shells compose feature components; they do not own engine internals.
 - Create **reusable shared pitch constants** in `src/constants` (and shared coord/math in `src/lib`) **without** merging **business logic** across engines.
 - Prefer **readable, modular** code over clever abstractions.
 - **Do not** over-engineer.
@@ -221,4 +220,5 @@ When implementing any phase, the responsible agent **must** output, in order:
 
 *End of Pitchside V1 Architecture — Single Source of Truth.*
 
-**Amendment log:** 2026-04-10 — Added §14 (implementation rules) and §15 (agent response format).
+**Amendment log:** 2026-04-10 — Added §14 (implementation rules) and §15 (agent response format).  
+**Amendment log:** 2026-04-11 — Stats rendering locked to **shared Pixi pitch** (STATS mode); Konva stats surface deprecated for product use.

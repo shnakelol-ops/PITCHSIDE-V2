@@ -4,8 +4,7 @@ import type { StatsLoggedEvent } from "@src/features/stats/model/stats-logged-ev
 import { cn } from "@pitchside/utils";
 
 function eventShortLabel(e: StatsLoggedEvent): string {
-  if (e.domain === "score") return e.scoreType.replace(/_/g, " ").slice(0, 8);
-  return e.fieldType.replace(/_/g, " ").slice(0, 10);
+  return e.kind.replace(/_/g, " ").toLowerCase().slice(0, 12);
 }
 
 export type StatsVoiceStripProps = {

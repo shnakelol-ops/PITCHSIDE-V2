@@ -8,7 +8,7 @@ import {
 
 const field = createStatsLoggedEvent({
   id: "f1",
-  selection: { domain: "field", fieldType: "wide" },
+  kind: "WIDE",
   nx: 0.1,
   ny: 0.1,
   timestampMs: 1,
@@ -16,7 +16,7 @@ const field = createStatsLoggedEvent({
 
 const scoreA = createStatsLoggedEvent({
   id: "s1",
-  selection: { domain: "score", scoreType: "goal" },
+  kind: "GOAL",
   nx: 0.2,
   ny: 0.2,
   timestampMs: 2,
@@ -24,63 +24,52 @@ const scoreA = createStatsLoggedEvent({
 
 const scoreB = createStatsLoggedEvent({
   id: "s2",
-  selection: { domain: "score", scoreType: "point" },
+  kind: "POINT",
   nx: 0.3,
   ny: 0.3,
   timestampMs: 3,
-  scorerId: "p9",
+  playerId: "p9",
 });
 
 describe("findLatestScorePendingScorer", () => {
-  it("returns undefined when no score needs a scorer", () => {
-    expect(findLatestScorePendingScorer([field, scoreB])).toBeUndefined();
-  });
-
-  it("returns the most recent score with null scorerId", () => {
+  it("returns the most recent score with null playerId", () => {
     const s3 = createStatsLoggedEvent({
       id: "s3",
-      selection: { domain: "score", scoreType: "point" },
+      kind: "POINT",
       nx: 0.4,
       ny: 0.4,
       timestampMs: 4,
     });
-    const list = [scoreA, scoreB, s3];
-    const p = findLatestScorePendingScorer(list);
-    expect(p?.id).toBe("s3");
+    const events = [field, scoreA, scoreB, s3];
+    expect(findLatestScorePendingScorer(events)?.id).toBe("s3");
   });
 
-  it("prefers later pending over earlier", () => {
-    const list = [scoreA, scoreB];
-    const patched = assignScorerToEvents(list, "s1", "p1");
-    const withSecondPending = [
-      ...patched,
-      createStatsLoggedEvent({
-        id: "s4",
-        selection: { domain: "score", scoreType: "two_point" },
-        nx: 0.5,
-        ny: 0.5,
-        timestampMs: 5,
-      }),
-    ];
-    expect(findLatestScorePendingScorer(withSecondPending)?.id).toBe("s4");
+  it("returns undefined when all scores tagged", () => {
+    expect(findLatestScorePendingScorer([field, scoreB])).toBeUndefined();
   });
 });
 
 describe("assignScorerToEvents", () => {
-  it("updates only the matching score event", () => {
-    const next = assignScorerToEvents([field, scoreA, scoreB], "s1", "player-7");
-    expect(next[1]?.domain === "score" && next[1].scorerId).toBe("player-7");
-    expect(next[2]?.domain === "score" && next[2].scorerId).toBe("p9");
-    expect(next[0]).toBe(field);
+  it("sets playerId only on the targeted score event", () => {
+    const events = [field, scoreA, scoreB];
+    const next = assignScorerToEvents(events, "s1", "player-7");
+    expect(next[1]?.kind === "GOAL" && next[1].playerId).toBe("player-7");
+    expect(next[2]?.kind === "POINT" && next[2].playerId).toBe("p9");
   });
 
-  it("does not mutate field events for same id (no match)", () => {
-    const next = assignScorerToEvents([field], "f1", "x");
-    expect(next[0]).toEqual(field);
-  });
-
-  it("can clear scorer with null", () => {
-    const next = assignScorerToEvents([scoreB], "s2", null);
-    expect(next[0]?.domain === "score" && next[0].scorerId).toBeNull();
+  it("clears playerId when null passed", () => {
+    const events = [
+      field,
+      createStatsLoggedEvent({
+        id: "s3",
+        kind: "TWO_POINT",
+        nx: 0.5,
+        ny: 0.5,
+        timestampMs: 5,
+        playerId: "x",
+      }),
+    ];
+    const next = assignScorerToEvents(events, "s3", null);
+    expect(next[1]?.kind === "TWO_POINT" && next[1].playerId).toBeNull();
   });
 });

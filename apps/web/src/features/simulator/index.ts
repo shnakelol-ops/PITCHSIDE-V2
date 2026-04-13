@@ -1,10 +1,14 @@
 /** @public Simulator engine (ARCHITECTURE.md §2, §8). */
 
-export { SimulatorBoardShell } from "@src/features/simulator/simulator-board-shell";
+export {
+  SimulatorBoardShell,
+  type SimulatorBoardShellProps,
+} from "@src/features/simulator/simulator-board-shell";
 export { SimulatorPixiSurface } from "@src/features/simulator/pixi/simulator-pixi-surface";
 export type {
   SimulatorPixiSurfaceHandle,
   SimulatorPixiSurfaceProps,
+  SimulatorSurfaceMode,
 } from "@src/features/simulator/pixi/simulator-pixi-surface";
 export { createSimulatorPitchRoot } from "@src/features/simulator/pixi/create-pitch-root";
 export type { SimulatorPitchMount } from "@src/features/simulator/pixi/create-pitch-root";

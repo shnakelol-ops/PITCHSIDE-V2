@@ -6,13 +6,16 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
 } from "react";
+
+import type { FederatedPointerEvent } from "pixi.js";
 
 import {
   getPitchBoardAspectRatio,
   type PitchSport,
 } from "@/config/pitchConfig";
-import { letterboxPitchWorld } from "@src/lib/pitch-coordinates";
+import { BOARD_PITCH_VIEWBOX } from "@src/constants/pitch-space";
 import { mountGaelicPitchRenderer } from "@src/features/simulator/renderer/GaelicPitchRenderer";
 import { mountPremiumPitchRenderer } from "@src/features/simulator/renderer/PremiumPitchRenderer";
 import { createDefaultMicroAthletes } from "@src/features/simulator/model/micro-athlete";
@@ -21,7 +24,13 @@ import { drawMovementPathsGraphics } from "@src/features/simulator/pixi/movement
 import { drawShadowRunsGraphics } from "@src/features/simulator/pixi/shadow-path-graphics";
 import { drawShadowPlaybackGhosts } from "@src/features/simulator/pixi/shadow-playback-ghost";
 import { mountAthletesPixi } from "@src/features/simulator/pixi/simulator-athletes-pixi";
+import { drawStatsEventsGraphics } from "@src/features/simulator/pixi/stats-event-graphics";
 import { SimulatorPlaybackController } from "@src/features/simulator/playback/simulator-playback-controller";
+import type { StatsLoggedEvent } from "@src/features/stats/model/stats-logged-event";
+import type { StatsV1EventKind } from "@src/features/stats/model/stats-v1-event-kind";
+import type { StatsPitchTapPayload } from "@src/features/stats/types/stats-pitch-tap";
+import type { StatsReviewMode } from "@src/features/stats/types/stats-review-mode";
+import { letterboxPitchWorld, viewportCssToBoardNorm } from "@src/lib/pitch-coordinates";
 import { cn } from "@pitchside/utils";
 
 /** Subtle turf grain on HTML wrapper only — not used by Pixi drawing. */
@@ -35,12 +44,27 @@ export type SimulatorPixiSurfaceHandle = {
   reset: () => void;
 };
 
+export type SimulatorSurfaceMode = "SIMULATOR" | "STATS";
+
 export type SimulatorPixiSurfaceProps = {
   sport: PitchSport;
   /** When true, draw on empty pitch records a path for the selected player (no playback). */
   recordingMode?: boolean;
   /** When true, draw records a secondary shadow path for the selected player. */
   shadowRecordingMode?: boolean;
+  /**
+   * Same Pixi stage: STATS shows an interactive overlay above athletes; SIMULATOR passes pointers through.
+   */
+  surfaceMode?: SimulatorSurfaceMode;
+  /** In STATS mode, tap logs this selection (nx, ny stored as board-normalised 0–1; semantically 0–100 grid). */
+  statsArm?: StatsV1EventKind | null;
+  /** Dots to draw in STATS mode (single source of truth from `useStatsEventLog` or equivalent). */
+  statsLoggedEvents?: readonly StatsLoggedEvent[];
+  /** When set, pitch tap forwards here; parent runs `createStatsLoggedEvent` via reducer (instant feedback). */
+  onStatsPitchTap?: (payload: StatsPitchTapPayload) => void;
+  statsReviewMode?: StatsReviewMode;
+  /** When false (e.g. HT/FT review), pitch stops accepting logs; dots stay visible. */
+  statsPitchInteractive?: boolean;
   className?: string;
 };
 
@@ -54,7 +78,18 @@ export const SimulatorPixiSurface = forwardRef<
   SimulatorPixiSurfaceHandle,
   SimulatorPixiSurfaceProps
 >(function SimulatorPixiSurface(
-  { sport, recordingMode = false, shadowRecordingMode = false, className },
+  {
+    sport,
+    recordingMode = false,
+    shadowRecordingMode = false,
+    surfaceMode = "SIMULATOR",
+    statsArm = null,
+    statsLoggedEvents = [],
+    onStatsPitchTap,
+    statsReviewMode = "live",
+    statsPitchInteractive = true,
+    className,
+  },
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -66,6 +101,30 @@ export const SimulatorPixiSurface = forwardRef<
   const sportRef = useRef<PitchSport>(sport);
   const recordingModeRef = useRef(recordingMode);
   const shadowRecordingModeRef = useRef(shadowRecordingMode);
+  const surfaceModeRef = useRef(surfaceMode);
+  const statsArmRef = useRef<StatsV1EventKind | null>(statsArm);
+  const onStatsPitchTapRef = useRef(onStatsPitchTap);
+  const statsPitchInteractiveRef = useRef(statsPitchInteractive);
+  const statsReviewModeRef = useRef(statsReviewMode);
+  const statsLoggedEventsRef = useRef(statsLoggedEvents);
+  const worldScaleRef = useRef(1);
+  const statsPixiRef = useRef<{
+    statsLayer: PixiContainer | null;
+    statsHit: import("pixi.js").Graphics | null;
+    statsDots: import("pixi.js").Graphics | null;
+  }>({ statsLayer: null, statsHit: null, statsDots: null });
+
+  /** Bumps after Pixi stats overlay is mounted so sync effect can run. */
+  const [statsOverlayEpoch, setStatsOverlayEpoch] = useState(0);
+  /** Bumps on host resize so marker min-size tracks letterbox scale. */
+  const [resizeGen, setResizeGen] = useState(0);
+
+  surfaceModeRef.current = surfaceMode;
+  statsArmRef.current = statsArm;
+  onStatsPitchTapRef.current = onStatsPitchTap;
+  statsPitchInteractiveRef.current = statsPitchInteractive;
+  statsReviewModeRef.current = statsReviewMode;
+  statsLoggedEventsRef.current = statsLoggedEvents;
   const selectedAthleteIdRef = useRef<string | null>(null);
   const playbackDrivingRef = useRef(false);
   const playbackControllerRef = useRef<SimulatorPlaybackController | null>(
@@ -123,6 +182,7 @@ export const SimulatorPixiSurface = forwardRef<
     app.renderer.resolution = dpr;
     app.renderer.resize(w, h);
     const { scale, offsetX, offsetY } = letterboxPitchWorld(w, h);
+    worldScaleRef.current = scale;
     world.scale.set(scale);
     world.position.set(offsetX, offsetY);
   };
@@ -200,6 +260,61 @@ export const SimulatorPixiSurface = forwardRef<
       world.addChild(shadowGhostLayer);
       world.addChild(athletesLayer);
 
+      const statsLayer = new Container();
+      statsLayer.sortableChildren = true;
+      const statsHit = new Graphics();
+      statsHit.zIndex = 0;
+      statsHit
+        .rect(0, 0, BOARD_PITCH_VIEWBOX.w, BOARD_PITCH_VIEWBOX.h)
+        .fill({ color: 0xffffff, alpha: 0.0001 });
+      const statsInteractiveInit =
+        surfaceModeRef.current === "STATS" &&
+        statsPitchInteractiveRef.current &&
+        statsArmRef.current != null &&
+        Boolean(onStatsPitchTapRef.current);
+      statsHit.eventMode = statsInteractiveInit ? "static" : "none";
+      const statsDots = new Graphics();
+      statsDots.eventMode = "none";
+      statsDots.zIndex = 1;
+      statsLayer.addChild(statsHit);
+      statsLayer.addChild(statsDots);
+      world.addChild(statsLayer);
+      statsLayer.visible = surfaceModeRef.current === "STATS";
+      statsPixiRef.current = { statsLayer, statsHit, statsDots };
+      drawStatsEventsGraphics(statsDots, statsLoggedEventsRef.current, {
+        reviewMode: statsReviewModeRef.current,
+        worldToScreenScale: worldScaleRef.current,
+      });
+
+      statsHit.on("pointerdown", (e: FederatedPointerEvent) => {
+        if (surfaceModeRef.current !== "STATS") return;
+        if (!statsPitchInteractiveRef.current) return;
+        if (!statsArmRef.current) return;
+        const fire = onStatsPitchTapRef.current;
+        if (!fire) return;
+        e.stopPropagation();
+        const hostEl = hostRef.current;
+        if (!hostEl) return;
+        const r = hostEl.getBoundingClientRect();
+        const stageX = e.clientX - r.left;
+        const stageY = e.clientY - r.top;
+        const { nx, ny } = viewportCssToBoardNorm(
+          stageX,
+          stageY,
+          r.width,
+          r.height,
+        );
+        fire({
+          nx,
+          ny,
+          atMs: Date.now(),
+          stageX,
+          stageY,
+        });
+      });
+
+      setStatsOverlayEpoch((n) => n + 1);
+
       attachPitch(sportRef.current);
       layout();
 
@@ -251,7 +366,10 @@ export const SimulatorPixiSurface = forwardRef<
       });
       playbackControllerRef.current = playback;
 
-      ro = new ResizeObserver(() => layout());
+      ro = new ResizeObserver(() => {
+        layout();
+        setResizeGen((n) => n + 1);
+      });
       ro.observe(host);
     })();
 
@@ -269,6 +387,11 @@ export const SimulatorPixiSurface = forwardRef<
       athletesDisposeRef.current?.();
       athletesDisposeRef.current = null;
       releaseAthleteInputRef.current = null;
+      statsPixiRef.current = {
+        statsLayer: null,
+        statsHit: null,
+        statsDots: null,
+      };
       pitchHolderRef.current = null;
       const app = appRef.current;
       appRef.current = null;
@@ -285,6 +408,34 @@ export const SimulatorPixiSurface = forwardRef<
   }, [pathStore]);
 
   useEffect(() => {
+    const { statsHit, statsDots, statsLayer } = statsPixiRef.current;
+    if (!statsHit || !statsDots || !statsLayer) return;
+    const canLog =
+      surfaceMode === "STATS" &&
+      statsPitchInteractive &&
+      statsArm != null &&
+      Boolean(onStatsPitchTap);
+    statsHit.eventMode = canLog ? "static" : "none";
+    statsLayer.visible = surfaceMode === "STATS";
+    const w = hostRef.current?.clientWidth ?? 640;
+    const density = w < 480 ? "compact" : "comfortable";
+    drawStatsEventsGraphics(statsDots, statsLoggedEvents, {
+      reviewMode: statsReviewMode,
+      density,
+      worldToScreenScale: worldScaleRef.current,
+    });
+  }, [
+    surfaceMode,
+    statsLoggedEvents,
+    statsReviewMode,
+    statsPitchInteractive,
+    statsArm,
+    onStatsPitchTap,
+    statsOverlayEpoch,
+    resizeGen,
+  ]);
+
+  useEffect(() => {
     if (!pitchHolderRef.current) return;
     attachPitch(sport);
     layout();
@@ -294,14 +445,14 @@ export const SimulatorPixiSurface = forwardRef<
     <div
       className="pitch-wrapper relative min-h-0 w-full flex-1 overflow-hidden rounded-2xl p-3 sm:p-4 md:p-5"
       style={{
-        backgroundColor: "#ebe4d4",
+        backgroundColor: "#4a2f25",
         backgroundImage: [
-          "linear-gradient(175deg, rgba(255,252,245,0.55) 0%, transparent 42%, rgba(210,198,176,0.35) 100%)",
-          "linear-gradient(95deg, rgba(196,188,168,0.22) 0%, transparent 48%, rgba(232,224,208,0.4) 100%)",
-          "radial-gradient(ellipse 120% 80% at 50% 0%, rgba(180,172,148,0.12), transparent 55%)",
+          "linear-gradient(175deg, rgba(100, 72, 60, 0.2) 0%, transparent 42%, rgba(22, 14, 10, 0.32) 100%)",
+          "linear-gradient(95deg, rgba(32, 20, 16, 0.4) 0%, transparent 48%, rgba(68, 48, 38, 0.22) 100%)",
+          "radial-gradient(ellipse 120% 80% at 50% 0%, rgba(78, 56, 44, 0.14), transparent 55%)",
         ].join(", "),
         boxShadow:
-          "inset 0 2px 14px rgba(62, 54, 42, 0.08), inset 0 0 0 1px rgba(255,255,255,0.35), inset 0 -3px 20px rgba(72, 64, 48, 0.06)",
+          "inset 0 2px 12px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.045), inset 0 -2px 16px rgba(0, 0, 0, 0.2)",
       }}
     >
       <div
