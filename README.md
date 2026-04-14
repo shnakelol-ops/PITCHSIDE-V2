@@ -1,4 +1,4 @@
-# Pitchside
+# Pitchside.
 
 Pitchside is a production-oriented coaching product built from three internal modules that share match data at the centre:
 
