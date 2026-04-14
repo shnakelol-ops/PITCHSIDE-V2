@@ -17,6 +17,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
+      "@src/*": ["./src/*"],
       "@pitchside/board-engine": ["../../packages/board-engine/src/index.ts"],
       "@pitchside/data-access": ["../../packages/data-access/src/index.ts"],
       "@pitchside/domain": ["../../packages/domain/src/index.ts"],
