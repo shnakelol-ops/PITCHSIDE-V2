@@ -52,9 +52,10 @@ const DRAW_MIN_LEN2 = 1e-6;
 
 type BoardV1PanelProps = {
   matchId: string;
+  standalone?: boolean;
 };
 
-export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
+export function BoardV1Panel({ matchId, standalone = false }: BoardV1PanelProps) {
   const pitchRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragRef>(null);
   const dragDraftRef = useRef<DraftDraw | null>(null);
@@ -137,6 +138,15 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
     setError(null);
     setLoading(true);
     try {
+      if (standalone) {
+        const fb = createDefaultBoardMarkers();
+        setScenes([]);
+        setActiveSceneId(null);
+        setMarkers(fb);
+        setDrawings([]);
+        setSavedSnapshot(boardContentSnapshot(fb, []));
+        return;
+      }
       const result = await fetchBoardPayload(null);
       if (!result.ok) {
         setError(
@@ -154,7 +164,7 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [commitBoardFromServer, fetchBoardPayload]);
+  }, [commitBoardFromServer, fetchBoardPayload, standalone]);
 
   const reloadScene = useCallback(async () => {
     setError(null);
