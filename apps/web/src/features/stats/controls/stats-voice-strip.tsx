@@ -53,8 +53,6 @@ export function StatsVoiceStrip({
             <button
               type="button"
               className="rounded-md border border-rose-400/40 bg-rose-500/15 px-2 py-1 text-[9px] font-bold uppercase text-rose-100/95 hover:bg-rose-500/25"
-              data-tap-target-id="voice-record-start"
-              data-tap-target-group="stats"
               onClick={onStartRecord}
             >
               Record
@@ -63,8 +61,6 @@ export function StatsVoiceStrip({
             <button
               type="button"
               className="rounded-md border border-emerald-400/50 bg-emerald-600/25 px-2 py-1 text-[9px] font-bold uppercase text-emerald-50 animate-pulse"
-              data-tap-target-id="voice-record-stop"
-              data-tap-target-group="stats"
               onClick={onStopRecord}
             >
               Stop
@@ -91,8 +87,6 @@ export function StatsVoiceStrip({
                 ? "border-white/20 text-emerald-100/90 hover:bg-white/10"
                 : "cursor-not-allowed border-white/10 text-emerald-100/35",
             )}
-            data-tap-target-id="voice-attach-last-event"
-            data-tap-target-group="stats"
             onClick={onAttachToLastEvent}
           >
             Last event
@@ -100,8 +94,6 @@ export function StatsVoiceStrip({
           <button
             type="button"
             className="rounded border border-white/20 px-2 py-0.5 text-[9px] font-semibold uppercase text-emerald-100/90 hover:bg-white/10"
-            data-tap-target-id="voice-attach-moment"
-            data-tap-target-group="stats"
             onClick={onAttachAsMoment}
           >
             Moment
@@ -109,8 +101,6 @@ export function StatsVoiceStrip({
           <button
             type="button"
             className="rounded border border-white/15 px-2 py-0.5 text-[8px] font-semibold uppercase text-amber-200/80 hover:bg-white/10"
-            data-tap-target-id="voice-drop-pending"
-            data-tap-target-group="stats"
             onClick={onDiscardPending}
           >
             Drop
@@ -126,8 +116,6 @@ export function StatsVoiceStrip({
               type="button"
               className="rounded border border-violet-400/35 bg-violet-500/10 px-2 py-0.5 text-[8px] font-semibold text-violet-100/90 hover:bg-violet-500/20"
               title={id}
-              data-tap-target-id={`voice-moment-${id}`}
-              data-tap-target-group="stats"
               onClick={() => onPlay(id)}
             >
               ▶ {id.slice(0, 6)}
@@ -144,8 +132,6 @@ export function StatsVoiceStrip({
               type="button"
               className="max-w-[6.5rem] truncate rounded border border-sky-400/35 bg-sky-500/10 px-2 py-0.5 text-[8px] font-semibold text-sky-100/90 hover:bg-sky-500/20"
               title={e.id}
-              data-tap-target-id={`voice-event-${e.id}`}
-              data-tap-target-group="stats"
               onClick={() => e.voiceNoteId && onPlay(e.voiceNoteId)}
             >
               ▶ {eventShortLabel(e)}

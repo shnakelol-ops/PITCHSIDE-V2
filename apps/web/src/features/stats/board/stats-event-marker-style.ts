@@ -10,7 +10,6 @@ import type { StatsReviewMode } from "@src/features/stats/types/stats-review-mod
  */
 export type StatsEventMarkerStyle = {
   radius: number;
-  shape?: "circle" | "cross" | "triangle";
   fill: string;
   stroke: string;
   strokeWidth: number;
@@ -137,7 +136,6 @@ function liveMarkerStyle(event: StatsLoggedEvent): StatsEventMarkerStyle {
     case "WIDE":
       return {
         radius: 3.42,
-        shape: "circle",
         fill: "rgb(220 38 38)",
         stroke: "rgb(127 29 29)",
         strokeWidth: 0.72,
@@ -165,7 +163,6 @@ function liveMarkerStyle(event: StatsLoggedEvent): StatsEventMarkerStyle {
     case "TURNOVER_LOST":
       return {
         radius: 2.55,
-        shape: "cross",
         fill: "rgb(251 113 133)",
         stroke: "rgb(190 18 60)",
         strokeWidth: 0.5,
@@ -184,7 +181,6 @@ function liveMarkerStyle(event: StatsLoggedEvent): StatsEventMarkerStyle {
     case "KICKOUT_LOST":
       return {
         radius: 2.45,
-        shape: "triangle",
         fill: "rgb(165 180 252)",
         stroke: "rgb(67 56 202)",
         strokeWidth: 0.48,
