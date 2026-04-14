@@ -85,15 +85,14 @@ const C = {
  * Not used on the pitch aperture / apron.
  */
 const GLASS_SIDEBAR = {
-  bg: "rgba(14, 17, 20, 0.42)",
-  border: "rgba(255, 252, 248, 0.075)",
-  title: "rgba(228, 226, 220, 0.68)",
-  shadow:
-    "0 6px 22px -14px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.04)",
+  bg: "rgba(10, 12, 14, 0.2)",
+  border: "rgba(255, 252, 248, 0.06)",
+  title: "rgba(228, 226, 220, 0.62)",
+  shadow: "none",
 };
 
 const btnBase =
-  "min-h-8 w-full justify-center rounded-[9px] px-2.5 py-1.5 text-[10.5px] font-medium leading-tight tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_1px_6px_-2px_rgba(0,0,0,0.42)] transition-[transform,box-shadow,background-color,border-color,color] duration-150 sm:min-h-8 sm:text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(18,20,24,0.9)] active:translate-y-px active:shadow-[inset_0_2px_5px_rgba(0,0,0,0.34)]";
+  "min-h-7 min-w-[3.4rem] justify-center rounded-[8px] px-2 py-1 text-[10px] font-medium leading-tight tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_4px_-2px_rgba(0,0,0,0.38)] transition-[transform,box-shadow,background-color,border-color,color] duration-150 sm:min-h-7 sm:text-[10.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(18,20,24,0.9)] active:translate-y-px active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.32)]";
 
 const btnIdle =
   "!border !border-white/[0.07] !bg-[rgba(32,34,40,0.88)] !text-[rgba(245,243,238,0.94)] hover:!border-white/[0.1] hover:!bg-[rgba(38,40,48,0.92)] hover:!text-white hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_3px_12px_-4px_rgba(0,0,0,0.4)]";
@@ -130,7 +129,7 @@ function ToolRail({
   return (
     <div
       className={cn(
-        "flex flex-col gap-0 rounded-[10px] border p-2 backdrop-blur-[2px]",
+        "flex flex-col gap-0 rounded-[8px] border px-1.5 py-1",
         className,
       )}
       style={{
@@ -139,19 +138,19 @@ function ToolRail({
         boxShadow: GLASS_SIDEBAR.shadow,
       }}
     >
-      <div className="flex items-baseline gap-1.5 border-b border-white/[0.05] pb-1.5">
+      <div className="flex items-baseline gap-1.5 pb-1">
         <span
-          className="mt-0.5 size-1 shrink-0 rounded-full bg-[rgba(180,200,188,0.25)] ring-1 ring-white/[0.07]"
+          className="mt-0.5 size-1 shrink-0 rounded-full bg-[rgba(180,200,188,0.2)] ring-1 ring-white/[0.05]"
           aria-hidden
         />
         <div
-          className="font-[system-ui,-apple-system,'Segoe_UI',sans-serif] text-[8px] font-semibold uppercase leading-none tracking-[0.22em] text-[rgba(228,226,220,0.72)]"
+          className="font-[system-ui,-apple-system,'Segoe_UI',sans-serif] text-[7px] font-semibold uppercase leading-none tracking-[0.2em] text-[rgba(228,226,220,0.62)]"
           style={{ fontFeatureSettings: '"ss01" 1' }}
         >
           {title}
         </div>
       </div>
-      <div className="flex flex-col gap-1.5 pt-1.5">{children}</div>
+      <div className="flex flex-col gap-1 pt-0.5">{children}</div>
     </div>
   );
 }
@@ -509,7 +508,7 @@ export function SimulatorBoardShell({
 
   return (
     <div className="simulator-shell relative flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-black text-stone-200">
-      <header className="relative z-10 flex shrink-0 items-center justify-between gap-2 px-4 py-3 sm:px-5 sm:py-3.5">
+      <header className="relative z-10 flex shrink-0 items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-2.5">
         <div className="min-w-0 space-y-0.5">
           <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-stone-300/65">
             Pitchside
@@ -517,60 +516,25 @@ export function SimulatorBoardShell({
           <h1 className="truncate text-[15px] font-semibold tracking-tight text-stone-100/95 sm:text-base">
             Match simulator
           </h1>
-          <p className="hidden text-[10px] text-stone-300/60 sm:block">
+          <p className="hidden text-[10px] text-stone-300/60 lg:block">
             Field view — training strip in natural grass.
           </p>
         </div>
       </header>
 
-      <main className="simulator-shell-main relative z-10 flex min-h-0 flex-1 flex-col gap-2.5 px-3 pb-3 pt-1.5 sm:gap-3 sm:px-4 sm:pb-4 sm:pt-2 lg:flex-row lg:items-center lg:justify-center lg:gap-4 lg:px-4 lg:py-3 xl:gap-5 xl:px-5">
-        <aside className="order-2 flex shrink-0 flex-row gap-2 lg:order-1 lg:w-[9.25rem] lg:flex-col lg:justify-center lg:gap-2">
-          <ToolRail title="Transport" className="min-w-0 flex-1 lg:flex-none">
+      <main className="simulator-shell-main relative z-10 flex min-h-0 flex-1 flex-col gap-1.5 px-2 pb-2 pt-1 sm:gap-2 sm:px-3 sm:pb-3">
+        <div className="simulator-pitch-stack order-1 flex min-h-0 min-w-0 flex-[1_1_auto] flex-col items-center justify-center">
+          <div className="simulator-pitch-stage relative w-full max-w-full px-0">
             <div
-              className="grid grid-cols-3 gap-1 lg:grid-cols-1"
-              role="group"
-              aria-label="Playback transport"
-            >
-              <Button
-                type="button"
-                variant="secondary"
-                className={cn(btnBase, btnIdle)}
-                onClick={() => surfaceRef.current?.play()}
-              >
-                Play
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className={cn(btnBase, btnIdle)}
-                onClick={() => surfaceRef.current?.pause()}
-              >
-                Pause
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className={cn(btnBase, btnIdle)}
-                onClick={() => surfaceRef.current?.reset()}
-              >
-                Reset
-              </Button>
-            </div>
-          </ToolRail>
-        </aside>
-
-        <div className="simulator-pitch-stack order-1 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center lg:order-2 lg:max-w-[min(99vw,82rem)]">
-          <div className="simulator-pitch-stage relative w-full max-w-full px-0 sm:px-1">
-            <div
-              className="simulator-pitch-frame relative overflow-hidden rounded-[0.95rem] p-1.5 sm:p-2"
+              className="simulator-pitch-frame relative overflow-hidden rounded-[0.8rem] p-0.5 sm:rounded-[0.9rem] sm:p-1"
               style={{
                 backgroundColor: "#000",
                 boxShadow:
-                  "0 16px 44px -24px rgba(0, 0, 0, 0.64), inset 0 0 0 1px rgba(255,255,255,0.05)",
+                  "0 10px 26px -18px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255,255,255,0.04)",
               }}
             >
               <div
-                className="simulator-pitch-frame-inner relative z-10 overflow-hidden rounded-[0.82rem] p-0.5 sm:p-1"
+                className="simulator-pitch-frame-inner relative z-10 overflow-hidden rounded-[0.75rem] p-0"
                 style={{
                   backgroundColor: "#000",
                 }}
@@ -578,7 +542,7 @@ export function SimulatorBoardShell({
                 <div
                   ref={pitchHostRef}
                   className={cn(
-                    "simulator-pitch-host-wrap relative overflow-hidden rounded-xl",
+                    "simulator-pitch-host-wrap relative overflow-hidden rounded-[0.72rem]",
                     surfaceMode === "STATS" &&
                       !canStatsPitchLog &&
                       "ring-2 ring-amber-400/35 ring-offset-0",
@@ -615,24 +579,59 @@ export function SimulatorBoardShell({
                     }
                     statsReviewMode={reviewMode}
                     statsPitchInteractive={canStatsPitchLog}
-                    className="max-h-[min(74dvh,calc(100dvw-1rem))] w-full !rounded-md !border-0 !bg-transparent !shadow-none !ring-0 sm:max-h-[min(78dvh,88vw)] lg:max-h-[min(84dvh,66rem)]"
+                    className="max-h-[min(80dvh,calc(100dvw-0.6rem))] w-full !rounded-[0.62rem] !border-0 !bg-transparent !shadow-none !ring-0 sm:max-h-[min(82dvh,96vw)] lg:max-h-[min(84dvh,92vw)]"
                   />
                 </div>
               </div>
             </div>
           </div>
-          <p className="mx-auto mt-2.5 max-w-md px-2 text-center text-[9px] font-medium uppercase leading-relaxed tracking-[0.1em] text-stone-300/50 sm:mt-3 sm:text-[10px] sm:tracking-[0.12em]">
+          <p className="mx-auto mt-1.5 max-w-md px-1 text-center text-[8px] font-medium uppercase leading-relaxed tracking-[0.08em] text-stone-300/46 sm:text-[9px] sm:tracking-[0.1em]">
             {surfaceMode === "STATS"
               ? canStatsPitchLog
-                ? "Pick event type · tap the pitch to log · same Pixi canvas as simulator"
-                : "Review or pause · use match control to start / resume play · filters refine pitch dots"
-              : "Select a player · draw on the pitch · transport on the left"}
+                ? "Pick event type · tap pitch to log"
+                : "Review or pause · resume to continue logging"
+              : "Select player · draw path · transport below"}
           </p>
         </div>
 
-        <aside className="order-3 flex shrink-0 flex-row flex-wrap gap-2 lg:w-[9.5rem] lg:flex-col lg:justify-center lg:gap-2">
-          <ToolRail title="Mode" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
-            <div className="flex flex-col gap-1.5" role="group" aria-label="Canvas mode">
+        <aside className="order-2 flex shrink-0 flex-row gap-1">
+          <ToolRail title="Transport" className="min-w-0 w-full">
+            <div
+              className="grid grid-cols-3 gap-1"
+              role="group"
+              aria-label="Playback transport"
+            >
+              <Button
+                type="button"
+                variant="secondary"
+                className={cn(btnBase, btnIdle)}
+                onClick={() => surfaceRef.current?.play()}
+              >
+                Play
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className={cn(btnBase, btnIdle)}
+                onClick={() => surfaceRef.current?.pause()}
+              >
+                Pause
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className={cn(btnBase, btnIdle)}
+                onClick={() => surfaceRef.current?.reset()}
+              >
+                Reset
+              </Button>
+            </div>
+          </ToolRail>
+        </aside>
+
+        <aside className="order-3 flex shrink-0 flex-row flex-wrap gap-1">
+          <ToolRail title="Mode" className="min-w-0 flex-1 basis-[48%]">
+            <div className="flex flex-row gap-1" role="group" aria-label="Canvas mode">
               <Button
                 type="button"
                 variant="secondary"
@@ -643,7 +642,7 @@ export function SimulatorBoardShell({
                 aria-pressed={surfaceMode === "SIMULATOR"}
                 onClick={() => setMode("SIMULATOR")}
               >
-                Simulator
+                Sim
               </Button>
               <Button
                 type="button"
@@ -660,7 +659,7 @@ export function SimulatorBoardShell({
             </div>
             {surfaceMode === "STATS" ? (
               <div
-                className="mt-0.5 flex max-h-[min(62vh,24rem)] flex-col gap-1.5 overflow-y-auto pr-0.5"
+                className="mt-0.5 flex max-h-[min(38vh,18rem)] flex-col gap-1 overflow-y-auto pr-0.5"
                 role="group"
                 aria-label="Stats logging"
               >
@@ -879,8 +878,8 @@ export function SimulatorBoardShell({
               </div>
             ) : null}
           </ToolRail>
-          <ToolRail title="Pitch" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
-            <div className="flex flex-col gap-1.5" role="group" aria-label="Pitch sport">
+          <ToolRail title="Pitch" className="min-w-0 flex-1 basis-[48%]">
+            <div className="flex flex-row flex-wrap gap-1" role="group" aria-label="Pitch sport">
               {SPORT_OPTIONS.map((opt) => (
                 <Button
                   key={opt.id}
@@ -897,8 +896,8 @@ export function SimulatorBoardShell({
               ))}
             </div>
           </ToolRail>
-          <ToolRail title="Capture" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
-            <div className="flex flex-col gap-1.5" role="group" aria-label="Path capture">
+          <ToolRail title="Capture" className="min-w-0 flex-1 basis-[48%]">
+            <div className="flex flex-row flex-wrap gap-1" role="group" aria-label="Path capture">
               <Button
                 type="button"
                 variant="secondary"
@@ -907,7 +906,7 @@ export function SimulatorBoardShell({
                 aria-pressed={pathRecording}
                 onClick={() => setMainRecording(!pathRecording)}
               >
-                {pathRecording ? "Recording path…" : "Record path"}
+                {pathRecording ? "Path on" : "Path"}
               </Button>
               <Button
                 type="button"
@@ -917,7 +916,7 @@ export function SimulatorBoardShell({
                 aria-pressed={shadowRecording}
                 onClick={() => setShadowLineRecording(!shadowRecording)}
               >
-                {shadowRecording ? "Shadow line…" : "Shadow line"}
+                {shadowRecording ? "Shadow on" : "Shadow"}
               </Button>
               <Button
                 type="button"
@@ -925,7 +924,7 @@ export function SimulatorBoardShell({
                 className={cn(btnBase, btnIdle)}
                 onClick={onExportPitchPng}
               >
-                Export pitch PNG
+                Export
               </Button>
               <Button
                 type="button"
@@ -933,7 +932,7 @@ export function SimulatorBoardShell({
                 className={cn(btnBase, btnIdle)}
                 onClick={onSharePitchPng}
               >
-                Share pitch
+                Share
               </Button>
               {pitchExportError ? (
                 <p className="text-[9px] text-amber-200/90">{pitchExportError}</p>
