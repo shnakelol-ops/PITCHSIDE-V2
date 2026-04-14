@@ -163,9 +163,28 @@ export function drawStatsEventsGraphics(
     const sw = Math.min(1.2, st.strokeWidth * Math.min(1.12, rMul));
     const fillC = parseCssColorForPixi(st.fill);
     const strokeC = parseCssColorForPixi(st.stroke);
-    g.circle(x, y, effR)
-      .fill({ color: fillC.color, alpha: fillC.alpha })
-      .stroke({ width: sw, color: strokeC.color, alpha: strokeC.alpha });
+    if (st.shape === "cross") {
+      const arm = effR * 1.05;
+      g.moveTo(x - arm, y - arm)
+        .lineTo(x + arm, y + arm)
+        .moveTo(x + arm, y - arm)
+        .lineTo(x - arm, y + arm)
+        .stroke({ width: Math.max(sw, 1), color: strokeC.color, alpha: strokeC.alpha });
+      g.circle(x, y, Math.max(0.8, effR * 0.34)).fill({
+        color: fillC.color,
+        alpha: Math.max(0.75, fillC.alpha * 0.85),
+      });
+    } else if (st.shape === "triangle") {
+      const h = effR * 1.18;
+      const w = effR * 1.05;
+      g.poly([x, y - h, x + w, y + h * 0.72, x - w, y + h * 0.72])
+        .fill({ color: fillC.color, alpha: fillC.alpha })
+        .stroke({ width: sw, color: strokeC.color, alpha: strokeC.alpha });
+    } else {
+      g.circle(x, y, effR)
+        .fill({ color: fillC.color, alpha: fillC.alpha })
+        .stroke({ width: sw, color: strokeC.color, alpha: strokeC.alpha });
+    }
     i += 1;
   }
 }

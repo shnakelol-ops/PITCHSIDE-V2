@@ -65,6 +65,8 @@ export type SimulatorPixiSurfaceProps = {
   statsReviewMode?: StatsReviewMode;
   /** When false (e.g. HT/FT review), pitch stops accepting logs; dots stay visible. */
   statsPitchInteractive?: boolean;
+  /** In locked review overlays, athlete drag/path capture is disabled. */
+  interactionLocked?: boolean;
   className?: string;
 };
 
@@ -88,6 +90,7 @@ export const SimulatorPixiSurface = forwardRef<
     onStatsPitchTap,
     statsReviewMode = "live",
     statsPitchInteractive = true,
+    interactionLocked = false,
     className,
   },
   ref,
@@ -105,6 +108,7 @@ export const SimulatorPixiSurface = forwardRef<
   const statsArmRef = useRef<StatsV1EventKind | null>(statsArm);
   const onStatsPitchTapRef = useRef(onStatsPitchTap);
   const statsPitchInteractiveRef = useRef(statsPitchInteractive);
+  const interactionLockedRef = useRef(interactionLocked);
   const statsReviewModeRef = useRef(statsReviewMode);
   const statsLoggedEventsRef = useRef(statsLoggedEvents);
   const worldScaleRef = useRef(1);
@@ -123,6 +127,7 @@ export const SimulatorPixiSurface = forwardRef<
   statsArmRef.current = statsArm;
   onStatsPitchTapRef.current = onStatsPitchTap;
   statsPitchInteractiveRef.current = statsPitchInteractive;
+  interactionLockedRef.current = interactionLocked;
   statsReviewModeRef.current = statsReviewMode;
   statsLoggedEventsRef.current = statsLoggedEvents;
   const selectedAthleteIdRef = useRef<string | null>(null);
@@ -269,6 +274,7 @@ export const SimulatorPixiSurface = forwardRef<
         .fill({ color: 0xffffff, alpha: 0.0001 });
       const statsInteractiveInit =
         surfaceModeRef.current === "STATS" &&
+        !interactionLockedRef.current &&
         statsPitchInteractiveRef.current &&
         statsArmRef.current != null &&
         Boolean(onStatsPitchTapRef.current);
@@ -334,6 +340,7 @@ export const SimulatorPixiSurface = forwardRef<
           isRecording: () => recordingModeRef.current,
           isShadowRecording: () => shadowRecordingModeRef.current,
           isPlaybackDriving: () => playbackDrivingRef.current,
+          isInteractionLocked: () => interactionLockedRef.current,
           onSelectionChange: (id) => {
             selectedAthleteIdRef.current = id;
             if (recordingModeRef.current && id != null) {
@@ -412,6 +419,7 @@ export const SimulatorPixiSurface = forwardRef<
     if (!statsHit || !statsDots || !statsLayer) return;
     const canLog =
       surfaceMode === "STATS" &&
+      !interactionLocked &&
       statsPitchInteractive &&
       statsArm != null &&
       Boolean(onStatsPitchTap);
@@ -429,6 +437,7 @@ export const SimulatorPixiSurface = forwardRef<
     statsLoggedEvents,
     statsReviewMode,
     statsPitchInteractive,
+    interactionLocked,
     statsArm,
     onStatsPitchTap,
     statsOverlayEpoch,

@@ -48,6 +48,43 @@ import type { StatsReviewMode } from "@src/features/stats/types/stats-review-mod
 import { useMagneticTapAssist } from "@src/features/simulator/hooks/use-magnetic-tap-assist";
 import { cn } from "@pitchside/utils";
 
+type HalftimeReviewLayerId =
+  | "scoring"
+  | "misses"
+  | "turnovers"
+  | "set_pieces";
+
+type HalftimeReviewLayer = {
+  id: HalftimeReviewLayerId;
+  label: string;
+  kinds: readonly StatsV1EventKind[];
+};
+
+const HALFTIME_REVIEW_LAYERS: readonly HalftimeReviewLayer[] = [
+  {
+    id: "scoring",
+    label: "Scoring",
+    kinds: ["GOAL", "POINT", "TWO_POINT"],
+  },
+  {
+    id: "misses",
+    label: "Misses",
+    kinds: ["WIDE", "SHOT"],
+  },
+  {
+    id: "turnovers",
+    label: "Turnovers",
+    kinds: ["TURNOVER_WON", "TURNOVER_LOST"],
+  },
+  {
+    id: "set_pieces",
+    label: "Set Pieces",
+    kinds: ["FREE_WON", "FREE_CONCEDED", "KICKOUT_WON", "KICKOUT_LOST"],
+  },
+];
+
+const HALFTIME_SWIPE_THRESHOLD_PX = 36;
+
 const STATS_REVIEW_CHIPS: { mode: StatsReviewMode; label: string }[] = [
   { mode: "live", label: "Live" },
   { mode: "halftime", label: "Review · HT" },
@@ -253,6 +290,7 @@ export function SimulatorBoardShell({
   linkedMatchId = null,
 }: SimulatorBoardShellProps = {}) {
   const [tapPulseTarget, setTapPulseTarget] = useState<string | null>(null);
+  const [halftimeLayerIndex, setHalftimeLayerIndex] = useState(0);
   const [sport, setSport] = useState<PitchSport>("gaelic");
   const [pathRecording, setPathRecording] = useState(false);
   const [shadowRecording, setShadowRecording] = useState(false);
@@ -382,8 +420,16 @@ export function SimulatorBoardShell({
   const [pitchExportError, setPitchExportError] = useState<string | null>(null);
   const [pitchMarkerViewFilter, setPitchMarkerViewFilter] =
     useState<PitchMarkerViewFilter>("all");
+  const halftimeSwipeRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+  } | null>(null);
 
   const isStatsLive = reviewMode === "live";
+  const isHalftimeReviewMode = surfaceMode === "STATS" && reviewMode === "halftime";
+  const halftimeLayer =
+    HALFTIME_REVIEW_LAYERS[halftimeLayerIndex] ?? HALFTIME_REVIEW_LAYERS[0];
 
   const canStatsPitchLog =
     reviewMode === "live" &&
@@ -462,10 +508,88 @@ export function SimulatorBoardShell({
     if (canStatsPitchLog) setPitchMarkerViewFilter("all");
   }, [canStatsPitchLog]);
 
+  useEffect(() => {
+    if (reviewMode === "halftime") {
+      setHalftimeLayerIndex(0);
+    }
+  }, [reviewMode]);
+
+  const shiftHalftimeLayer = useCallback((dir: -1 | 1) => {
+    setHalftimeLayerIndex((prev) => {
+      const next = prev + dir;
+      const total = HALFTIME_REVIEW_LAYERS.length;
+      if (next < 0) return total - 1;
+      if (next >= total) return 0;
+      return next;
+    });
+  }, []);
+
+  const onHalftimeReviewPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!isHalftimeReviewMode) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      halftimeSwipeRef.current = {
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+      };
+    },
+    [isHalftimeReviewMode],
+  );
+
+  const onHalftimeReviewPointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const start = halftimeSwipeRef.current;
+      halftimeSwipeRef.current = null;
+      if (!isHalftimeReviewMode || !start) return;
+      if (start.pointerId !== e.pointerId) return;
+      const dx = e.clientX - start.startX;
+      const dy = e.clientY - start.startY;
+      if (Math.abs(dx) < HALFTIME_SWIPE_THRESHOLD_PX) return;
+      if (Math.abs(dx) <= Math.abs(dy) * 1.1) return;
+      shiftHalftimeLayer(dx < 0 ? 1 : -1);
+    },
+    [isHalftimeReviewMode, shiftHalftimeLayer],
+  );
+
+  const onHalftimeReviewPointerCancel = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (halftimeSwipeRef.current?.pointerId === e.pointerId) {
+        halftimeSwipeRef.current = null;
+      }
+    },
+    [],
+  );
+
+  const halftimeLayerCounts = useMemo(
+    () =>
+      HALFTIME_REVIEW_LAYERS.map((layer) =>
+        statsEvents.reduce(
+          (count, event) => (layer.kinds.includes(event.kind) ? count + 1 : count),
+          0,
+        ),
+      ),
+    [statsEvents],
+  );
+
+  const activeHalftimeLayerCount = halftimeLayerCounts[halftimeLayerIndex] ?? 0;
+
   const statsEventsForPitchView = useMemo(() => {
+    if (surfaceMode !== "STATS") return [];
+    if (isHalftimeReviewMode) {
+      const kindSet = new Set<StatsV1EventKind>(halftimeLayer.kinds);
+      return statsEvents.filter((e) => kindSet.has(e.kind));
+    }
     if (isStatsLive || pitchMarkerViewFilter === "all") return statsEvents;
     return statsEvents.filter((e) => e.kind === pitchMarkerViewFilter);
-  }, [statsEvents, isStatsLive, pitchMarkerViewFilter]);
+  }, [
+    statsEvents,
+    surfaceMode,
+    isHalftimeReviewMode,
+    halftimeLayer,
+    isStatsLive,
+    pitchMarkerViewFilter,
+  ]);
   const pendingScore = useMemo(
     () => findLatestScorePendingScorer(statsEvents),
     [statsEvents],
@@ -607,9 +731,25 @@ export function SimulatorBoardShell({
         </div>
       </header>
 
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14">
+      <main
+        className={cn(
+          "relative z-10 flex min-h-0 flex-1",
+          isHalftimeReviewMode
+            ? "items-stretch justify-stretch p-2 sm:p-3 lg:p-4"
+            : "flex-col gap-4 p-4 sm:gap-5 sm:p-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14",
+        )}
+      >
+        {isHalftimeReviewMode ? (
+          <div
+            className="pointer-events-none absolute inset-0 z-0 bg-[rgba(9,12,16,0.18)]"
+            aria-hidden
+          />
+        ) : null}
         <aside
-          className="order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4"
+          className={cn(
+            "order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4",
+            isHalftimeReviewMode && "hidden",
+          )}
           data-sim-control-scope
           onPointerDownCapture={tapAssistHandlers.onPointerDownCapture}
           onPointerMoveCapture={tapAssistHandlers.onPointerMoveCapture}
@@ -672,8 +812,20 @@ export function SimulatorBoardShell({
           </ToolRail>
         </aside>
 
-        <div className="order-1 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center lg:order-2 lg:max-w-[min(96vw,74rem)]">
-          <div className="relative w-full max-w-full px-1 sm:px-2">
+        <div
+          className={cn(
+            "relative z-10 order-1 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center",
+            isHalftimeReviewMode
+              ? "h-full w-full max-w-none"
+              : "lg:order-2 lg:max-w-[min(96vw,74rem)]",
+          )}
+        >
+          <div
+            className={cn(
+              "relative w-full max-w-full",
+              isHalftimeReviewMode ? "h-full px-0" : "px-1 sm:px-2",
+            )}
+          >
             {/* Soft lift behind pitch — no hard frame ring */}
             <div
               className="pointer-events-none absolute -inset-4 rounded-[1.75rem] bg-[radial-gradient(ellipse_at_50%_42%,rgba(62,70,48,0.14),transparent_68%)] blur-xl"
@@ -734,7 +886,17 @@ export function SimulatorBoardShell({
                     surfaceMode === "STATS" &&
                       !canStatsPitchLog &&
                       "ring-2 ring-amber-400/35 ring-offset-0",
+                    isHalftimeReviewMode && "h-full",
                   )}
+                  onPointerDown={
+                    isHalftimeReviewMode ? onHalftimeReviewPointerDown : undefined
+                  }
+                  onPointerUp={
+                    isHalftimeReviewMode ? onHalftimeReviewPointerUp : undefined
+                  }
+                  onPointerCancel={
+                    isHalftimeReviewMode ? onHalftimeReviewPointerCancel : undefined
+                  }
                   style={{
                     backgroundColor: C.canvasWell,
                     boxShadow: [
@@ -748,6 +910,29 @@ export function SimulatorBoardShell({
                     ].join(", "),
                   }}
                 >
+                  {isHalftimeReviewMode ? (
+                    <div className="absolute inset-x-2 top-2 z-20 flex items-start justify-between gap-2">
+                      <div className="pointer-events-none rounded-md border border-white/20 bg-black/34 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.09em] text-white/88">
+                        <p>{halftimeLayer.label}</p>
+                        <p className="text-[9px] font-medium tracking-[0.07em] text-white/72">
+                          {activeHalftimeLayerCount} events · swipe <span aria-hidden>← →</span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="pointer-events-none rounded-md border border-white/20 bg-black/34 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/78">
+                          {halftimeLayerIndex + 1}/{HALFTIME_REVIEW_LAYERS.length}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className={cn("min-h-7 px-2 py-1 text-[9px]", btnBase, btnSportOn)}
+                          onClick={onMatchMorph}
+                        >
+                          Start 2nd Half
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
                   <SimulatorPixiSurface
                     ref={surfaceRef}
                     sport={sport}
@@ -767,23 +952,34 @@ export function SimulatorBoardShell({
                     }
                     statsReviewMode={reviewMode}
                     statsPitchInteractive={canStatsPitchLog}
-                    className="max-h-[min(68dvh,calc(100dvw-2.5rem))] w-full !rounded-lg !border-0 !bg-transparent !shadow-none !ring-0 sm:max-h-[min(72dvh,80vw)] lg:max-h-[min(78dvh,58rem)]"
+                    interactionLocked={isHalftimeReviewMode}
+                    className={cn(
+                      "w-full !rounded-lg !border-0 !bg-transparent !shadow-none !ring-0",
+                      isHalftimeReviewMode
+                        ? "max-h-[min(90dvh,calc(100dvw-1.3rem))] sm:max-h-[92dvh] lg:max-h-[94dvh]"
+                        : "max-h-[min(68dvh,calc(100dvw-2.5rem))] sm:max-h-[min(72dvh,80vw)] lg:max-h-[min(78dvh,58rem)]",
+                    )}
                   />
                 </div>
               </div>
             </div>
           </div>
-          <p className="mx-auto mt-4 max-w-md px-3 text-center text-[10px] font-medium uppercase leading-relaxed tracking-[0.14em] text-stone-800/55 sm:mt-5 sm:text-[11px] sm:tracking-[0.16em]">
-            {surfaceMode === "STATS"
-              ? canStatsPitchLog
-                ? "Pick event type · tap the pitch to log · same Pixi canvas as simulator"
-                : "Review or pause · use match control to start / resume play · filters refine pitch dots"
-              : "Select a player · draw on the pitch · transport on the left"}
-          </p>
+          {!isHalftimeReviewMode ? (
+            <p className="mx-auto mt-4 max-w-md px-3 text-center text-[10px] font-medium uppercase leading-relaxed tracking-[0.14em] text-stone-800/55 sm:mt-5 sm:text-[11px] sm:tracking-[0.16em]">
+              {surfaceMode === "STATS"
+                ? canStatsPitchLog
+                  ? "Pick event type · tap the pitch to log · same Pixi canvas as simulator"
+                  : "Review or pause · use match control to start / resume play · filters refine pitch dots"
+                : "Select a player · draw on the pitch · transport on the left"}
+            </p>
+          ) : null}
         </div>
 
         <aside
-          className="order-3 flex shrink-0 flex-row flex-wrap gap-3.5 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4"
+          className={cn(
+            "order-3 flex shrink-0 flex-row flex-wrap gap-3.5 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4",
+            isHalftimeReviewMode && "hidden",
+          )}
           data-sim-control-scope
           onPointerDownCapture={tapAssistHandlers.onPointerDownCapture}
           onPointerMoveCapture={tapAssistHandlers.onPointerMoveCapture}
@@ -885,7 +1081,7 @@ export function SimulatorBoardShell({
                     Save failed: {statsPersistError}
                   </p>
                 ) : null}
-                {!isStatsLive ? (
+                {!isStatsLive && !isHalftimeReviewMode ? (
                   <div
                     className="flex max-h-28 flex-wrap gap-1 overflow-y-auto pr-0.5"
                     role="group"

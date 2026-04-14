@@ -29,6 +29,8 @@ export type PathRecordingConfig = {
   isShadowRecording?: () => boolean;
   /** When true, pitch draw / athlete drag are disabled (playback owns poses). */
   isPlaybackDriving?: () => boolean;
+  /** Locks all athlete/pitch interactions in review overlays. */
+  isInteractionLocked?: () => boolean;
   onSelectionChange?: (microAthleteId: string | null) => void;
 };
 
@@ -115,6 +117,9 @@ export function mountAthletesPixi(
   });
   bg.eventMode = "static";
   bg.on("pointerdown", (e: FederatedPointerEvent) => {
+    if (pathRecording?.isInteractionLocked?.() === true) {
+      return;
+    }
     if (pathRecording?.isPlaybackDriving?.()) {
       return;
     }
@@ -353,6 +358,12 @@ export function mountAthletesPixi(
     e.stopPropagation();
     const a = findAthlete(id);
     if (!a) return;
+    if (pathRecording?.isInteractionLocked?.() === true) {
+      applySelection(id);
+      syncAll();
+      runScalePump();
+      return;
+    }
     if (pathRecording?.isPlaybackDriving?.()) {
       applySelection(id);
       syncAll();
