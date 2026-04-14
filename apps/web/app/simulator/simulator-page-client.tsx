@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { SimulatorBoardShell } from "@src/features/simulator/simulator-board-shell";
@@ -16,6 +17,15 @@ export default function SimulatorPageClient() {
   const matchIdRaw = sp.get("matchId");
   const initialSurfaceMode = mode === "stats" ? "STATS" : "SIMULATOR";
   const linkedMatchId = isPersistableMatchId(matchIdRaw) ? matchIdRaw : null;
+
+  useEffect(() => {
+    document.documentElement.classList.add("simulator-route");
+    document.body.classList.add("simulator-route");
+    return () => {
+      document.documentElement.classList.remove("simulator-route");
+      document.body.classList.remove("simulator-route");
+    };
+  }, []);
 
   return (
     <SimulatorBoardShell

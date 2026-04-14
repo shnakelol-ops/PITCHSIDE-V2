@@ -122,27 +122,6 @@ const GRASS = {
 };
 
 /** Fractal noise for fine grain + slight patchiness; data URL via `encodeURIComponent`. */
-const grassNoiseDataUrl = `url("data:image/svg+xml,${encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.68" numOctaves="5" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>',
-)}")`;
-
-/** Softer noise for clay / apron — blurred in CSS for premium texture (not gritty). */
-const clayNoiseDataUrl = `url("data:image/svg+xml,${encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><filter id="c"><feTurbulence type="fractalNoise" baseFrequency="0.42" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#c)"/></svg>',
-)}")`;
-
-/** Barely-there concentric curves — stadium lane memory, not a literal track. */
-const laneCurvesDataUrl = `url("data:image/svg+xml,${encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="384" viewBox="0 0 512 384" preserveAspectRatio="none"><ellipse cx="256" cy="198" rx="232" ry="158" fill="none" stroke="#3a3028" stroke-width="0.9" opacity="0.045"/><ellipse cx="256" cy="200" rx="210" ry="142" fill="none" stroke="#3a3028" stroke-width="0.85" opacity="0.034"/><ellipse cx="256" cy="202" rx="188" ry="126" fill="none" stroke="#3a3028" stroke-width="0.8" opacity="0.026"/><ellipse cx="256" cy="204" rx="166" ry="110" fill="none" stroke="#3a3028" stroke-width="0.75" opacity="0.02"/></svg>',
-)}")`;
-
-/** Muted terracotta / clay (no athletics orange). */
-const CLAY = {
-  deep: "#6e5a52",
-  mid: "#7d6860",
-  light: "#8c756c",
-};
-
 /** Chalk / cream line at pitch boundary — soft, not stark white. */
 const CHALK_LINE = "rgba(252, 248, 240, 0.52)";
 
@@ -161,30 +140,6 @@ const GLASS_SIDEBAR = {
   title: "rgba(228, 226, 220, 0.72)",
   shadow:
     "0 4px 24px -4px rgba(0, 0, 0, 0.35), 0 12px 40px -16px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.06)",
-};
-
-/** Thin stadium apron: clay band + lane whispers — Pixi / layout unchanged. */
-const stadiumApronStyle: CSSProperties = {
-  backgroundColor: CLAY.mid,
-  backgroundImage: [
-    `linear-gradient(180deg, rgba(159,175,122,0.26) 0%, transparent 11%, transparent 89%, rgba(132,142,108,0.18) 100%)`,
-    `linear-gradient(168deg, ${CLAY.light} 0%, ${CLAY.mid} 44%, ${CLAY.deep} 100%)`,
-    `radial-gradient(ellipse 98% 72% at 50% 32%, rgba(255,252,248,0.07), transparent 55%)`,
-    `radial-gradient(ellipse 92% 58% at 50% 118%, rgba(42, 34, 30, 0.1), transparent 50%)`,
-  ].join(", "),
-  boxShadow:
-    "inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(38, 30, 26, 0.07)",
-};
-
-/** Uneven field: soft diagonals + gentle vertical drift + light radials (no flat panel fill). */
-const grassFieldStyle: CSSProperties = {
-  backgroundColor: GRASS.fresh,
-  backgroundImage: [
-    `linear-gradient(180deg, rgba(255,255,255,0.045) 0%, transparent 38%, rgba(55, 62, 40, 0.035) 100%)`,
-    `linear-gradient(101deg, ${GRASS.worn} 0%, transparent 26%, ${GRASS.dry} 50%, transparent 70%, ${GRASS.worn} 94%)`,
-    `radial-gradient(ellipse 95% 60% at 72% 18%, rgba(175,167,133,0.22), transparent 54%)`,
-    `radial-gradient(ellipse 80% 50% at 12% 85%, rgba(100, 108, 72, 0.1), transparent 56%)`,
-  ].join(", "),
 };
 
 const btnBase =
@@ -705,27 +660,17 @@ export function SimulatorBoardShell({
 
   return (
     <div
-      className="relative flex h-[100dvh] min-h-0 flex-col overflow-hidden text-stone-800"
-      style={grassFieldStyle}
+      className="simulator-shell relative flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[#0b0f0c] text-stone-200"
     >
-      {/* Minimal grain only (~2.8%) — enough to kill “flat UI”, not noisy. */}
-      <div
-        className="pointer-events-none absolute inset-0 z-0 opacity-[0.028] mix-blend-multiply"
-        style={{
-          backgroundImage: grassNoiseDataUrl,
-          backgroundSize: "240px 240px",
-        }}
-        aria-hidden
-      />
       <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5">
         <div className="min-w-0 space-y-0.5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-stone-800/65">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-stone-300/65">
             Pitchside
           </p>
-          <h1 className="truncate text-base font-semibold tracking-tight text-stone-900/95 sm:text-[17px]">
+          <h1 className="truncate text-base font-semibold tracking-tight text-stone-100/95 sm:text-[17px]">
             Match simulator
           </h1>
-          <p className="hidden text-[11px] text-stone-800/60 sm:block">
+          <p className="hidden text-[11px] text-stone-300/60 sm:block">
             Field view — training strip in natural grass.
           </p>
         </div>
@@ -741,7 +686,7 @@ export function SimulatorBoardShell({
       >
         {isHalftimeReviewMode ? (
           <div
-            className="pointer-events-none absolute inset-0 z-0 bg-[rgba(9,12,16,0.18)]"
+            className="pointer-events-none absolute inset-0 z-0 bg-[rgba(11,15,12,0.55)]"
             aria-hidden
           />
         ) : null}
@@ -834,51 +779,20 @@ export function SimulatorBoardShell({
             <div
               className="relative overflow-hidden rounded-[1.2rem] p-2 sm:p-2.5"
               style={{
-                backgroundColor: GRASS.fresh,
-                backgroundImage: [
-                  `linear-gradient(188deg, rgba(175,167,133,0.16) 0%, transparent 48%, rgba(143,155,106,0.1) 100%)`,
-                  `linear-gradient(88deg, ${GRASS.worn} 0%, transparent 32%, rgba(255,255,255,0.025) 54%, transparent 78%, ${GRASS.dry} 100%)`,
-                ].join(", "),
+                backgroundColor: "#0b0f0c",
                 boxShadow:
                   "0 28px 64px -24px rgba(22, 26, 16, 0.22), 0 12px 32px -18px rgba(22, 26, 16, 0.12)",
               }}
             >
-              <div
-                className="pointer-events-none absolute inset-0 opacity-[0.022] mix-blend-multiply"
-                style={{
-                  backgroundImage: grassNoiseDataUrl,
-                  backgroundSize: "180px 180px",
-                }}
-                aria-hidden
-              />
               {/*
                 Stadium apron: muted clay band, faint lane curves, chalk at pitch — Pixi untouched.
               */}
               <div
                 className="relative z-10 overflow-hidden rounded-[1.05rem] p-1 sm:p-1.5"
                 style={{
-                  ...stadiumApronStyle,
-                  backgroundColor: "#ff0000",
-                  backgroundImage: "none",
+                  backgroundColor: "#0b0f0c",
                 }}
               >
-                <div
-                  className="pointer-events-none absolute inset-0 opacity-[0.038] mix-blend-multiply [filter:blur(0.65px)]"
-                  style={{
-                    backgroundImage: clayNoiseDataUrl,
-                    backgroundSize: "220px 220px",
-                  }}
-                  aria-hidden
-                />
-                <div
-                  className="pointer-events-none absolute inset-0 opacity-[0.32]"
-                  style={{
-                    backgroundImage: laneCurvesDataUrl,
-                    backgroundSize: "cover",
-                    backgroundPosition: "50% 52%",
-                  }}
-                  aria-hidden
-                />
                 <div
                   ref={pitchHostRef}
                   className={cn(
@@ -965,7 +879,7 @@ export function SimulatorBoardShell({
             </div>
           </div>
           {!isHalftimeReviewMode ? (
-            <p className="mx-auto mt-4 max-w-md px-3 text-center text-[10px] font-medium uppercase leading-relaxed tracking-[0.14em] text-stone-800/55 sm:mt-5 sm:text-[11px] sm:tracking-[0.16em]">
+            <p className="mx-auto mt-4 max-w-md px-3 text-center text-[10px] font-medium uppercase leading-relaxed tracking-[0.14em] text-stone-300/55 sm:mt-5 sm:text-[11px] sm:tracking-[0.16em]">
               {surfaceMode === "STATS"
                 ? canStatsPitchLog
                   ? "Pick event type · tap the pitch to log · same Pixi canvas as simulator"

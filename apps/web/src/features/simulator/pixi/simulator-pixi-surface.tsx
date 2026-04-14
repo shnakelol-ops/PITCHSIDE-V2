@@ -33,11 +33,6 @@ import type { StatsReviewMode } from "@src/features/stats/types/stats-review-mod
 import { letterboxPitchWorld, viewportCssToBoardNorm } from "@src/lib/pitch-coordinates";
 import { cn } from "@pitchside/utils";
 
-/** Subtle turf grain on HTML wrapper only — not used by Pixi drawing. */
-const pitchSurroundNoiseDataUrl = `url("data:image/svg+xml,${encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.62" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>',
-)}")`;
-
 export type SimulatorPixiSurfaceHandle = {
   play: () => void;
   pause: () => void;
@@ -454,28 +449,15 @@ export const SimulatorPixiSurface = forwardRef<
     <div
       className="pitch-wrapper relative min-h-0 w-full flex-1 overflow-hidden rounded-2xl p-3 sm:p-4 md:p-5"
       style={{
-        backgroundColor: "#4a2f25",
-        backgroundImage: [
-          "linear-gradient(175deg, rgba(100, 72, 60, 0.2) 0%, transparent 42%, rgba(22, 14, 10, 0.32) 100%)",
-          "linear-gradient(95deg, rgba(32, 20, 16, 0.4) 0%, transparent 48%, rgba(68, 48, 38, 0.22) 100%)",
-          "radial-gradient(ellipse 120% 80% at 50% 0%, rgba(78, 56, 44, 0.14), transparent 55%)",
-        ].join(", "),
+        backgroundColor: "#0b0f0c",
         boxShadow:
           "inset 0 2px 12px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.045), inset 0 -2px 16px rgba(0, 0, 0, 0.2)",
       }}
     >
       <div
-        className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.045] mix-blend-multiply"
-        style={{
-          backgroundImage: pitchSurroundNoiseDataUrl,
-          backgroundSize: "200px 200px",
-        }}
-        aria-hidden
-      />
-      <div
         ref={hostRef}
         className={cn(
-          "relative z-10 mx-auto min-h-0 w-full max-w-full overflow-hidden rounded-lg bg-transparent",
+          "relative z-10 mx-auto min-h-0 w-full max-w-full overflow-hidden rounded-lg bg-[#0b0f0c]",
           className,
         )}
         style={{

@@ -49,3 +49,27 @@ body {
     background-color: transparent;
   }
 }
+
+html.simulator-route,
+body.simulator-route {
+  background: #0b0f0c !important;
+  background-image: none !important;
+}
+
+.simulator-root,
+.simulator-shell {
+  background: #0b0f0c !important;
+  background-image: none !important;
+}
+
+.simulator-root *,
+.simulator-shell * {
+  background-image: none !important;
+}
+
+.simulator-root *::before,
+.simulator-root *::after,
+.simulator-shell *::before,
+.simulator-shell *::after {
+  background-image: none !important;
+}
