@@ -38,9 +38,9 @@ export default async function MatchesPage() {
           <p className="text-sm text-slate-600 dark:text-slate-400">
             {matches.length} {matches.length === 1 ? "match" : "matches"}
           </p>
-          <Button asChild>
-            <Link href="/matches/new">New Match</Link>
-          </Button>
+          <Link href="/matches/new">
+            <Button>New Match</Button>
+          </Link>
         </div>
 
         {matches.length === 0 ? (

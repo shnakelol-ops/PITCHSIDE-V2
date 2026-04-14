@@ -609,7 +609,7 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
   return (
     <div
       className={cn(
-        "relative min-w-0 overflow-hidden rounded-[1.25rem] border border-white/75 bg-gradient-to-b from-white via-white to-slate-50/40 shadow-[0_28px_64px_-28px_rgba(15,118,110,0.22),0_0_0_1px_rgba(15,118,110,0.05)] ring-1 ring-slate-900/[0.03] dark:border-slate-700/85 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900/90 dark:shadow-[0_40px_88px_-36px_rgba(0,0,0,0.58),0_0_0_1px_rgba(255,255,255,0.04)] dark:ring-white/[0.04]",
+        "relative flex min-w-0 flex-col overflow-hidden rounded-[1.25rem] border border-white/75 bg-gradient-to-b from-white via-white to-slate-50/40 shadow-[0_28px_64px_-28px_rgba(15,118,110,0.22),0_0_0_1px_rgba(15,118,110,0.05)] ring-1 ring-slate-900/[0.03] dark:border-slate-700/85 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900/90 dark:shadow-[0_40px_88px_-36px_rgba(0,0,0,0.58),0_0_0_1px_rgba(255,255,255,0.04)] dark:ring-white/[0.04]",
         isPresentMode &&
           "fixed inset-0 z-[90] rounded-none border-0 bg-slate-950 shadow-none ring-0 dark:border-0",
       )}
@@ -693,7 +693,7 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
 
       <div
         className={cn(
-          "relative mx-auto min-h-0 w-full px-3 pb-3 sm:px-5 sm:pb-6 lg:px-7",
+          "order-2 relative mx-auto min-h-0 w-full px-3 pb-3 sm:px-5 sm:pb-6 lg:order-1 lg:px-7",
           isPresentMode && "flex h-[calc(100vh-4.5rem)] flex-col px-0 pb-0 sm:px-0",
         )}
       >
@@ -1002,7 +1002,7 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
       </div>
 
       {!isPresentMode ? (
-        <div className="mx-3 mt-7 sm:mx-5 lg:mx-8">
+        <div className="order-1 mx-3 mb-5 sm:mx-5 lg:order-2 lg:mx-8 lg:mb-0 lg:mt-7">
         <p className="mb-3.5 text-[10px] font-bold uppercase tracking-[0.24em] text-slate-600 dark:text-slate-400">
           Coaching control panel
         </p>
@@ -1169,7 +1169,7 @@ export function BoardV1Panel({ matchId }: BoardV1PanelProps) {
       ) : null}
 
       {!isPresentMode ? (
-        <div className="mx-5 mt-7 rounded-2xl border border-slate-200/75 bg-gradient-to-b from-slate-100/90 to-slate-100/50 px-4 py-3.5 text-center shadow-inner ring-1 ring-slate-900/[0.03] dark:border-slate-700/75 dark:from-slate-900/70 dark:to-slate-900/50 dark:ring-white/[0.04] sm:mx-7 lg:mx-9">
+        <div className="order-3 mx-5 mt-7 rounded-2xl border border-slate-200/75 bg-gradient-to-b from-slate-100/90 to-slate-100/50 px-4 py-3.5 text-center shadow-inner ring-1 ring-slate-900/[0.03] dark:border-slate-700/75 dark:from-slate-900/70 dark:to-slate-900/50 dark:ring-white/[0.04] sm:mx-7 lg:mx-9">
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
           Canvas status
         </p>
