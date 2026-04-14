@@ -6,9 +6,7 @@ import SimulatorPageClient from "./simulator-page-client";
 export default function SimulatorPage() {
   return (
     <div className="simulator-root min-h-[100dvh] bg-[#0b0f0c] text-stone-100">
-      <Suspense
-        fallback={<div className="simulator-root min-h-[100dvh]" aria-hidden />}
-      >
+      <Suspense fallback={null}>
         <SimulatorPageClient />
       </Suspense>
     </div>

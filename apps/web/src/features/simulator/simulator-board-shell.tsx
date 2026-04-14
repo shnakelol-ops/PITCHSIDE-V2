@@ -505,8 +505,10 @@ export function SimulatorBoardShell({
     }
   };
 
+  console.log("PIX I V1 ACTIVE");
+
   return (
-    <div className="simulator-shell relative flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[#0b0f0c] text-stone-200">
+    <div className="simulator-shell relative flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-black text-stone-200">
       <header className="relative z-10 flex shrink-0 items-center justify-between gap-2 px-4 py-3 sm:px-5 sm:py-3.5">
         <div className="min-w-0 space-y-0.5">
           <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-stone-300/65">
@@ -562,7 +564,7 @@ export function SimulatorBoardShell({
             <div
               className="simulator-pitch-frame relative overflow-hidden rounded-[0.95rem] p-1.5 sm:p-2"
               style={{
-                backgroundColor: "#0b0f0c",
+                backgroundColor: "#000",
                 boxShadow:
                   "0 16px 44px -24px rgba(0, 0, 0, 0.64), inset 0 0 0 1px rgba(255,255,255,0.05)",
               }}
@@ -570,7 +572,7 @@ export function SimulatorBoardShell({
               <div
                 className="simulator-pitch-frame-inner relative z-10 overflow-hidden rounded-[0.82rem] p-0.5 sm:p-1"
                 style={{
-                  backgroundColor: "#0b0f0c",
+                  backgroundColor: "#000",
                 }}
               >
                 <div

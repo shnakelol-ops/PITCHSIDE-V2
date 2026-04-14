@@ -61,7 +61,8 @@ body.simulator-route {
 /* Next.js top wrappers (App Router) above page content. */
 body.simulator-route > div,
 body.simulator-route > main,
-body.simulator-route [data-nextjs-scroll-focus-boundary] {
+body.simulator-route [data-nextjs-scroll-focus-boundary],
+body.simulator-route #__next {
   background: #0b0f0c !important;
   background-image: none !important;
 }

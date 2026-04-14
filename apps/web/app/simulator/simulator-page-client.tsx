@@ -27,10 +27,5 @@ export default function SimulatorPageClient() {
     };
   }, []);
 
-  return (
-    <SimulatorBoardShell
-      initialSurfaceMode={initialSurfaceMode}
-      linkedMatchId={linkedMatchId}
-    />
-  );
+  return <SimulatorBoardShell initialSurfaceMode={initialSurfaceMode} linkedMatchId={linkedMatchId} />;
 }

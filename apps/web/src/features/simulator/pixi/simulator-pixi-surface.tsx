@@ -455,6 +455,8 @@ export const SimulatorPixiSurface = forwardRef<
         )}
         style={{
           aspectRatio: getPitchBoardAspectRatio(sport),
+          width: "100%",
+          height: "100%",
           touchAction: "none",
           WebkitUserSelect: "none",
           userSelect: "none",
