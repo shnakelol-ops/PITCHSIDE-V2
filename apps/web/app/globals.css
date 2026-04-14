@@ -50,26 +50,65 @@ body {
   }
 }
 
+/* TEMPORARY KILL SWITCH — simulator route background bleed hard stop. */
 html.simulator-route,
+html.simulator-route body,
 body.simulator-route {
   background: #0b0f0c !important;
   background-image: none !important;
 }
 
-.simulator-root,
-.simulator-shell {
+/* Next.js top wrappers (App Router) above page content. */
+body.simulator-route > div,
+body.simulator-route > main,
+body.simulator-route [data-nextjs-scroll-focus-boundary] {
   background: #0b0f0c !important;
   background-image: none !important;
 }
 
-.simulator-root *,
-.simulator-shell * {
+/* Route/page + board shell wrapper chain. */
+.simulator-root,
+.simulator-shell,
+.simulator-shell-main,
+.simulator-pitch-stack,
+.simulator-pitch-stage,
+.simulator-pitch-frame,
+.simulator-pitch-frame-inner,
+.simulator-pitch-host-wrap,
+.simulator-pitch-wrapper,
+.simulator-pitch-host {
+  background: #0b0f0c !important;
   background-image: none !important;
 }
 
-.simulator-root *::before,
-.simulator-root *::after,
-.simulator-shell *::before,
-.simulator-shell *::after {
+/* Block pseudo-layer overlays from leaking textures. */
+.simulator-root::before,
+.simulator-root::after,
+.simulator-shell::before,
+.simulator-shell::after,
+.simulator-shell-main::before,
+.simulator-shell-main::after,
+.simulator-pitch-stack::before,
+.simulator-pitch-stack::after,
+.simulator-pitch-stage::before,
+.simulator-pitch-stage::after,
+.simulator-pitch-frame::before,
+.simulator-pitch-frame::after,
+.simulator-pitch-frame-inner::before,
+.simulator-pitch-frame-inner::after,
+.simulator-pitch-host-wrap::before,
+.simulator-pitch-host-wrap::after,
+.simulator-pitch-wrapper::before,
+.simulator-pitch-wrapper::after,
+.simulator-pitch-host::before,
+.simulator-pitch-host::after {
+  background: #0b0f0c !important;
+  background-image: none !important;
+}
+
+/* Ensure canvas itself stays neutral and cannot inherit CSS backgrounds. */
+.simulator-route canvas,
+.simulator-route .simulator-pitch-host canvas {
+  background: transparent !important;
   background-image: none !important;
 }

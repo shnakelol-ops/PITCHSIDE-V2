@@ -228,6 +228,8 @@ export const SimulatorPixiSurface = forwardRef<
       app.canvas.style.width = "100%";
       app.canvas.style.height = "100%";
       app.canvas.style.display = "block";
+      app.canvas.style.background = "transparent";
+      app.canvas.style.backgroundImage = "none";
       app.canvas.style.touchAction = "none";
       app.canvas.style.userSelect = "none";
 
@@ -438,7 +440,7 @@ export const SimulatorPixiSurface = forwardRef<
 
   return (
     <div
-      className="pitch-wrapper relative min-h-0 w-full flex-1 overflow-hidden rounded-2xl p-3 sm:p-4 md:p-5"
+      className="simulator-pitch-wrapper pitch-wrapper relative min-h-0 w-full flex-1 overflow-hidden rounded-2xl p-3 sm:p-4 md:p-5"
       style={{
         backgroundColor: "#0b0f0c",
         boxShadow:
@@ -448,7 +450,7 @@ export const SimulatorPixiSurface = forwardRef<
       <div
         ref={hostRef}
         className={cn(
-          "relative z-10 mx-auto min-h-0 w-full max-w-full overflow-hidden rounded-lg bg-[#0b0f0c]",
+          "simulator-pitch-host relative z-10 mx-auto min-h-0 w-full max-w-full overflow-hidden rounded-lg bg-[#0b0f0c]",
           className,
         )}
         style={{

@@ -506,9 +506,7 @@ export function SimulatorBoardShell({
   };
 
   return (
-    <div
-      className="simulator-shell relative flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[#0b0f0c] text-stone-200"
-    >
+    <div className="simulator-shell relative flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[#0b0f0c] text-stone-200">
       <header className="relative z-10 flex shrink-0 items-center justify-between gap-2 px-4 py-3 sm:px-5 sm:py-3.5">
         <div className="min-w-0 space-y-0.5">
           <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-stone-300/65">
@@ -523,7 +521,7 @@ export function SimulatorBoardShell({
         </div>
       </header>
 
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-2.5 px-3 pb-3 pt-1.5 sm:gap-3 sm:px-4 sm:pb-4 sm:pt-2 lg:flex-row lg:items-center lg:justify-center lg:gap-4 lg:px-4 lg:py-3 xl:gap-5 xl:px-5">
+      <main className="simulator-shell-main relative z-10 flex min-h-0 flex-1 flex-col gap-2.5 px-3 pb-3 pt-1.5 sm:gap-3 sm:px-4 sm:pb-4 sm:pt-2 lg:flex-row lg:items-center lg:justify-center lg:gap-4 lg:px-4 lg:py-3 xl:gap-5 xl:px-5">
         <aside className="order-2 flex shrink-0 flex-row gap-2 lg:order-1 lg:w-[9.25rem] lg:flex-col lg:justify-center lg:gap-2">
           <ToolRail title="Transport" className="min-w-0 flex-1 lg:flex-none">
             <div
@@ -559,10 +557,10 @@ export function SimulatorBoardShell({
           </ToolRail>
         </aside>
 
-        <div className="order-1 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center lg:order-2 lg:max-w-[min(99vw,82rem)]">
-          <div className="relative w-full max-w-full px-0 sm:px-1">
+        <div className="simulator-pitch-stack order-1 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center lg:order-2 lg:max-w-[min(99vw,82rem)]">
+          <div className="simulator-pitch-stage relative w-full max-w-full px-0 sm:px-1">
             <div
-              className="relative overflow-hidden rounded-[0.95rem] p-1.5 sm:p-2"
+              className="simulator-pitch-frame relative overflow-hidden rounded-[0.95rem] p-1.5 sm:p-2"
               style={{
                 backgroundColor: "#0b0f0c",
                 boxShadow:
@@ -570,7 +568,7 @@ export function SimulatorBoardShell({
               }}
             >
               <div
-                className="relative z-10 overflow-hidden rounded-[0.82rem] p-0.5 sm:p-1"
+                className="simulator-pitch-frame-inner relative z-10 overflow-hidden rounded-[0.82rem] p-0.5 sm:p-1"
                 style={{
                   backgroundColor: "#0b0f0c",
                 }}
@@ -578,7 +576,7 @@ export function SimulatorBoardShell({
                 <div
                   ref={pitchHostRef}
                   className={cn(
-                    "relative overflow-hidden rounded-xl",
+                    "simulator-pitch-host-wrap relative overflow-hidden rounded-xl",
                     surfaceMode === "STATS" &&
                       !canStatsPitchLog &&
                       "ring-2 ring-amber-400/35 ring-offset-0",
