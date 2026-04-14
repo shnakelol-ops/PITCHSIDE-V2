@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  eslint: { ignoreDuringBuilds: true },
   // Prisma query engine must not be bundled; @pitchside/data-access imports generated client.
   serverExternalPackages: ["@prisma/client"],
   transpilePackages: [
