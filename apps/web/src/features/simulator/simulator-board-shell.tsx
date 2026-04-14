@@ -85,15 +85,15 @@ const C = {
  * Not used on the pitch aperture / apron.
  */
 const GLASS_SIDEBAR = {
-  bg: "rgba(18, 20, 24, 0.58)",
-  border: "rgba(255, 252, 248, 0.085)",
-  title: "rgba(228, 226, 220, 0.72)",
+  bg: "rgba(14, 17, 20, 0.42)",
+  border: "rgba(255, 252, 248, 0.075)",
+  title: "rgba(228, 226, 220, 0.68)",
   shadow:
-    "0 4px 24px -4px rgba(0, 0, 0, 0.35), 0 12px 40px -16px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.06)",
+    "0 6px 22px -14px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.04)",
 };
 
 const btnBase =
-  "min-h-10 w-full justify-center rounded-[11px] px-3 py-2.5 text-[12px] font-medium leading-tight tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_8px_-2px_rgba(0,0,0,0.35)] transition-[transform,box-shadow,background-color,border-color,color] duration-200 sm:min-h-9 sm:py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(18,20,24,0.9)] active:translate-y-px active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.35)]";
+  "min-h-8 w-full justify-center rounded-[9px] px-2.5 py-1.5 text-[10.5px] font-medium leading-tight tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_1px_6px_-2px_rgba(0,0,0,0.42)] transition-[transform,box-shadow,background-color,border-color,color] duration-150 sm:min-h-8 sm:text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(18,20,24,0.9)] active:translate-y-px active:shadow-[inset_0_2px_5px_rgba(0,0,0,0.34)]";
 
 const btnIdle =
   "!border !border-white/[0.07] !bg-[rgba(32,34,40,0.88)] !text-[rgba(245,243,238,0.94)] hover:!border-white/[0.1] hover:!bg-[rgba(38,40,48,0.92)] hover:!text-white hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_3px_12px_-4px_rgba(0,0,0,0.4)]";
@@ -112,7 +112,7 @@ const btnReviewOn =
 
 function reviewChipClass(active: boolean) {
   return cn(
-    "min-h-8 rounded-lg border px-2 py-1.5 text-[9px] font-bold uppercase tracking-wide",
+    "min-h-7 rounded-md border px-1.5 py-1 text-[8px] font-bold uppercase tracking-wide sm:text-[8.5px]",
     btnBase,
     active ? btnReviewOn : btnIdle,
   );
@@ -130,7 +130,7 @@ function ToolRail({
   return (
     <div
       className={cn(
-        "flex flex-col gap-0 rounded-[14px] border p-3.5 backdrop-blur-sm",
+        "flex flex-col gap-0 rounded-[10px] border p-2 backdrop-blur-[2px]",
         className,
       )}
       style={{
@@ -139,19 +139,19 @@ function ToolRail({
         boxShadow: GLASS_SIDEBAR.shadow,
       }}
     >
-      <div className="flex items-baseline gap-2 border-b border-white/[0.055] pb-2.5">
+      <div className="flex items-baseline gap-1.5 border-b border-white/[0.05] pb-1.5">
         <span
           className="mt-0.5 size-1 shrink-0 rounded-full bg-[rgba(180,200,188,0.25)] ring-1 ring-white/[0.07]"
           aria-hidden
         />
         <div
-          className="font-[system-ui,-apple-system,'Segoe_UI',sans-serif] text-[9.5px] font-semibold uppercase leading-none tracking-[0.28em] text-[rgba(228,226,220,0.78)]"
+          className="font-[system-ui,-apple-system,'Segoe_UI',sans-serif] text-[8px] font-semibold uppercase leading-none tracking-[0.22em] text-[rgba(228,226,220,0.72)]"
           style={{ fontFeatureSettings: '"ss01" 1' }}
         >
           {title}
         </div>
       </div>
-      <div className="flex flex-col gap-2 pt-3">{children}</div>
+      <div className="flex flex-col gap-1.5 pt-1.5">{children}</div>
     </div>
   );
 }
@@ -509,25 +509,25 @@ export function SimulatorBoardShell({
     <div
       className="simulator-shell relative flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[#0b0f0c] text-stone-200"
     >
-      <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5">
+      <header className="relative z-10 flex shrink-0 items-center justify-between gap-2 px-4 py-3 sm:px-5 sm:py-3.5">
         <div className="min-w-0 space-y-0.5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-stone-300/65">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-stone-300/65">
             Pitchside
           </p>
-          <h1 className="truncate text-base font-semibold tracking-tight text-stone-100/95 sm:text-[17px]">
+          <h1 className="truncate text-[15px] font-semibold tracking-tight text-stone-100/95 sm:text-base">
             Match simulator
           </h1>
-          <p className="hidden text-[11px] text-stone-300/60 sm:block">
+          <p className="hidden text-[10px] text-stone-300/60 sm:block">
             Field view — training strip in natural grass.
           </p>
         </div>
       </header>
 
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14">
-        <aside className="order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
+      <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-2.5 px-3 pb-3 pt-1.5 sm:gap-3 sm:px-4 sm:pb-4 sm:pt-2 lg:flex-row lg:items-center lg:justify-center lg:gap-4 lg:px-4 lg:py-3 xl:gap-5 xl:px-5">
+        <aside className="order-2 flex shrink-0 flex-row gap-2 lg:order-1 lg:w-[9.25rem] lg:flex-col lg:justify-center lg:gap-2">
           <ToolRail title="Transport" className="min-w-0 flex-1 lg:flex-none">
             <div
-              className="grid grid-cols-3 gap-2 lg:grid-cols-1"
+              className="grid grid-cols-3 gap-1 lg:grid-cols-1"
               role="group"
               aria-label="Playback transport"
             >
@@ -559,18 +559,18 @@ export function SimulatorBoardShell({
           </ToolRail>
         </aside>
 
-        <div className="order-1 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center lg:order-2 lg:max-w-[min(96vw,74rem)]">
-          <div className="relative w-full max-w-full px-1 sm:px-2">
+        <div className="order-1 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center lg:order-2 lg:max-w-[min(99vw,82rem)]">
+          <div className="relative w-full max-w-full px-0 sm:px-1">
             <div
-              className="relative overflow-hidden rounded-[1.2rem] p-2 sm:p-2.5"
+              className="relative overflow-hidden rounded-[0.95rem] p-1.5 sm:p-2"
               style={{
                 backgroundColor: "#0b0f0c",
                 boxShadow:
-                  "0 28px 64px -24px rgba(22, 26, 16, 0.22), 0 12px 32px -18px rgba(22, 26, 16, 0.12)",
+                  "0 16px 44px -24px rgba(0, 0, 0, 0.64), inset 0 0 0 1px rgba(255,255,255,0.05)",
               }}
             >
               <div
-                className="relative z-10 overflow-hidden rounded-[1.05rem] p-1 sm:p-1.5"
+                className="relative z-10 overflow-hidden rounded-[0.82rem] p-0.5 sm:p-1"
                 style={{
                   backgroundColor: "#0b0f0c",
                 }}
@@ -615,13 +615,13 @@ export function SimulatorBoardShell({
                     }
                     statsReviewMode={reviewMode}
                     statsPitchInteractive={canStatsPitchLog}
-                    className="max-h-[min(68dvh,calc(100dvw-2.5rem))] w-full !rounded-lg !border-0 !bg-transparent !shadow-none !ring-0 sm:max-h-[min(72dvh,80vw)] lg:max-h-[min(78dvh,58rem)]"
+                    className="max-h-[min(74dvh,calc(100dvw-1rem))] w-full !rounded-md !border-0 !bg-transparent !shadow-none !ring-0 sm:max-h-[min(78dvh,88vw)] lg:max-h-[min(84dvh,66rem)]"
                   />
                 </div>
               </div>
             </div>
           </div>
-          <p className="mx-auto mt-4 max-w-md px-3 text-center text-[10px] font-medium uppercase leading-relaxed tracking-[0.14em] text-stone-300/55 sm:mt-5 sm:text-[11px] sm:tracking-[0.16em]">
+          <p className="mx-auto mt-2.5 max-w-md px-2 text-center text-[9px] font-medium uppercase leading-relaxed tracking-[0.1em] text-stone-300/50 sm:mt-3 sm:text-[10px] sm:tracking-[0.12em]">
             {surfaceMode === "STATS"
               ? canStatsPitchLog
                 ? "Pick event type · tap the pitch to log · same Pixi canvas as simulator"
@@ -630,9 +630,9 @@ export function SimulatorBoardShell({
           </p>
         </div>
 
-        <aside className="order-3 flex shrink-0 flex-row flex-wrap gap-3.5 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
+        <aside className="order-3 flex shrink-0 flex-row flex-wrap gap-2 lg:w-[9.5rem] lg:flex-col lg:justify-center lg:gap-2">
           <ToolRail title="Mode" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
-            <div className="flex flex-col gap-2" role="group" aria-label="Canvas mode">
+            <div className="flex flex-col gap-1.5" role="group" aria-label="Canvas mode">
               <Button
                 type="button"
                 variant="secondary"
@@ -660,7 +660,7 @@ export function SimulatorBoardShell({
             </div>
             {surfaceMode === "STATS" ? (
               <div
-                className="mt-1 flex max-h-[min(70vh,28rem)] flex-col gap-2 overflow-y-auto pr-0.5"
+                className="mt-0.5 flex max-h-[min(62vh,24rem)] flex-col gap-1.5 overflow-y-auto pr-0.5"
                 role="group"
                 aria-label="Stats logging"
               >
@@ -880,7 +880,7 @@ export function SimulatorBoardShell({
             ) : null}
           </ToolRail>
           <ToolRail title="Pitch" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
-            <div className="flex flex-col gap-2" role="group" aria-label="Pitch sport">
+            <div className="flex flex-col gap-1.5" role="group" aria-label="Pitch sport">
               {SPORT_OPTIONS.map((opt) => (
                 <Button
                   key={opt.id}
@@ -898,7 +898,7 @@ export function SimulatorBoardShell({
             </div>
           </ToolRail>
           <ToolRail title="Capture" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
-            <div className="flex flex-col gap-2" role="group" aria-label="Path capture">
+            <div className="flex flex-col gap-1.5" role="group" aria-label="Path capture">
               <Button
                 type="button"
                 variant="secondary"
