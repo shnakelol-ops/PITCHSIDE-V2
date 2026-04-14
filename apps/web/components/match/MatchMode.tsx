@@ -38,6 +38,16 @@ const ORDERED_MODES: MatchPeriod[] = [
   MatchPeriod.FULL_TIME,
 ];
 
+/** Coerces DB/string values to a known MatchPeriod for shared consumers. */
+export function normalizeMatchPeriod(
+  input: MatchPeriod | string | null | undefined,
+): MatchPeriod {
+  if (input == null) return MatchPeriod.FIRST_HALF;
+  const key = String(input);
+  const hit = ORDERED_MODES.find((mode) => String(mode) === key);
+  return hit ?? MatchPeriod.FIRST_HALF;
+}
+
 type MatchModeProps = {
   value: MatchPeriod;
   onChange: (mode: MatchPeriod) => void;
