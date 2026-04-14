@@ -4,6 +4,7 @@ import { prisma } from "@pitchside/data-access";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { BoardV1Panel } from "@/components/matches/board-v1-panel";
+import { MobileMatchControls } from "@/components/matches/mobile-match-controls";
 import { MatchReviewTeaser } from "@/components/matches/match-review-teaser";
 import { MatchSummaryCard } from "@/components/matches/match-summary-card";
 import { MatchWorkspaceHero } from "@/components/matches/match-workspace-hero";
@@ -115,6 +116,7 @@ export default async function MatchWorkspacePage({
 
         <div className="grid min-w-0 grid-cols-1 gap-10 lg:grid-cols-12 lg:items-start lg:gap-0 xl:gap-0">
           <div className="relative min-w-0 lg:col-span-9 lg:border-r lg:border-slate-200/90 lg:pr-10 xl:pr-14 dark:lg:border-slate-800/90">
+            <MobileMatchControls />
             <div className="relative rounded-[1.25rem] bg-gradient-to-br from-pitchside-600/[0.12] via-pitchside-500/[0.04] to-transparent p-[3px] shadow-[0_20px_44px_-24px_rgba(15,118,110,0.32)] ring-1 ring-pitchside-900/[0.06] dark:from-pitchside-500/[0.14] dark:via-pitchside-600/[0.06] dark:shadow-[0_26px_52px_-22px_rgba(0,0,0,0.48)] dark:ring-white/[0.06]">
               <BoardV1Panel matchId={match.id} />
             </div>
