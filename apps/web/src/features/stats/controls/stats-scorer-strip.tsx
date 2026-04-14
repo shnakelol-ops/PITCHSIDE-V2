@@ -46,6 +46,8 @@ export function StatsScorerStrip({
               ? "border-slate-300/50 bg-slate-500/25 text-slate-50"
               : "border-white/15 bg-white/5 text-emerald-100/85 hover:border-white/25 hover:bg-white/10",
           )}
+          data-tap-target-id="scorer-none"
+          data-tap-target-group="stats"
           onClick={() => onSetActiveScorer(null)}
         >
           No player
@@ -63,6 +65,8 @@ export function StatsScorerStrip({
                   : "border-white/15 bg-white/5 text-emerald-100/90 hover:border-white/25 hover:bg-white/10",
               )}
               title={p.name}
+              data-tap-target-id={`scorer-${p.id}`}
+              data-tap-target-group="stats"
               onClick={() => onSetActiveScorer(p.id)}
             >
               {p.name}

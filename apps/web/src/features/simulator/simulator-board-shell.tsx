@@ -45,6 +45,7 @@ import {
 } from "@src/features/stats/model/stats-v1-event-kind";
 import { STATS_DEV_PLACEHOLDER_ROSTER } from "@src/features/stats/types/stats-roster";
 import type { StatsReviewMode } from "@src/features/stats/types/stats-review-mode";
+import { useMagneticTapAssist } from "@src/features/simulator/hooks/use-magnetic-tap-assist";
 import { cn } from "@pitchside/utils";
 
 const STATS_REVIEW_CHIPS: { mode: StatsReviewMode; label: string }[] = [
@@ -167,6 +168,12 @@ const btnShadowOn =
 const btnReviewOn =
   "!border !border-amber-500/28 !bg-[rgba(48,40,28,0.88)] !text-[rgba(255,251,235,0.96)] hover:!border-amber-400/35";
 
+const interactiveTapClass =
+  "relative after:absolute after:-inset-[12px] after:content-[''] after:rounded-[inherit]";
+
+const transportTapClass =
+  "relative after:absolute after:-inset-[14px] after:content-[''] after:rounded-[inherit]";
+
 function reviewChipClass(active: boolean) {
   return cn(
     "min-h-8 rounded-lg border px-2 py-1.5 text-[9px] font-bold uppercase tracking-wide",
@@ -245,6 +252,7 @@ export function SimulatorBoardShell({
   initialSurfaceMode = "SIMULATOR",
   linkedMatchId = null,
 }: SimulatorBoardShellProps = {}) {
+  const [tapPulseTarget, setTapPulseTarget] = useState<string | null>(null);
   const [sport, setSport] = useState<PitchSport>("gaelic");
   const [pathRecording, setPathRecording] = useState(false);
   const [shadowRecording, setShadowRecording] = useState(false);
@@ -562,6 +570,15 @@ export function SimulatorBoardShell({
     }
   };
 
+  const tapAssistHandlers = useMagneticTapAssist({
+    onAssistTap: (targetId) => {
+      setTapPulseTarget(targetId);
+      window.setTimeout(() => {
+        setTapPulseTarget((current) => (current === targetId ? null : current));
+      }, 90);
+    },
+  });
+
   return (
     <div
       className="relative flex h-[100dvh] min-h-0 flex-col overflow-hidden text-stone-800"
@@ -591,7 +608,15 @@ export function SimulatorBoardShell({
       </header>
 
       <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14">
-        <aside className="order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
+        <aside
+          className="order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4"
+          data-sim-control-scope
+          onPointerDownCapture={tapAssistHandlers.onPointerDownCapture}
+          onPointerMoveCapture={tapAssistHandlers.onPointerMoveCapture}
+          onPointerUpCapture={tapAssistHandlers.onPointerUpCapture}
+          onPointerCancelCapture={tapAssistHandlers.onPointerCancelCapture}
+          onClickCapture={tapAssistHandlers.onClickCapture}
+        >
           <ToolRail title="Transport" className="min-w-0 flex-1 lg:flex-none">
             <div
               className="grid grid-cols-3 gap-2 lg:grid-cols-1"
@@ -601,7 +626,14 @@ export function SimulatorBoardShell({
               <Button
                 type="button"
                 variant="secondary"
-                className={cn(btnBase, btnIdle)}
+                className={cn(
+                  btnBase,
+                  btnIdle,
+                  transportTapClass,
+                  tapPulseTarget === "transport-play" && "ring-2 ring-emerald-300/55",
+                )}
+                data-tap-target-id="transport-play"
+                data-tap-target-group="transport"
                 onClick={() => surfaceRef.current?.play()}
               >
                 Play
@@ -609,7 +641,14 @@ export function SimulatorBoardShell({
               <Button
                 type="button"
                 variant="secondary"
-                className={cn(btnBase, btnIdle)}
+                className={cn(
+                  btnBase,
+                  btnIdle,
+                  transportTapClass,
+                  tapPulseTarget === "transport-pause" && "ring-2 ring-emerald-300/55",
+                )}
+                data-tap-target-id="transport-pause"
+                data-tap-target-group="transport"
                 onClick={() => surfaceRef.current?.pause()}
               >
                 Pause
@@ -617,7 +656,14 @@ export function SimulatorBoardShell({
               <Button
                 type="button"
                 variant="secondary"
-                className={cn(btnBase, btnIdle)}
+                className={cn(
+                  btnBase,
+                  btnIdle,
+                  transportTapClass,
+                  tapPulseTarget === "transport-reset" && "ring-2 ring-emerald-300/55",
+                )}
+                data-tap-target-id="transport-reset"
+                data-tap-target-group="transport"
                 onClick={() => surfaceRef.current?.reset()}
               >
                 Reset
@@ -736,7 +782,15 @@ export function SimulatorBoardShell({
           </p>
         </div>
 
-        <aside className="order-3 flex shrink-0 flex-row flex-wrap gap-3.5 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
+        <aside
+          className="order-3 flex shrink-0 flex-row flex-wrap gap-3.5 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4"
+          data-sim-control-scope
+          onPointerDownCapture={tapAssistHandlers.onPointerDownCapture}
+          onPointerMoveCapture={tapAssistHandlers.onPointerMoveCapture}
+          onPointerUpCapture={tapAssistHandlers.onPointerUpCapture}
+          onPointerCancelCapture={tapAssistHandlers.onPointerCancelCapture}
+          onClickCapture={tapAssistHandlers.onClickCapture}
+        >
           <ToolRail title="Mode" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
             <div className="flex flex-col gap-2" role="group" aria-label="Canvas mode">
               <Button
@@ -745,7 +799,11 @@ export function SimulatorBoardShell({
                 className={cn(
                   btnBase,
                   surfaceMode === "SIMULATOR" ? btnSportOn : btnIdle,
+                  interactiveTapClass,
+                  tapPulseTarget === "mode-simulator" && "ring-2 ring-emerald-300/55",
                 )}
+                data-tap-target-id="mode-simulator"
+                data-tap-target-group="mode"
                 aria-pressed={surfaceMode === "SIMULATOR"}
                 onClick={() => setMode("SIMULATOR")}
               >
@@ -757,7 +815,11 @@ export function SimulatorBoardShell({
                 className={cn(
                   btnBase,
                   surfaceMode === "STATS" ? btnSportOn : btnIdle,
+                  interactiveTapClass,
+                  tapPulseTarget === "mode-stats" && "ring-2 ring-emerald-300/55",
                 )}
+                data-tap-target-id="mode-stats"
+                data-tap-target-group="mode"
                 aria-pressed={surfaceMode === "STATS"}
                 onClick={() => setMode("STATS")}
               >
@@ -775,7 +837,13 @@ export function SimulatorBoardShell({
                     <button
                       key={mode}
                       type="button"
-                      className={reviewChipClass(reviewMode === mode)}
+                      className={cn(
+                        reviewChipClass(reviewMode === mode),
+                        interactiveTapClass,
+                        tapPulseTarget === `review-${mode}` && "ring-2 ring-amber-300/55",
+                      )}
+                      data-tap-target-id={`review-${mode}`}
+                      data-tap-target-group="stats"
                       onClick={() => setReviewMode(mode)}
                     >
                       {label}
@@ -799,7 +867,11 @@ export function SimulatorBoardShell({
                       "min-h-8 shrink-0 px-2 py-1.5 text-[9px]",
                       btnBase,
                       matchPhase === "full_time" ? btnIdle : btnSportOn,
+                      transportTapClass,
+                      tapPulseTarget === "match-morph" && "ring-2 ring-amber-300/55",
                     )}
+                    data-tap-target-id="match-morph"
+                    data-tap-target-group="transport"
                     onClick={onMatchMorph}
                   >
                     {matchMorphLabel(matchPhase)}
@@ -823,7 +895,13 @@ export function SimulatorBoardShell({
                       <button
                         key={id}
                         type="button"
-                        className={reviewChipClass(pitchMarkerViewFilter === id)}
+                        className={cn(
+                          reviewChipClass(pitchMarkerViewFilter === id),
+                          interactiveTapClass,
+                          tapPulseTarget === `filter-${id}` && "ring-2 ring-amber-300/55",
+                        )}
+                        data-tap-target-id={`filter-${id}`}
+                        data-tap-target-group="stats"
                         onClick={() => setPitchMarkerViewFilter(id)}
                       >
                         {label}
@@ -852,7 +930,11 @@ export function SimulatorBoardShell({
                             "min-h-8 py-1.5 text-[10px]",
                             btnBase,
                             on ? btnRecordOn : btnIdle,
+                            interactiveTapClass,
+                            tapPulseTarget === `field-${k}` && "ring-2 ring-amber-300/55",
                           )}
+                          data-tap-target-id={`field-${k}`}
+                          data-tap-target-group="stats"
                           aria-pressed={on}
                           onClick={() => armKind(k)}
                         >
@@ -876,7 +958,11 @@ export function SimulatorBoardShell({
                             "min-h-8 py-1.5 text-[10px]",
                             btnBase,
                             on ? btnRecordOn : btnIdle,
+                            interactiveTapClass,
+                            tapPulseTarget === `score-${k}` && "ring-2 ring-amber-300/55",
                           )}
+                          data-tap-target-id={`score-${k}`}
+                          data-tap-target-group="stats"
                           aria-pressed={on}
                           onClick={() => armKind(k)}
                         >
@@ -913,7 +999,15 @@ export function SimulatorBoardShell({
                       type="button"
                       variant="secondary"
                       disabled={!canStatsPitchLog}
-                      className={cn("min-h-8 flex-1 py-1.5 text-[9px]", btnBase, btnIdle)}
+                      className={cn(
+                        "min-h-8 flex-1 py-1.5 text-[9px]",
+                        btnBase,
+                        btnIdle,
+                        interactiveTapClass,
+                        tapPulseTarget === "clear-arm" && "ring-2 ring-amber-300/55",
+                      )}
+                      data-tap-target-id="clear-arm"
+                      data-tap-target-group="stats"
                       onClick={() => clearArm()}
                     >
                       Clear arm
@@ -922,7 +1016,15 @@ export function SimulatorBoardShell({
                       type="button"
                       variant="secondary"
                       disabled={!canStatsPitchLog || statsEvents.length === 0}
-                      className={cn("min-h-8 flex-1 py-1.5 text-[9px]", btnBase, btnIdle)}
+                      className={cn(
+                        "min-h-8 flex-1 py-1.5 text-[9px]",
+                        btnBase,
+                        btnIdle,
+                        interactiveTapClass,
+                        tapPulseTarget === "undo-last" && "ring-2 ring-amber-300/55",
+                      )}
+                      data-tap-target-id="undo-last"
+                      data-tap-target-group="stats"
                       onClick={() => undoLastEvent()}
                     >
                       Undo last
@@ -940,7 +1042,12 @@ export function SimulatorBoardShell({
                               "min-h-8 flex-1 py-1.5 text-[9px]",
                               btnBase,
                               btnIdle,
+                              interactiveTapClass,
+                              tapPulseTarget === "clear-log-cancel" &&
+                                "ring-2 ring-amber-300/55",
                             )}
+                            data-tap-target-id="clear-log-cancel"
+                            data-tap-target-group="stats"
                             onClick={() => setClearLogConfirmOpen(false)}
                           >
                             Cancel
@@ -952,7 +1059,12 @@ export function SimulatorBoardShell({
                               "min-h-8 flex-1 py-1.5 text-[9px]",
                               btnBase,
                               btnRecordOn,
+                              interactiveTapClass,
+                              tapPulseTarget === "clear-log-confirm" &&
+                                "ring-2 ring-amber-300/55",
                             )}
+                            data-tap-target-id="clear-log-confirm"
+                            data-tap-target-group="stats"
                             onClick={() => {
                               resetEvents();
                               setClearLogConfirmOpen(false);
@@ -970,8 +1082,12 @@ export function SimulatorBoardShell({
                           "min-h-8 w-full py-1.5 text-[9px]",
                           btnBase,
                           btnIdle,
+                          interactiveTapClass,
+                          tapPulseTarget === "clear-log-open" && "ring-2 ring-amber-300/55",
                         )}
                         disabled={statsEvents.length === 0}
+                        data-tap-target-id="clear-log-open"
+                        data-tap-target-group="stats"
                         onClick={() => setClearLogConfirmOpen(true)}
                       >
                         Clear log
@@ -995,7 +1111,11 @@ export function SimulatorBoardShell({
                   className={cn(
                     btnBase,
                     sport === opt.id ? btnSportOn : btnIdle,
+                    interactiveTapClass,
+                    tapPulseTarget === `sport-${opt.id}` && "ring-2 ring-emerald-300/55",
                   )}
+                  data-tap-target-id={`sport-${opt.id}`}
+                  data-tap-target-group="pitch"
                   onClick={() => setSport(opt.id)}
                 >
                   {opt.label}
@@ -1009,7 +1129,14 @@ export function SimulatorBoardShell({
                 type="button"
                 variant="secondary"
                 disabled={surfaceMode === "STATS"}
-                className={cn(btnBase, pathRecording ? btnRecordOn : btnIdle)}
+                className={cn(
+                  btnBase,
+                  pathRecording ? btnRecordOn : btnIdle,
+                  interactiveTapClass,
+                  tapPulseTarget === "capture-record-path" && "ring-2 ring-emerald-300/55",
+                )}
+                data-tap-target-id="capture-record-path"
+                data-tap-target-group="capture"
                 aria-pressed={pathRecording}
                 onClick={() => setMainRecording(!pathRecording)}
               >
@@ -1019,7 +1146,14 @@ export function SimulatorBoardShell({
                 type="button"
                 variant="secondary"
                 disabled={surfaceMode === "STATS"}
-                className={cn(btnBase, shadowRecording ? btnShadowOn : btnIdle)}
+                className={cn(
+                  btnBase,
+                  shadowRecording ? btnShadowOn : btnIdle,
+                  interactiveTapClass,
+                  tapPulseTarget === "capture-shadow-line" && "ring-2 ring-emerald-300/55",
+                )}
+                data-tap-target-id="capture-shadow-line"
+                data-tap-target-group="capture"
                 aria-pressed={shadowRecording}
                 onClick={() => setShadowLineRecording(!shadowRecording)}
               >
@@ -1028,7 +1162,14 @@ export function SimulatorBoardShell({
               <Button
                 type="button"
                 variant="secondary"
-                className={cn(btnBase, btnIdle)}
+                className={cn(
+                  btnBase,
+                  btnIdle,
+                  interactiveTapClass,
+                  tapPulseTarget === "capture-export-png" && "ring-2 ring-emerald-300/55",
+                )}
+                data-tap-target-id="capture-export-png"
+                data-tap-target-group="capture"
                 onClick={onExportPitchPng}
               >
                 Export pitch PNG
@@ -1036,7 +1177,14 @@ export function SimulatorBoardShell({
               <Button
                 type="button"
                 variant="secondary"
-                className={cn(btnBase, btnIdle)}
+                className={cn(
+                  btnBase,
+                  btnIdle,
+                  interactiveTapClass,
+                  tapPulseTarget === "capture-share-pitch" && "ring-2 ring-emerald-300/55",
+                )}
+                data-tap-target-id="capture-share-pitch"
+                data-tap-target-group="capture"
                 onClick={onSharePitchPng}
               >
                 Share pitch
