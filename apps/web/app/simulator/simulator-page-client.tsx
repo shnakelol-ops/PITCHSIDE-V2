@@ -11,6 +11,8 @@ import {
   type SimulatorPixiSurfaceHandle,
   type SimulatorSurfaceMode,
 } from "@src/features/simulator/pixi/simulator-pixi-surface";
+import { useStatsEventLog } from "@src/features/stats/hooks/use-stats-event-log";
+import type { StatsV1EventKind } from "@src/features/stats/model/stats-v1-event-kind";
 
 /** Same heuristic as `POST /api/events` `matchId` (CUID). */
 const PITCH_OPTIONS: { id: PitchSport; label: string }[] = [
@@ -18,6 +20,27 @@ const PITCH_OPTIONS: { id: PitchSport; label: string }[] = [
   { id: "gaelic", label: "Gaelic" },
   { id: "hurling", label: "Hurling" },
 ];
+
+const STATS_PRIMARY_EVENT_KINDS: readonly StatsV1EventKind[] = [
+  "GOAL",
+  "POINT",
+  "TWO_POINT",
+  "SHOT",
+  "WIDE",
+];
+
+const STATS_SECONDARY_EVENT_KINDS: readonly StatsV1EventKind[] = [
+  "TURNOVER_WON",
+  "TURNOVER_LOST",
+  "FREE_WON",
+  "FREE_CONCEDED",
+  "KICKOUT_WON",
+  "KICKOUT_LOST",
+];
+
+function statsEventLabel(kind: StatsV1EventKind): string {
+  return kind.replace(/_/g, " ");
+}
 
 export default function SimulatorPageClient() {
   const sp = useSearchParams();
@@ -29,8 +52,17 @@ export default function SimulatorPageClient() {
   const [pathRecording, setPathRecording] = useState(false);
   const [shadowRecording, setShadowRecording] = useState(false);
   const [utilityOpen, setUtilityOpen] = useState(false);
+  const [statsExpanded, setStatsExpanded] = useState(false);
   const utilityWrapRef = useRef<HTMLDivElement | null>(null);
   const surfaceRef = useRef<SimulatorPixiSurfaceHandle>(null);
+  const {
+    events: statsEvents,
+    arm: statsArm,
+    reviewMode,
+    armKind,
+    logTap,
+    setReviewMode,
+  } = useStatsEventLog();
 
   useEffect(() => {
     document.documentElement.classList.add("simulator-route");
@@ -55,6 +87,16 @@ export default function SimulatorPageClient() {
     };
   }, [utilityOpen]);
 
+  useEffect(() => {
+    if (surfaceMode !== "STATS") {
+      setStatsExpanded(false);
+      return;
+    }
+    if (statsArm == null) {
+      armKind("SHOT");
+    }
+  }, [armKind, statsArm, surfaceMode]);
+
   return (
     <div className="simulator-direct relative h-[100dvh] min-h-0 overflow-hidden bg-[#0b0f0c]">
       <div className="absolute inset-0">
@@ -64,9 +106,11 @@ export default function SimulatorPageClient() {
           recordingMode={surfaceMode === "SIMULATOR" ? pathRecording : false}
           shadowRecordingMode={surfaceMode === "SIMULATOR" ? shadowRecording : false}
           surfaceMode={surfaceMode}
-          statsArm={null}
-          statsLoggedEvents={[]}
-          statsPitchInteractive={false}
+          statsArm={surfaceMode === "STATS" ? statsArm : null}
+          statsLoggedEvents={surfaceMode === "STATS" ? statsEvents : []}
+          onStatsPitchTap={surfaceMode === "STATS" ? logTap : undefined}
+          statsReviewMode={reviewMode}
+          statsPitchInteractive={surfaceMode === "STATS"}
           className="h-full w-full !max-h-[100dvh] !rounded-md !border-0 !bg-transparent !shadow-none !ring-0"
         />
       </div>
@@ -140,6 +184,7 @@ export default function SimulatorPageClient() {
                       setSurfaceMode("SIMULATOR");
                       setPathRecording(false);
                       setShadowRecording(false);
+                      setStatsExpanded(false);
                     }}
                   >
                     Sim
@@ -153,6 +198,7 @@ export default function SimulatorPageClient() {
                       setSurfaceMode("STATS");
                       setPathRecording(false);
                       setShadowRecording(false);
+                      if (statsArm == null) armKind("SHOT");
                     }}
                   >
                     Stats
@@ -180,45 +226,125 @@ export default function SimulatorPageClient() {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/86">
-                  Capture
-                </p>
-                <div className="grid grid-cols-2 gap-1">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={surfaceMode === "STATS"}
-                    className="min-h-8 rounded-lg px-2 py-1 text-[10px]"
-                    aria-pressed={pathRecording}
-                    onClick={() => {
-                      setPathRecording((prev) => {
-                        const next = !prev;
-                        if (next) setShadowRecording(false);
-                        return next;
-                      });
-                    }}
-                  >
-                    Path
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={surfaceMode === "STATS"}
-                    className="min-h-8 rounded-lg px-2 py-1 text-[10px]"
-                    aria-pressed={shadowRecording}
-                    onClick={() => {
-                      setShadowRecording((prev) => {
-                        const next = !prev;
-                        if (next) setPathRecording(false);
-                        return next;
-                      });
-                    }}
-                  >
-                    Shadow
-                  </Button>
+              {surfaceMode === "SIMULATOR" ? (
+                <div className="space-y-1">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/86">
+                    Capture
+                  </p>
+                  <div className="grid grid-cols-2 gap-1">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="min-h-8 rounded-lg px-2 py-1 text-[10px]"
+                      aria-pressed={pathRecording}
+                      onClick={() => {
+                        setPathRecording((prev) => {
+                          const next = !prev;
+                          if (next) setShadowRecording(false);
+                          return next;
+                        });
+                      }}
+                    >
+                      Path
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="min-h-8 rounded-lg px-2 py-1 text-[10px]"
+                      aria-pressed={shadowRecording}
+                      onClick={() => {
+                        setShadowRecording((prev) => {
+                          const next = !prev;
+                          if (next) setPathRecording(false);
+                          return next;
+                        });
+                      }}
+                    >
+                      Shadow
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/86">
+                      Stats Events
+                    </p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {STATS_PRIMARY_EVENT_KINDS.map((kind) => (
+                        <Button
+                          key={kind}
+                          type="button"
+                          variant="secondary"
+                          className="min-h-8 rounded-lg px-2 py-1 text-[10px]"
+                          aria-pressed={statsArm === kind}
+                          onClick={() => armKind(kind)}
+                        >
+                          {statsEventLabel(kind)}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="min-h-8 w-full rounded-lg px-2 py-1 text-[10px]"
+                      onClick={() => setStatsExpanded((prev) => !prev)}
+                    >
+                      {statsExpanded ? "Hide More Events" : "More Events"}
+                    </Button>
+                    {statsExpanded ? (
+                      <div className="grid grid-cols-2 gap-1">
+                        {STATS_SECONDARY_EVENT_KINDS.map((kind) => (
+                          <Button
+                            key={kind}
+                            type="button"
+                            variant="secondary"
+                            className="min-h-8 rounded-lg px-2 py-1 text-[10px]"
+                            aria-pressed={statsArm === kind}
+                            onClick={() => armKind(kind)}
+                          >
+                            {statsEventLabel(kind)}
+                          </Button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/86">
+                      Review
+                    </p>
+                    <div className="grid grid-cols-3 gap-1">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="min-h-8 rounded-lg px-2 py-1 text-[10px]"
+                        aria-pressed={reviewMode === "live"}
+                        onClick={() => setReviewMode("live")}
+                      >
+                        Live
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="min-h-8 rounded-lg px-2 py-1 text-[10px]"
+                        aria-pressed={reviewMode === "halftime"}
+                        onClick={() => setReviewMode("halftime")}
+                      >
+                        HT
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="min-h-8 rounded-lg px-2 py-1 text-[10px]"
+                        aria-pressed={reviewMode === "full_time"}
+                        onClick={() => setReviewMode("full_time")}
+                      >
+                        FT
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </aside>
