@@ -18,7 +18,6 @@ import {
 } from "@/lib/pitch-canvas-export";
 import { persistSimulatorPhaseChange } from "@/lib/persist-simulator-phase-change";
 import { persistSimulatorStatsEvent } from "@/lib/persist-simulator-stats-event";
-import { MatchPeriod } from "@pitchside/data-access";
 import {
   SimulatorPixiSurface,
   type SimulatorPixiSurfaceHandle,
@@ -61,6 +60,15 @@ const STATS_REVIEW_CHIPS: { mode: StatsReviewMode; label: string }[] = [
 ];
 
 type PitchMarkerViewFilter = "all" | StatsV1EventKind;
+
+type LinkedMatchPeriod = "FIRST_HALF" | "HALF_TIME" | "SECOND_HALF" | "FULL_TIME";
+
+const MATCH_PERIOD: Record<LinkedMatchPeriod, LinkedMatchPeriod> = {
+  FIRST_HALF: "FIRST_HALF",
+  HALF_TIME: "HALF_TIME",
+  SECOND_HALF: "SECOND_HALF",
+  FULL_TIME: "FULL_TIME",
+};
 
 const PITCH_VIEW_FILTER_CHIPS: {
   id: PitchMarkerViewFilter;
@@ -115,8 +123,8 @@ export function SimulatorFloatingShell({
 
   const linkedMatchIdRef = useRef<string | null>(null);
   linkedMatchIdRef.current = linkedMatchId;
-  const [linkedMatchPeriod, setLinkedMatchPeriod] = useState<MatchPeriod>(
-    MatchPeriod.FIRST_HALF,
+  const [linkedMatchPeriod, setLinkedMatchPeriod] = useState<LinkedMatchPeriod>(
+    MATCH_PERIOD.FIRST_HALF,
   );
   const linkedMatchPeriodRef = useRef(linkedMatchPeriod);
   linkedMatchPeriodRef.current = linkedMatchPeriod;
@@ -172,12 +180,12 @@ export function SimulatorFloatingShell({
         const p = json.data?.currentPeriod;
         if (p != null) {
           const next =
-            p === MatchPeriod.FIRST_HALF ||
-            p === MatchPeriod.HALF_TIME ||
-            p === MatchPeriod.SECOND_HALF ||
-            p === MatchPeriod.FULL_TIME
+            p === MATCH_PERIOD.FIRST_HALF ||
+            p === MATCH_PERIOD.HALF_TIME ||
+            p === MATCH_PERIOD.SECOND_HALF ||
+            p === MATCH_PERIOD.FULL_TIME
               ? p
-              : MatchPeriod.FIRST_HALF;
+              : MATCH_PERIOD.FIRST_HALF;
           setLinkedMatchPeriod(next);
           linkedMatchPeriodRef.current = next;
         }
@@ -278,7 +286,7 @@ export function SimulatorFloatingShell({
   );
 
   const persistPhase = useCallback(
-    (matchPeriod: MatchPeriod) => {
+    (matchPeriod: LinkedMatchPeriod) => {
       const mid = linkedMatchIdRef.current;
       if (!mid) return;
       void persistSimulatorPhaseChange({
@@ -297,9 +305,9 @@ export function SimulatorFloatingShell({
     setMatchPhase("first_half");
     setReviewMode("live");
     setMatchClockRunning(true);
-    linkedMatchPeriodRef.current = MatchPeriod.FIRST_HALF;
-    setLinkedMatchPeriod(MatchPeriod.FIRST_HALF);
-    persistPhase(MatchPeriod.FIRST_HALF);
+    linkedMatchPeriodRef.current = MATCH_PERIOD.FIRST_HALF;
+    setLinkedMatchPeriod(MATCH_PERIOD.FIRST_HALF);
+    persistPhase(MATCH_PERIOD.FIRST_HALF);
   }, [matchPhase, persistPhase, setMatchClockRunning, setMatchPhase, setReviewMode]);
 
   const onStopMatch = useCallback(() => {
@@ -318,9 +326,9 @@ export function SimulatorFloatingShell({
     setMatchClockRunning(false);
     setMatchPhase("halftime");
     setReviewMode("halftime");
-    linkedMatchPeriodRef.current = MatchPeriod.HALF_TIME;
-    setLinkedMatchPeriod(MatchPeriod.HALF_TIME);
-    persistPhase(MatchPeriod.HALF_TIME);
+    linkedMatchPeriodRef.current = MATCH_PERIOD.HALF_TIME;
+    setLinkedMatchPeriod(MATCH_PERIOD.HALF_TIME);
+    persistPhase(MATCH_PERIOD.HALF_TIME);
   }, [matchPhase, persistPhase, setMatchClockRunning, setMatchPhase, setReviewMode]);
 
   const onStartSecondHalf = useCallback(() => {
@@ -328,9 +336,9 @@ export function SimulatorFloatingShell({
     setMatchPhase("second_half");
     setReviewMode("live");
     setMatchClockRunning(true);
-    linkedMatchPeriodRef.current = MatchPeriod.SECOND_HALF;
-    setLinkedMatchPeriod(MatchPeriod.SECOND_HALF);
-    persistPhase(MatchPeriod.SECOND_HALF);
+    linkedMatchPeriodRef.current = MATCH_PERIOD.SECOND_HALF;
+    setLinkedMatchPeriod(MATCH_PERIOD.SECOND_HALF);
+    persistPhase(MATCH_PERIOD.SECOND_HALF);
   }, [matchPhase, persistPhase, setMatchClockRunning, setMatchPhase, setReviewMode]);
 
   const onFullTime = useCallback(() => {
@@ -338,9 +346,9 @@ export function SimulatorFloatingShell({
     setMatchClockRunning(false);
     setMatchPhase("full_time");
     setReviewMode("full_time");
-    linkedMatchPeriodRef.current = MatchPeriod.FULL_TIME;
-    setLinkedMatchPeriod(MatchPeriod.FULL_TIME);
-    persistPhase(MatchPeriod.FULL_TIME);
+    linkedMatchPeriodRef.current = MATCH_PERIOD.FULL_TIME;
+    setLinkedMatchPeriod(MATCH_PERIOD.FULL_TIME);
+    persistPhase(MATCH_PERIOD.FULL_TIME);
   }, [matchPhase, persistPhase, setMatchClockRunning, setMatchPhase, setReviewMode]);
 
   const matchClockDisplay = useMemo(() => {
