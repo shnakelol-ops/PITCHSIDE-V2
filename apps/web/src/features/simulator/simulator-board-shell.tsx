@@ -43,6 +43,7 @@ import {
   STATS_V1_SCORE_KINDS,
   type StatsV1EventKind,
 } from "@src/features/stats/model/stats-v1-event-kind";
+import type { StatsPitchTapPayload } from "@src/features/stats/types/stats-pitch-tap";
 import { STATS_DEV_PLACEHOLDER_ROSTER } from "@src/features/stats/types/stats-roster";
 import type { StatsReviewMode } from "@src/features/stats/types/stats-review-mode";
 import { cn } from "@pitchside/utils";
@@ -380,6 +381,17 @@ export function SimulatorBoardShell({
   const canStatsPitchLog =
     reviewMode === "live" &&
     (matchPhase === "first_half" || matchPhase === "second_half");
+  const canStatsPitchLogRef = useRef(canStatsPitchLog);
+  canStatsPitchLogRef.current = canStatsPitchLog;
+
+  const onStatsPitchTapGuarded = useCallback(
+    (payload: StatsPitchTapPayload) => {
+      // Hard data-integrity guard: HT/FT (or any non-live/non-playing phase) must never log.
+      if (!canStatsPitchLogRef.current) return;
+      logTap(payload);
+    },
+    [logTap],
+  );
 
   const matchClockDisplay = useMemo(
     () =>
@@ -715,9 +727,7 @@ export function SimulatorBoardShell({
                       surfaceMode === "STATS" ? statsEventsForPitchView : []
                     }
                     onStatsPitchTap={
-                      surfaceMode === "STATS" && canStatsPitchLog
-                        ? logTap
-                        : undefined
+                      surfaceMode === "STATS" ? onStatsPitchTapGuarded : undefined
                     }
                     statsReviewMode={reviewMode}
                     statsPitchInteractive={canStatsPitchLog}
