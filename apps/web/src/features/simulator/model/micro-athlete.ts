@@ -7,6 +7,8 @@ export type MicroAthleteTeam = "home" | "away";
 
 export type MicroAthlete = {
   id: string;
+  /** Short on-pitch label rendered above the athlete token. */
+  label?: string;
   nx: number;
   ny: number;
   /** Facing / intent direction (radians). */
@@ -15,15 +17,16 @@ export type MicroAthlete = {
 };
 
 /** Body radius in pitch world units (160×100 space). */
-export const MICRO_ATHLETE_RADIUS_WORLD = 2.15;
+export const MICRO_ATHLETE_RADIUS_WORLD = 2.3;
 
-/** Hit target slightly larger than visual — tuned for phone/tablet coaching taps. */
-export const MICRO_ATHLETE_HIT_RADIUS_WORLD = 3.25;
+/** Hit target intentionally generous for reliable phone drag pickup. */
+export const MICRO_ATHLETE_HIT_RADIUS_WORLD = 4.8;
 
 export function createDefaultMicroAthletes(): MicroAthlete[] {
   return [
     {
       id: "ma-1",
+      label: "A O'Neil",
       nx: 0.28,
       ny: 0.48,
       headingRad: 0,
@@ -31,6 +34,7 @@ export function createDefaultMicroAthletes(): MicroAthlete[] {
     },
     {
       id: "ma-2",
+      label: "C Byrne",
       nx: 0.42,
       ny: 0.42,
       headingRad: Math.PI / 4,
@@ -38,6 +42,7 @@ export function createDefaultMicroAthletes(): MicroAthlete[] {
     },
     {
       id: "ma-3",
+      label: "M Walsh",
       nx: 0.55,
       ny: 0.52,
       headingRad: Math.PI / 2,
@@ -45,6 +50,7 @@ export function createDefaultMicroAthletes(): MicroAthlete[] {
     },
     {
       id: "ma-4",
+      label: "R Kelly",
       nx: 0.72,
       ny: 0.45,
       headingRad: -Math.PI / 3,

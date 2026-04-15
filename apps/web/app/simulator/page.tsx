@@ -2,13 +2,11 @@ import { Suspense } from "react";
 
 import SimulatorPageClient from "./simulator-page-client";
 
-/** Warm grass field — soft vertical drift, no flat grey chrome at viewport edge. */
+/** Simulator route wrapper. */
 export default function SimulatorPage() {
   return (
-    <div className="min-h-[100dvh] bg-[#9FAF7A] bg-gradient-to-b from-[#aab892] via-[#9FAF7A] to-[#8f9f72] text-stone-800">
-      <Suspense
-        fallback={<div className="min-h-[100dvh]" aria-hidden />}
-      >
+    <div className="simulator-root min-h-[100dvh] bg-[#0b0f0c] text-stone-100">
+      <Suspense fallback={null}>
         <SimulatorPageClient />
       </Suspense>
     </div>

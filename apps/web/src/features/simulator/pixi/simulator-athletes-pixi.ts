@@ -38,6 +38,8 @@ export type MountAthletesPixiOptions = {
   hostEl: HTMLElement;
   initialAthletes: MicroAthlete[];
   pathRecording?: PathRecordingConfig;
+  /** Cosmetic toggle only; keeps athlete state intact. */
+  showLabels?: () => boolean;
 };
 
 /**
@@ -127,56 +129,26 @@ export function mountAthletesPixi(
     if (shadowRecording && selectedId != null) {
       e.stopPropagation();
       const native = e.nativeEvent as PointerEvent;
-      const pointerId = native.pointerId;
-      const rect = hostEl.getBoundingClientRect();
-      captureLayout = {
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height,
-      };
-      const athlete = findAthlete(selectedId);
-      pathRecording.store.startShadowPath(selectedId);
-      if (athlete) {
-        pathRecording.store.appendShadowPoint(selectedId, athlete.nx, athlete.ny);
-      }
-      const { nx, ny } = boardFromClient(e.clientX, e.clientY);
-      pathRecording.store.appendShadowPoint(selectedId, nx, ny);
-      pathCapture = { athleteId: selectedId, pointerId, mode: "shadow" };
-      document.addEventListener("pointermove", onPathCaptureMove, {
-        passive: true,
-      });
-      document.addEventListener("pointerup", onPathCaptureUp);
-      document.addEventListener("pointercancel", onPathCaptureUp);
+      beginPathCapture(
+        selectedId,
+        native.pointerId,
+        native.clientX,
+        native.clientY,
+        "shadow",
+      );
       return;
     }
 
     if (mainRecording && selectedId != null) {
       e.stopPropagation();
       const native = e.nativeEvent as PointerEvent;
-      const pointerId = native.pointerId;
-      const rect = hostEl.getBoundingClientRect();
-      captureLayout = {
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height,
-      };
-      const athlete = findAthlete(selectedId);
-      if (!pathRecording.store.getPath(selectedId)) {
-        pathRecording.store.startPath(selectedId);
-      }
-      if (athlete) {
-        pathRecording.store.appendPoint(selectedId, athlete.nx, athlete.ny);
-      }
-      const { nx, ny } = boardFromClient(e.clientX, e.clientY);
-      pathRecording.store.appendPoint(selectedId, nx, ny);
-      pathCapture = { athleteId: selectedId, pointerId, mode: "main" };
-      document.addEventListener("pointermove", onPathCaptureMove, {
-        passive: true,
-      });
-      document.addEventListener("pointerup", onPathCaptureUp);
-      document.addEventListener("pointercancel", onPathCaptureUp);
+      beginPathCapture(
+        selectedId,
+        native.pointerId,
+        native.clientX,
+        native.clientY,
+        "main",
+      );
       return;
     }
     applySelection(null);
@@ -191,6 +163,45 @@ export function mountAthletesPixi(
     document.removeEventListener("pointermove", onPathCaptureMove);
     document.removeEventListener("pointerup", onPathCaptureUp);
     document.removeEventListener("pointercancel", onPathCaptureUp);
+  };
+
+  const beginPathCapture = (
+    athleteId: string,
+    pointerId: number,
+    clientX: number,
+    clientY: number,
+    mode: "main" | "shadow",
+  ) => {
+    const rect = hostEl.getBoundingClientRect();
+    captureLayout = {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+    const athlete = findAthlete(athleteId);
+    if (mode === "shadow") {
+      pathRecording?.store.startShadowPath(athleteId);
+      if (athlete) {
+        pathRecording?.store.appendShadowPoint(athleteId, athlete.nx, athlete.ny);
+      }
+      const { nx, ny } = boardFromClient(clientX, clientY);
+      pathRecording?.store.appendShadowPoint(athleteId, nx, ny);
+    } else {
+      // Each draw gesture starts a fresh path; avoids accidental joins.
+      pathRecording?.store.startPath(athleteId);
+      if (athlete) {
+        pathRecording?.store.appendPoint(athleteId, athlete.nx, athlete.ny);
+      }
+      const { nx, ny } = boardFromClient(clientX, clientY);
+      pathRecording?.store.appendPoint(athleteId, nx, ny);
+    }
+    pathCapture = { athleteId, pointerId, mode };
+    document.addEventListener("pointermove", onPathCaptureMove, {
+      passive: true,
+    });
+    document.addEventListener("pointerup", onPathCaptureUp);
+    document.addEventListener("pointercancel", onPathCaptureUp);
   };
 
   const onPathCaptureMove = (ev: PointerEvent) => {
@@ -250,7 +261,8 @@ export function mountAthletesPixi(
     if (!a) return false;
     const v = ensureView(id);
     const dragging = drag?.id === id;
-    return v.sync(a, selectedId === id, dragging);
+    const labelsVisible = options.showLabels?.() ?? true;
+    return v.sync(a, selectedId === id, dragging, labelsVisible);
   };
 
   const syncAll = (): boolean => {
@@ -359,10 +371,20 @@ export function mountAthletesPixi(
       runScalePump();
       return;
     }
-    if (pathRecording?.isRecording() || pathRecording?.isShadowRecording?.()) {
+    const inMainPathRecording = pathRecording?.isRecording() === true;
+    const inShadowPathRecording = pathRecording?.isShadowRecording?.() === true;
+    if (inMainPathRecording || inShadowPathRecording) {
       applySelection(id);
       syncAll();
       runScalePump();
+      const native = e.nativeEvent as PointerEvent;
+      beginPathCapture(
+        id,
+        native.pointerId,
+        native.clientX,
+        native.clientY,
+        inShadowPathRecording ? "shadow" : "main",
+      );
       return;
     }
     const native = e.nativeEvent as PointerEvent;

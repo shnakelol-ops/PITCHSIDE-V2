@@ -6,7 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type ReactNode,
 } from "react";
 
@@ -73,44 +72,12 @@ const SPORT_OPTIONS: { id: PitchSport; label: string }[] = [
   { id: "hurling", label: "Hurling" },
 ];
 
-/**
- * Worn natural sideline grass (cricket-strip inspiration) — dry, uneven, not flat UI fill.
- * Spec palette: #9FAF7A, #AFA785, #8F9B6A.
- */
-const GRASS = {
-  fresh: "#9FAF7A",
-  dry: "#AFA785",
-  worn: "#8F9B6A",
-};
-
-/** Fractal noise for fine grain + slight patchiness; data URL via `encodeURIComponent`. */
-const grassNoiseDataUrl = `url("data:image/svg+xml,${encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.68" numOctaves="5" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>',
-)}")`;
-
-/** Softer noise for clay / apron — blurred in CSS for premium texture (not gritty). */
-const clayNoiseDataUrl = `url("data:image/svg+xml,${encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><filter id="c"><feTurbulence type="fractalNoise" baseFrequency="0.42" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#c)"/></svg>',
-)}")`;
-
-/** Barely-there concentric curves — stadium lane memory, not a literal track. */
-const laneCurvesDataUrl = `url("data:image/svg+xml,${encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="384" viewBox="0 0 512 384" preserveAspectRatio="none"><ellipse cx="256" cy="198" rx="232" ry="158" fill="none" stroke="#3a3028" stroke-width="0.9" opacity="0.045"/><ellipse cx="256" cy="200" rx="210" ry="142" fill="none" stroke="#3a3028" stroke-width="0.85" opacity="0.034"/><ellipse cx="256" cy="202" rx="188" ry="126" fill="none" stroke="#3a3028" stroke-width="0.8" opacity="0.026"/><ellipse cx="256" cy="204" rx="166" ry="110" fill="none" stroke="#3a3028" stroke-width="0.75" opacity="0.02"/></svg>',
-)}")`;
-
-/** Muted terracotta / clay (no athletics orange). */
-const CLAY = {
-  deep: "#6e5a52",
-  mid: "#7d6860",
-  light: "#8c756c",
-};
-
 /** Chalk / cream line at pitch boundary — soft, not stark white. */
 const CHALK_LINE = "rgba(252, 248, 240, 0.52)";
 
 /** Canvas well only (Pixi aperture). Floating UI uses warm glass, not flat grey panels. */
 const C = {
-  canvasWell: "#1a1f16",
+  canvasWell: "#0b0f0c",
 };
 
 /**
@@ -118,39 +85,14 @@ const C = {
  * Not used on the pitch aperture / apron.
  */
 const GLASS_SIDEBAR = {
-  bg: "rgba(18, 20, 24, 0.58)",
-  border: "rgba(255, 252, 248, 0.085)",
-  title: "rgba(228, 226, 220, 0.72)",
-  shadow:
-    "0 4px 24px -4px rgba(0, 0, 0, 0.35), 0 12px 40px -16px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.06)",
-};
-
-/** Thin stadium apron: clay band + lane whispers — Pixi / layout unchanged. */
-const stadiumApronStyle: CSSProperties = {
-  backgroundColor: CLAY.mid,
-  backgroundImage: [
-    `linear-gradient(180deg, rgba(159,175,122,0.26) 0%, transparent 11%, transparent 89%, rgba(132,142,108,0.18) 100%)`,
-    `linear-gradient(168deg, ${CLAY.light} 0%, ${CLAY.mid} 44%, ${CLAY.deep} 100%)`,
-    `radial-gradient(ellipse 98% 72% at 50% 32%, rgba(255,252,248,0.07), transparent 55%)`,
-    `radial-gradient(ellipse 92% 58% at 50% 118%, rgba(42, 34, 30, 0.1), transparent 50%)`,
-  ].join(", "),
-  boxShadow:
-    "inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(38, 30, 26, 0.07)",
-};
-
-/** Uneven field: soft diagonals + gentle vertical drift + light radials (no flat panel fill). */
-const grassFieldStyle: CSSProperties = {
-  backgroundColor: GRASS.fresh,
-  backgroundImage: [
-    `linear-gradient(180deg, rgba(255,255,255,0.045) 0%, transparent 38%, rgba(55, 62, 40, 0.035) 100%)`,
-    `linear-gradient(101deg, ${GRASS.worn} 0%, transparent 26%, ${GRASS.dry} 50%, transparent 70%, ${GRASS.worn} 94%)`,
-    `radial-gradient(ellipse 95% 60% at 72% 18%, rgba(175,167,133,0.22), transparent 54%)`,
-    `radial-gradient(ellipse 80% 50% at 12% 85%, rgba(100, 108, 72, 0.1), transparent 56%)`,
-  ].join(", "),
+  bg: "rgba(10, 12, 14, 0.2)",
+  border: "rgba(255, 252, 248, 0.06)",
+  title: "rgba(228, 226, 220, 0.62)",
+  shadow: "none",
 };
 
 const btnBase =
-  "min-h-10 w-full justify-center rounded-[11px] px-3 py-2.5 text-[12px] font-medium leading-tight tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_8px_-2px_rgba(0,0,0,0.35)] transition-[transform,box-shadow,background-color,border-color,color] duration-200 sm:min-h-9 sm:py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(18,20,24,0.9)] active:translate-y-px active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.35)]";
+  "min-h-7 min-w-[3.4rem] justify-center rounded-[8px] px-2 py-1 text-[10px] font-medium leading-tight tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_4px_-2px_rgba(0,0,0,0.38)] transition-[transform,box-shadow,background-color,border-color,color] duration-150 sm:min-h-7 sm:text-[10.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(18,20,24,0.9)] active:translate-y-px active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.32)]";
 
 const btnIdle =
   "!border !border-white/[0.07] !bg-[rgba(32,34,40,0.88)] !text-[rgba(245,243,238,0.94)] hover:!border-white/[0.1] hover:!bg-[rgba(38,40,48,0.92)] hover:!text-white hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_3px_12px_-4px_rgba(0,0,0,0.4)]";
@@ -169,7 +111,7 @@ const btnReviewOn =
 
 function reviewChipClass(active: boolean) {
   return cn(
-    "min-h-8 rounded-lg border px-2 py-1.5 text-[9px] font-bold uppercase tracking-wide",
+    "min-h-7 rounded-md border px-1.5 py-1 text-[8px] font-bold uppercase tracking-wide sm:text-[8.5px]",
     btnBase,
     active ? btnReviewOn : btnIdle,
   );
@@ -187,7 +129,7 @@ function ToolRail({
   return (
     <div
       className={cn(
-        "flex flex-col gap-0 rounded-[14px] border p-3.5 backdrop-blur-sm",
+        "flex flex-col gap-0 rounded-[8px] border px-1.5 py-1",
         className,
       )}
       style={{
@@ -196,19 +138,19 @@ function ToolRail({
         boxShadow: GLASS_SIDEBAR.shadow,
       }}
     >
-      <div className="flex items-baseline gap-2 border-b border-white/[0.055] pb-2.5">
+      <div className="flex items-baseline gap-1.5 pb-1">
         <span
-          className="mt-0.5 size-1 shrink-0 rounded-full bg-[rgba(180,200,188,0.25)] ring-1 ring-white/[0.07]"
+          className="mt-0.5 size-1 shrink-0 rounded-full bg-[rgba(180,200,188,0.2)] ring-1 ring-white/[0.05]"
           aria-hidden
         />
         <div
-          className="font-[system-ui,-apple-system,'Segoe_UI',sans-serif] text-[9.5px] font-semibold uppercase leading-none tracking-[0.28em] text-[rgba(228,226,220,0.78)]"
+          className="font-[system-ui,-apple-system,'Segoe_UI',sans-serif] text-[7px] font-semibold uppercase leading-none tracking-[0.2em] text-[rgba(228,226,220,0.62)]"
           style={{ fontFeatureSettings: '"ss01" 1' }}
         >
           {title}
         </div>
       </div>
-      <div className="flex flex-col gap-2 pt-3">{children}</div>
+      <div className="flex flex-col gap-1 pt-0.5">{children}</div>
     </div>
   );
 }
@@ -562,129 +504,45 @@ export function SimulatorBoardShell({
     }
   };
 
+  console.log("PIX I V1 ACTIVE");
+
   return (
-    <div
-      className="relative flex h-[100dvh] min-h-0 flex-col overflow-hidden text-stone-800"
-      style={grassFieldStyle}
-    >
-      {/* Minimal grain only (~2.8%) — enough to kill “flat UI”, not noisy. */}
-      <div
-        className="pointer-events-none absolute inset-0 z-0 opacity-[0.028] mix-blend-multiply"
-        style={{
-          backgroundImage: grassNoiseDataUrl,
-          backgroundSize: "240px 240px",
-        }}
-        aria-hidden
-      />
-      <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5">
+    <div className="simulator-shell relative flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-black text-stone-200">
+      <header className="relative z-10 flex shrink-0 items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-2.5">
         <div className="min-w-0 space-y-0.5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-stone-800/65">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-stone-300/65">
             Pitchside
           </p>
-          <h1 className="truncate text-base font-semibold tracking-tight text-stone-900/95 sm:text-[17px]">
+          <h1 className="truncate text-[15px] font-semibold tracking-tight text-stone-100/95 sm:text-base">
             Match simulator
           </h1>
-          <p className="hidden text-[11px] text-stone-800/60 sm:block">
+          <p className="hidden text-[10px] text-stone-300/60 lg:block">
             Field view — training strip in natural grass.
           </p>
         </div>
       </header>
 
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14">
-        <aside className="order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
-          <ToolRail title="Transport" className="min-w-0 flex-1 lg:flex-none">
+      <main className="simulator-shell-main relative z-10 flex min-h-0 flex-1 flex-col gap-1.5 px-2 pb-2 pt-1 sm:gap-2 sm:px-3 sm:pb-3">
+        <div className="simulator-pitch-stack order-1 flex min-h-0 min-w-0 flex-[1_1_auto] flex-col items-center justify-center">
+          <div className="simulator-pitch-stage relative w-full max-w-full px-0">
             <div
-              className="grid grid-cols-3 gap-2 lg:grid-cols-1"
-              role="group"
-              aria-label="Playback transport"
-            >
-              <Button
-                type="button"
-                variant="secondary"
-                className={cn(btnBase, btnIdle)}
-                onClick={() => surfaceRef.current?.play()}
-              >
-                Play
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className={cn(btnBase, btnIdle)}
-                onClick={() => surfaceRef.current?.pause()}
-              >
-                Pause
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className={cn(btnBase, btnIdle)}
-                onClick={() => surfaceRef.current?.reset()}
-              >
-                Reset
-              </Button>
-            </div>
-          </ToolRail>
-        </aside>
-
-        <div className="order-1 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center lg:order-2 lg:max-w-[min(96vw,74rem)]">
-          <div className="relative w-full max-w-full px-1 sm:px-2">
-            {/* Soft lift behind pitch — no hard frame ring */}
-            <div
-              className="pointer-events-none absolute -inset-4 rounded-[1.75rem] bg-[radial-gradient(ellipse_at_50%_42%,rgba(62,70,48,0.14),transparent_68%)] blur-xl"
-              aria-hidden
-            />
-            <div
-              className="relative overflow-hidden rounded-[1.2rem] p-2 sm:p-2.5"
+              className="simulator-pitch-frame relative overflow-hidden rounded-[0.8rem] p-0.5 sm:rounded-[0.9rem] sm:p-1"
               style={{
-                backgroundColor: GRASS.fresh,
-                backgroundImage: [
-                  `linear-gradient(188deg, rgba(175,167,133,0.16) 0%, transparent 48%, rgba(143,155,106,0.1) 100%)`,
-                  `linear-gradient(88deg, ${GRASS.worn} 0%, transparent 32%, rgba(255,255,255,0.025) 54%, transparent 78%, ${GRASS.dry} 100%)`,
-                ].join(", "),
+                backgroundColor: "#000",
                 boxShadow:
-                  "0 28px 64px -24px rgba(22, 26, 16, 0.22), 0 12px 32px -18px rgba(22, 26, 16, 0.12)",
+                  "0 10px 26px -18px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255,255,255,0.04)",
               }}
             >
               <div
-                className="pointer-events-none absolute inset-0 opacity-[0.022] mix-blend-multiply"
+                className="simulator-pitch-frame-inner relative z-10 overflow-hidden rounded-[0.75rem] p-0"
                 style={{
-                  backgroundImage: grassNoiseDataUrl,
-                  backgroundSize: "180px 180px",
-                }}
-                aria-hidden
-              />
-              {/*
-                Stadium apron: muted clay band, faint lane curves, chalk at pitch — Pixi untouched.
-              */}
-              <div
-                className="relative z-10 overflow-hidden rounded-[1.05rem] p-1 sm:p-1.5"
-                style={{
-                  ...stadiumApronStyle,
-                  backgroundColor: "#ff0000",
-                  backgroundImage: "none",
+                  backgroundColor: "#000",
                 }}
               >
                 <div
-                  className="pointer-events-none absolute inset-0 opacity-[0.038] mix-blend-multiply [filter:blur(0.65px)]"
-                  style={{
-                    backgroundImage: clayNoiseDataUrl,
-                    backgroundSize: "220px 220px",
-                  }}
-                  aria-hidden
-                />
-                <div
-                  className="pointer-events-none absolute inset-0 opacity-[0.32]"
-                  style={{
-                    backgroundImage: laneCurvesDataUrl,
-                    backgroundSize: "cover",
-                    backgroundPosition: "50% 52%",
-                  }}
-                  aria-hidden
-                />
-                <div
                   ref={pitchHostRef}
                   className={cn(
-                    "relative overflow-hidden rounded-xl",
+                    "simulator-pitch-host-wrap relative overflow-hidden rounded-[0.72rem]",
                     surfaceMode === "STATS" &&
                       !canStatsPitchLog &&
                       "ring-2 ring-amber-400/35 ring-offset-0",
@@ -721,24 +579,59 @@ export function SimulatorBoardShell({
                     }
                     statsReviewMode={reviewMode}
                     statsPitchInteractive={canStatsPitchLog}
-                    className="max-h-[min(68dvh,calc(100dvw-2.5rem))] w-full !rounded-lg !border-0 !bg-transparent !shadow-none !ring-0 sm:max-h-[min(72dvh,80vw)] lg:max-h-[min(78dvh,58rem)]"
+                    className="max-h-[min(80dvh,calc(100dvw-0.6rem))] w-full !rounded-[0.62rem] !border-0 !bg-transparent !shadow-none !ring-0 sm:max-h-[min(82dvh,96vw)] lg:max-h-[min(84dvh,92vw)]"
                   />
                 </div>
               </div>
             </div>
           </div>
-          <p className="mx-auto mt-4 max-w-md px-3 text-center text-[10px] font-medium uppercase leading-relaxed tracking-[0.14em] text-stone-800/55 sm:mt-5 sm:text-[11px] sm:tracking-[0.16em]">
+          <p className="mx-auto mt-1.5 max-w-md px-1 text-center text-[8px] font-medium uppercase leading-relaxed tracking-[0.08em] text-stone-300/46 sm:text-[9px] sm:tracking-[0.1em]">
             {surfaceMode === "STATS"
               ? canStatsPitchLog
-                ? "Pick event type · tap the pitch to log · same Pixi canvas as simulator"
-                : "Review or pause · use match control to start / resume play · filters refine pitch dots"
-              : "Select a player · draw on the pitch · transport on the left"}
+                ? "Pick event type · tap pitch to log"
+                : "Review or pause · resume to continue logging"
+              : "Select player · draw path · transport below"}
           </p>
         </div>
 
-        <aside className="order-3 flex shrink-0 flex-row flex-wrap gap-3.5 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
-          <ToolRail title="Mode" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
-            <div className="flex flex-col gap-2" role="group" aria-label="Canvas mode">
+        <aside className="order-2 flex shrink-0 flex-row gap-1">
+          <ToolRail title="Transport" className="min-w-0 w-full">
+            <div
+              className="grid grid-cols-3 gap-1"
+              role="group"
+              aria-label="Playback transport"
+            >
+              <Button
+                type="button"
+                variant="secondary"
+                className={cn(btnBase, btnIdle)}
+                onClick={() => surfaceRef.current?.play()}
+              >
+                Play
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className={cn(btnBase, btnIdle)}
+                onClick={() => surfaceRef.current?.pause()}
+              >
+                Pause
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className={cn(btnBase, btnIdle)}
+                onClick={() => surfaceRef.current?.reset()}
+              >
+                Reset
+              </Button>
+            </div>
+          </ToolRail>
+        </aside>
+
+        <aside className="order-3 flex shrink-0 flex-row flex-wrap gap-1">
+          <ToolRail title="Mode" className="min-w-0 flex-1 basis-[48%]">
+            <div className="flex flex-row gap-1" role="group" aria-label="Canvas mode">
               <Button
                 type="button"
                 variant="secondary"
@@ -749,7 +642,7 @@ export function SimulatorBoardShell({
                 aria-pressed={surfaceMode === "SIMULATOR"}
                 onClick={() => setMode("SIMULATOR")}
               >
-                Simulator
+                Sim
               </Button>
               <Button
                 type="button"
@@ -766,7 +659,7 @@ export function SimulatorBoardShell({
             </div>
             {surfaceMode === "STATS" ? (
               <div
-                className="mt-1 flex max-h-[min(70vh,28rem)] flex-col gap-2 overflow-y-auto pr-0.5"
+                className="mt-0.5 flex max-h-[min(38vh,18rem)] flex-col gap-1 overflow-y-auto pr-0.5"
                 role="group"
                 aria-label="Stats logging"
               >
@@ -985,8 +878,8 @@ export function SimulatorBoardShell({
               </div>
             ) : null}
           </ToolRail>
-          <ToolRail title="Pitch" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
-            <div className="flex flex-col gap-2" role="group" aria-label="Pitch sport">
+          <ToolRail title="Pitch" className="min-w-0 flex-1 basis-[48%]">
+            <div className="flex flex-row flex-wrap gap-1" role="group" aria-label="Pitch sport">
               {SPORT_OPTIONS.map((opt) => (
                 <Button
                   key={opt.id}
@@ -1003,8 +896,8 @@ export function SimulatorBoardShell({
               ))}
             </div>
           </ToolRail>
-          <ToolRail title="Capture" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
-            <div className="flex flex-col gap-2" role="group" aria-label="Path capture">
+          <ToolRail title="Capture" className="min-w-0 flex-1 basis-[48%]">
+            <div className="flex flex-row flex-wrap gap-1" role="group" aria-label="Path capture">
               <Button
                 type="button"
                 variant="secondary"
@@ -1013,7 +906,7 @@ export function SimulatorBoardShell({
                 aria-pressed={pathRecording}
                 onClick={() => setMainRecording(!pathRecording)}
               >
-                {pathRecording ? "Recording path…" : "Record path"}
+                {pathRecording ? "Path on" : "Path"}
               </Button>
               <Button
                 type="button"
@@ -1023,7 +916,7 @@ export function SimulatorBoardShell({
                 aria-pressed={shadowRecording}
                 onClick={() => setShadowLineRecording(!shadowRecording)}
               >
-                {shadowRecording ? "Shadow line…" : "Shadow line"}
+                {shadowRecording ? "Shadow on" : "Shadow"}
               </Button>
               <Button
                 type="button"
@@ -1031,7 +924,7 @@ export function SimulatorBoardShell({
                 className={cn(btnBase, btnIdle)}
                 onClick={onExportPitchPng}
               >
-                Export pitch PNG
+                Export
               </Button>
               <Button
                 type="button"
@@ -1039,7 +932,7 @@ export function SimulatorBoardShell({
                 className={cn(btnBase, btnIdle)}
                 onClick={onSharePitchPng}
               >
-                Share pitch
+                Share
               </Button>
               {pitchExportError ? (
                 <p className="text-[9px] text-amber-200/90">{pitchExportError}</p>

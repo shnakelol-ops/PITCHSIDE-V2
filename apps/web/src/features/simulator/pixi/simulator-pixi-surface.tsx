@@ -33,11 +33,6 @@ import type { StatsReviewMode } from "@src/features/stats/types/stats-review-mod
 import { letterboxPitchWorld, viewportCssToBoardNorm } from "@src/lib/pitch-coordinates";
 import { cn } from "@pitchside/utils";
 
-/** Subtle turf grain on HTML wrapper only — not used by Pixi drawing. */
-const pitchSurroundNoiseDataUrl = `url("data:image/svg+xml,${encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.62" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>',
-)}")`;
-
 export type SimulatorPixiSurfaceHandle = {
   play: () => void;
   pause: () => void;
@@ -65,6 +60,8 @@ export type SimulatorPixiSurfaceProps = {
   statsReviewMode?: StatsReviewMode;
   /** When false (e.g. HT/FT review), pitch stops accepting logs; dots stay visible. */
   statsPitchInteractive?: boolean;
+  /** Cosmetic only; hides/shows athlete labels without touching athlete state. */
+  showAthleteLabels?: boolean;
   className?: string;
 };
 
@@ -88,6 +85,7 @@ export const SimulatorPixiSurface = forwardRef<
     onStatsPitchTap,
     statsReviewMode = "live",
     statsPitchInteractive = true,
+    showAthleteLabels = true,
     className,
   },
   ref,
@@ -98,6 +96,9 @@ export const SimulatorPixiSurface = forwardRef<
   const pitchHolderRef = useRef<PixiContainer | null>(null);
   const pitchDisposeRef = useRef<(() => void) | null>(null);
   const athletesDisposeRef = useRef<(() => void) | null>(null);
+  const athletesLayerRef = useRef<PixiContainer | null>(null);
+  const pathsLayerRef = useRef<PixiContainer | null>(null);
+  const shadowGhostLayerRef = useRef<PixiContainer | null>(null);
   const sportRef = useRef<PitchSport>(sport);
   const recordingModeRef = useRef(recordingMode);
   const shadowRecordingModeRef = useRef(shadowRecordingMode);
@@ -107,6 +108,7 @@ export const SimulatorPixiSurface = forwardRef<
   const statsPitchInteractiveRef = useRef(statsPitchInteractive);
   const statsReviewModeRef = useRef(statsReviewMode);
   const statsLoggedEventsRef = useRef(statsLoggedEvents);
+  const showAthleteLabelsRef = useRef(showAthleteLabels);
   const worldScaleRef = useRef(1);
   const statsPixiRef = useRef<{
     statsLayer: PixiContainer | null;
@@ -125,8 +127,10 @@ export const SimulatorPixiSurface = forwardRef<
   statsPitchInteractiveRef.current = statsPitchInteractive;
   statsReviewModeRef.current = statsReviewMode;
   statsLoggedEventsRef.current = statsLoggedEvents;
+  showAthleteLabelsRef.current = showAthleteLabels;
   const selectedAthleteIdRef = useRef<string | null>(null);
   const playbackDrivingRef = useRef(false);
+  const flushAthletesVisualsRef = useRef<(() => void) | null>(null);
   const playbackControllerRef = useRef<SimulatorPlaybackController | null>(
     null,
   );
@@ -233,6 +237,8 @@ export const SimulatorPixiSurface = forwardRef<
       app.canvas.style.width = "100%";
       app.canvas.style.height = "100%";
       app.canvas.style.display = "block";
+      app.canvas.style.background = "transparent";
+      app.canvas.style.backgroundImage = "none";
       app.canvas.style.touchAction = "none";
       app.canvas.style.userSelect = "none";
 
@@ -244,6 +250,8 @@ export const SimulatorPixiSurface = forwardRef<
       pitchHolderRef.current = pitchHolder;
       const pathsLayer = new Container();
       pathsLayer.sortableChildren = true;
+      pathsLayerRef.current = pathsLayer;
+      pathsLayer.visible = surfaceModeRef.current === "SIMULATOR";
       const shadowPathGraphics = new Graphics();
       shadowPathGraphics.zIndex = 0;
       const pathGraphics = new Graphics();
@@ -252,9 +260,13 @@ export const SimulatorPixiSurface = forwardRef<
       pathsLayer.addChild(pathGraphics);
       pathsLayer.sortChildren();
       const shadowGhostLayer = new Container();
+      shadowGhostLayerRef.current = shadowGhostLayer;
+      shadowGhostLayer.visible = surfaceModeRef.current === "SIMULATOR";
       const shadowGhostGraphics = new Graphics();
       shadowGhostLayer.addChild(shadowGhostGraphics);
       const athletesLayer = new Container();
+      athletesLayerRef.current = athletesLayer;
+      athletesLayer.visible = surfaceModeRef.current === "SIMULATOR";
       world.addChild(pitchHolder);
       world.addChild(pathsLayer);
       world.addChild(shadowGhostLayer);
@@ -329,6 +341,7 @@ export const SimulatorPixiSurface = forwardRef<
         layer: athletesLayer,
         hostEl: host,
         initialAthletes: createDefaultMicroAthletes(),
+        showLabels: () => showAthleteLabelsRef.current,
         pathRecording: {
           store: pathStore,
           isRecording: () => recordingModeRef.current,
@@ -347,6 +360,7 @@ export const SimulatorPixiSurface = forwardRef<
       });
       athletesDisposeRef.current = athletesApi.dispose;
       releaseAthleteInputRef.current = athletesApi.releaseTransientInput;
+      flushAthletesVisualsRef.current = () => athletesApi.flushVisuals();
 
       const playback = new SimulatorPlaybackController({
         ticker: app.ticker,
@@ -387,12 +401,16 @@ export const SimulatorPixiSurface = forwardRef<
       athletesDisposeRef.current?.();
       athletesDisposeRef.current = null;
       releaseAthleteInputRef.current = null;
+      flushAthletesVisualsRef.current = null;
       statsPixiRef.current = {
         statsLayer: null,
         statsHit: null,
         statsDots: null,
       };
       pitchHolderRef.current = null;
+      athletesLayerRef.current = null;
+      pathsLayerRef.current = null;
+      shadowGhostLayerRef.current = null;
       const app = appRef.current;
       appRef.current = null;
       worldRef.current = null;
@@ -408,8 +426,21 @@ export const SimulatorPixiSurface = forwardRef<
   }, [pathStore]);
 
   useEffect(() => {
+    flushAthletesVisualsRef.current?.();
+  }, [showAthleteLabels]);
+
+  useEffect(() => {
     const { statsHit, statsDots, statsLayer } = statsPixiRef.current;
     if (!statsHit || !statsDots || !statsLayer) return;
+    if (athletesLayerRef.current) {
+      athletesLayerRef.current.visible = surfaceMode === "SIMULATOR";
+    }
+    if (pathsLayerRef.current) {
+      pathsLayerRef.current.visible = surfaceMode === "SIMULATOR";
+    }
+    if (shadowGhostLayerRef.current) {
+      shadowGhostLayerRef.current.visible = surfaceMode === "SIMULATOR";
+    }
     const canLog =
       surfaceMode === "STATS" &&
       statsPitchInteractive &&
@@ -431,6 +462,7 @@ export const SimulatorPixiSurface = forwardRef<
     statsPitchInteractive,
     statsArm,
     onStatsPitchTap,
+    showAthleteLabels,
     statsOverlayEpoch,
     resizeGen,
   ]);
@@ -443,30 +475,17 @@ export const SimulatorPixiSurface = forwardRef<
 
   return (
     <div
-      className="pitch-wrapper relative min-h-0 w-full flex-1 overflow-hidden rounded-2xl p-3 sm:p-4 md:p-5"
+      className="simulator-pitch-wrapper pitch-wrapper relative min-h-0 w-full flex-1 overflow-hidden rounded-2xl p-3 sm:p-4 md:p-5"
       style={{
-        backgroundColor: "#4a2f25",
-        backgroundImage: [
-          "linear-gradient(175deg, rgba(100, 72, 60, 0.2) 0%, transparent 42%, rgba(22, 14, 10, 0.32) 100%)",
-          "linear-gradient(95deg, rgba(32, 20, 16, 0.4) 0%, transparent 48%, rgba(68, 48, 38, 0.22) 100%)",
-          "radial-gradient(ellipse 120% 80% at 50% 0%, rgba(78, 56, 44, 0.14), transparent 55%)",
-        ].join(", "),
+        backgroundColor: "#0b0f0c",
         boxShadow:
           "inset 0 2px 12px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.045), inset 0 -2px 16px rgba(0, 0, 0, 0.2)",
       }}
     >
       <div
-        className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.045] mix-blend-multiply"
-        style={{
-          backgroundImage: pitchSurroundNoiseDataUrl,
-          backgroundSize: "200px 200px",
-        }}
-        aria-hidden
-      />
-      <div
         ref={hostRef}
         className={cn(
-          "relative z-10 mx-auto min-h-0 w-full max-w-full overflow-hidden rounded-lg bg-transparent",
+          "simulator-pitch-host relative z-10 mx-auto min-h-0 w-full max-w-full overflow-hidden rounded-lg bg-[#0b0f0c]",
           className,
         )}
         style={{

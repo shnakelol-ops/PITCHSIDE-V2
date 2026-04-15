@@ -1,4 +1,4 @@
-import { Circle, Container, FillGradient, Graphics } from "pixi.js";
+import { Circle, Container, FillGradient, Graphics, Text } from "pixi.js";
 
 import { boardNormToWorld } from "@src/lib/pitch-coordinates";
 import type { MicroAthlete } from "@src/features/simulator/model/micro-athlete";
@@ -10,67 +10,67 @@ import {
 const R = MICRO_ATHLETE_RADIUS_WORLD;
 /** Visual extent ~ max distance from origin for selection halo. */
 const R_VIS = R * 1.08;
-const DIR_TIP = R * 1.58;
-const DIR_X0 = R * 0.62;
+const FRONT_BEACON_X = R * 0.56;
+const FRONT_BEACON_R = R * 0.16;
 
 const SCALE_IDLE = 1;
 const SCALE_SELECTED = 1.065;
 const SCALE_DRAGGING = 1.05;
 const SCALE_LERP = 0.26;
 
+function fallbackAthleteLabel(id: string): string {
+  const seq = id.match(/(\d+)$/)?.[1];
+  if (seq) return `P${seq}`;
+  return id.toUpperCase().slice(0, 6);
+}
+
 function teamBodyGradient(team: MicroAthlete["team"]): FillGradient {
-  /** Light from forward-above (+x, -y local) — highlight on chest/head, shade on rear/shield. */
+  /** Light from forward-above (+x, -y local) — subtle chest/head highlight. */
   if (team === "home") {
     return new FillGradient({
       type: "radial",
-      center: { x: 0.52, y: 0.26 },
+      center: { x: 0.48, y: 0.24 },
       innerRadius: 0,
       outerRadius: 1,
-      outerCenter: { x: 0.52, y: 0.26 },
+      outerCenter: { x: 0.48, y: 0.24 },
       textureSpace: "local",
       colorStops: [
-        { offset: 0, color: "#f0fdf8" },
-        { offset: 0.18, color: "#86efbd" },
-        { offset: 0.42, color: "#14b897" },
-        { offset: 0.72, color: "#0d8068" },
-        { offset: 1, color: "#042f2a" },
+        { offset: 0, color: "#ecfdf5" },
+        { offset: 0.28, color: "#6ee7b7" },
+        { offset: 0.58, color: "#10b981" },
+        { offset: 1, color: "#064e3b" },
       ],
     });
   }
   return new FillGradient({
     type: "radial",
-    center: { x: 0.52, y: 0.26 },
+    center: { x: 0.48, y: 0.24 },
     innerRadius: 0,
     outerRadius: 1,
-    outerCenter: { x: 0.52, y: 0.26 },
+    outerCenter: { x: 0.48, y: 0.24 },
     textureSpace: "local",
     colorStops: [
-      { offset: 0, color: "#fffbeb" },
-      { offset: 0.18, color: "#fde047" },
-      { offset: 0.42, color: "#ea580c" },
-      { offset: 0.72, color: "#9a3412" },
-      { offset: 1, color: "#431407" },
+      { offset: 0, color: "#fff7ed" },
+      { offset: 0.28, color: "#fdba74" },
+      { offset: 0.58, color: "#f97316" },
+      { offset: 1, color: "#7c2d12" },
     ],
   });
 }
 
 /**
- * One closed path: compact head-forward silhouette, tapered shield base (+x = facing).
+ * One closed path: compact teardrop/jersey silhouette (+x = facing).
  */
 function drawAthleteSilhouette(g: Graphics, gradient: FillGradient, m: number): void {
-  g.moveTo(-0.52 * m, 0.52 * m);
-  g.quadraticCurveTo(-0.58 * m, 0.22 * m, -0.5 * m, -0.08 * m);
-  g.quadraticCurveTo(-0.44 * m, -0.36 * m, -0.22 * m, -0.46 * m);
-  g.quadraticCurveTo(0.08 * m, -0.54 * m, 0.4 * m, -0.44 * m);
-  g.quadraticCurveTo(0.68 * m, -0.32 * m, 0.78 * m, -0.04 * m);
-  g.quadraticCurveTo(0.86 * m, 0.2 * m, 0.68 * m, 0.38 * m);
-  g.quadraticCurveTo(0.4 * m, 0.54 * m, 0.08 * m, 0.58 * m);
-  g.quadraticCurveTo(-0.22 * m, 0.58 * m, -0.52 * m, 0.52 * m);
+  g.moveTo(-0.58 * m, -0.04 * m);
+  g.bezierCurveTo(-0.46 * m, -0.5 * m, 0.16 * m, -0.72 * m, 0.66 * m, -0.46 * m);
+  g.bezierCurveTo(0.96 * m, -0.27 * m, 0.96 * m, 0.27 * m, 0.66 * m, 0.46 * m);
+  g.bezierCurveTo(0.16 * m, 0.72 * m, -0.46 * m, 0.5 * m, -0.58 * m, 0.04 * m);
   g.closePath();
   g.fill(gradient);
   g.stroke({
-    width: 0.32,
-    color: "rgba(255,255,255,0.34)",
+    width: 0.34,
+    color: "rgba(255,255,255,0.38)",
     join: "round",
     cap: "round",
   });
@@ -82,12 +82,13 @@ export type MicroAthleteView = {
     athlete: MicroAthlete,
     selected: boolean,
     dragging: boolean,
+    showLabel: boolean,
   ) => boolean;
   dispose: () => void;
 };
 
 /**
- * Micro-athlete token: layered ground shadow, silhouette body with radial depth, forward wedge.
+ * Micro-athlete token: layered ground shadow, teardrop body, forward beacons.
  */
 export function createMicroAthleteView(): MicroAthleteView {
   const container = new Container();
@@ -107,10 +108,35 @@ export function createMicroAthleteView(): MicroAthleteView {
   const selection = new Graphics();
   selection.zIndex = 3;
 
+  const labelWrap = new Container();
+  labelWrap.zIndex = 4;
+  labelWrap.eventMode = "none";
+  labelWrap.position.set(0, -(R * 1.7));
+
+  const labelPlate = new Graphics();
+  labelPlate.eventMode = "none";
+
+  const labelText = new Text({
+    text: "",
+    style: {
+      fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif",
+      fontSize: 2.55,
+      fontWeight: "600",
+      fill: 0xf8fafc,
+      letterSpacing: 0.16,
+    },
+  });
+  labelText.anchor.set(0.5, 0.5);
+  labelText.eventMode = "none";
+
+  labelWrap.addChild(labelPlate);
+  labelWrap.addChild(labelText);
+
   container.addChild(shadow);
   container.addChild(body);
   container.addChild(direction);
   container.addChild(selection);
+  container.addChild(labelWrap);
 
   let bodyGradient: FillGradient | null = null;
 
@@ -127,42 +153,38 @@ export function createMicroAthleteView(): MicroAthleteView {
   const redrawShadow = () => {
     shadow.clear();
     shadow
-      .ellipse(0.18 * R, 0.68 * R, R * 1.22, R * 0.74)
-      .fill({ color: 0x020617, alpha: 0.11 });
+      .ellipse(0.2 * R, 0.66 * R, R * 1.14, R * 0.68)
+      .fill({ color: 0x020617, alpha: 0.12 });
     shadow
-      .ellipse(0.12 * R, 0.58 * R, R * 0.62, R * 0.38)
+      .ellipse(0.1 * R, 0.56 * R, R * 0.58, R * 0.34)
       .fill({ color: 0x020617, alpha: 0.2 });
-    shadow
-      .ellipse(0.06 * R, 0.52 * R, R * 0.32, R * 0.2)
-      .fill({ color: 0x020617, alpha: 0.26 });
   };
 
   const redrawDirection = () => {
     direction.clear();
-    const yHalf = R * 0.28;
-    const xBase = DIR_X0;
+    const seamStartX = R * 0.02;
+    const seamEndX = R * 0.58;
     direction
-      .moveTo(xBase, -yHalf)
-      .lineTo(xBase, yHalf)
-      .lineTo(DIR_TIP, 0)
-      .closePath()
-      .fill({ color: "rgba(15, 23, 42, 0.72)" });
-    direction
-      .moveTo(xBase, -yHalf)
-      .lineTo(xBase, yHalf)
-      .lineTo(DIR_TIP, 0)
-      .closePath()
+      .moveTo(seamStartX, 0)
+      .lineTo(seamEndX, 0)
       .stroke({
-        width: 0.22,
-        color: "rgba(255,255,255,0.45)",
-        join: "round",
+        width: 0.16,
+        color: "rgba(255,255,255,0.26)",
+        cap: "round",
       });
     direction
-      .moveTo(R * 0.08, 0)
-      .lineTo(xBase + 0.02, 0)
+      .roundRect(
+        FRONT_BEACON_X - FRONT_BEACON_R * 0.9,
+        -FRONT_BEACON_R,
+        FRONT_BEACON_R * 1.8,
+        FRONT_BEACON_R * 2,
+        FRONT_BEACON_R * 0.72,
+      )
+      .fill({ color: "rgba(248,250,252,0.62)" })
       .stroke({
-        width: 0.14,
-        color: "rgba(255,255,255,0.22)",
+        width: 0.16,
+        color: "rgba(15,23,42,0.5)",
+        join: "round",
         cap: "round",
       });
   };
@@ -173,24 +195,57 @@ export function createMicroAthleteView(): MicroAthleteView {
 
   let lastTeam: MicroAthlete["team"] = "home";
   let lastSelectionDrawn: boolean | null = null;
+  let lastLabel = "";
+
+  const redrawLabelPlate = (selected: boolean) => {
+    const padX = 0.66;
+    const padY = 0.34;
+    const w = Math.max(2.3, labelText.width + padX * 2);
+    const h = Math.max(1.34, labelText.height + padY * 2);
+    labelPlate.clear();
+    labelPlate
+      .roundRect(-w / 2, -h / 2, w, h, 0.46)
+      .fill({ color: 0x020617, alpha: selected ? 0.74 : 0.62 })
+      .stroke({
+        width: 0.1,
+        color: selected ? "rgba(248,250,252,0.38)" : "rgba(248,250,252,0.24)",
+      });
+  };
 
   const sync = (
     athlete: MicroAthlete,
     selected: boolean,
     dragging: boolean,
+    showLabel: boolean,
   ): boolean => {
     const { x, y } = boardNormToWorld(athlete.nx, athlete.ny);
     container.position.set(x, y);
     container.rotation = athlete.headingRad;
+    labelWrap.rotation = -athlete.headingRad;
+    labelWrap.alpha = selected ? 0.98 : 0.92;
+    labelWrap.visible = showLabel;
 
     if (lastTeam !== athlete.team) {
       lastTeam = athlete.team;
       redrawBody(athlete.team);
     }
 
+    if (showLabel) {
+      const nextLabel =
+        athlete.label && athlete.label.trim().length > 0
+          ? athlete.label.trim().slice(0, 18)
+          : fallbackAthleteLabel(athlete.id);
+      if (nextLabel !== lastLabel) {
+        lastLabel = nextLabel;
+        labelText.text = nextLabel;
+        redrawLabelPlate(selected);
+      }
+    }
+
     if (lastSelectionDrawn !== selected) {
       lastSelectionDrawn = selected;
       selection.clear();
+      if (showLabel) redrawLabelPlate(selected);
       if (selected) {
         selection
           .circle(0, 0, R_VIS + 1.12)
