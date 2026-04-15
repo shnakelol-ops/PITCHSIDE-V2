@@ -519,19 +519,21 @@ export function SimulatorFloatingShell({
   return (
     <div className="simulator-direct relative h-[100dvh] min-h-0 overflow-hidden bg-[#0b0f0c] text-stone-100">
       <div ref={pitchHostRef} className="absolute inset-0">
-        <SimulatorPixiSurface
-          ref={surfaceRef}
-          sport={sport}
-          recordingMode={surfaceMode === "SIMULATOR" ? pathRecording : false}
-          shadowRecordingMode={surfaceMode === "SIMULATOR" ? shadowRecording : false}
-          surfaceMode={surfaceMode}
-          statsArm={surfaceMode === "STATS" ? statsArm : null}
-          statsLoggedEvents={surfaceMode === "STATS" ? statsEventsForPitchView : []}
-          onStatsPitchTap={surfaceMode === "STATS" ? onStatsPitchTapGuarded : undefined}
-          statsReviewMode={reviewMode}
-          statsPitchInteractive={canStatsPitchLog}
-          className="h-full w-full !max-h-[100dvh] !rounded-md !border-0 !bg-transparent !shadow-none !ring-0"
-        />
+        <div className="w-full h-[100vh]">
+          <SimulatorPixiSurface
+            ref={surfaceRef}
+            sport={sport}
+            recordingMode={surfaceMode === "SIMULATOR" ? pathRecording : false}
+            shadowRecordingMode={surfaceMode === "SIMULATOR" ? shadowRecording : false}
+            surfaceMode={surfaceMode}
+            statsArm={surfaceMode === "STATS" ? statsArm : null}
+            statsLoggedEvents={surfaceMode === "STATS" ? statsEventsForPitchView : []}
+            onStatsPitchTap={surfaceMode === "STATS" ? onStatsPitchTapGuarded : undefined}
+            statsReviewMode={reviewMode}
+            statsPitchInteractive={canStatsPitchLog}
+            className="w-full h-full"
+          />
+        </div>
       </div>
 
       <div className="pointer-events-none absolute inset-0 z-40">
