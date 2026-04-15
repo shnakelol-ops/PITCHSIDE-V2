@@ -118,6 +118,8 @@ export const SimulatorPixiSurface = forwardRef<
   const [statsOverlayEpoch, setStatsOverlayEpoch] = useState(0);
   /** Bumps on host resize so marker min-size tracks letterbox scale. */
   const [resizeGen, setResizeGen] = useState(0);
+  const [pixiFailed, setPixiFailed] = useState(false);
+  const initializingRef = useRef(false);
 
   surfaceModeRef.current = surfaceMode;
   statsArmRef.current = statsArm;
@@ -204,177 +206,202 @@ export const SimulatorPixiSurface = forwardRef<
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    if (appRef.current || initializingRef.current) return;
 
     let cancelled = false;
     let ro: ResizeObserver | null = null;
     let unsubPaths: (() => void) | null = null;
+    initializingRef.current = true;
 
     void (async () => {
-      const { Application, Container, Graphics } = await import("pixi.js");
-      if (cancelled || !hostRef.current) return;
+      try {
+        console.log("Pixi init");
+        const { Application, Container, Graphics } = await import("pixi.js");
+        if (cancelled || !hostRef.current) return;
 
-      const app = new Application();
-      await app.init({
-        width: host.clientWidth || 640,
-        height: host.clientHeight || 400,
-        backgroundAlpha: 0,
-        antialias: true,
-        autoDensity: true,
-        resolution: Math.min(2, window.devicePixelRatio || 1),
-      });
-
-      if (cancelled) {
-        app.destroy(true);
-        return;
-      }
-
-      appRef.current = app;
-      host.appendChild(app.canvas as HTMLCanvasElement);
-      app.canvas.style.width = "100%";
-      app.canvas.style.height = "100%";
-      app.canvas.style.display = "block";
-      app.canvas.style.touchAction = "none";
-      app.canvas.style.userSelect = "none";
-
-      const world = new Container();
-      worldRef.current = world;
-      app.stage.addChild(world);
-
-      const pitchHolder = new Container();
-      pitchHolderRef.current = pitchHolder;
-      const pathsLayer = new Container();
-      pathsLayer.sortableChildren = true;
-      const shadowPathGraphics = new Graphics();
-      shadowPathGraphics.zIndex = 0;
-      const pathGraphics = new Graphics();
-      pathGraphics.zIndex = 1;
-      pathsLayer.addChild(shadowPathGraphics);
-      pathsLayer.addChild(pathGraphics);
-      pathsLayer.sortChildren();
-      const shadowGhostLayer = new Container();
-      const shadowGhostGraphics = new Graphics();
-      shadowGhostLayer.addChild(shadowGhostGraphics);
-      const athletesLayer = new Container();
-      world.addChild(pitchHolder);
-      world.addChild(pathsLayer);
-      world.addChild(shadowGhostLayer);
-      world.addChild(athletesLayer);
-
-      const statsLayer = new Container();
-      statsLayer.sortableChildren = true;
-      const statsHit = new Graphics();
-      statsHit.zIndex = 0;
-      statsHit
-        .rect(0, 0, BOARD_PITCH_VIEWBOX.w, BOARD_PITCH_VIEWBOX.h)
-        .fill({ color: 0xffffff, alpha: 0.0001 });
-      const statsInteractiveInit =
-        surfaceModeRef.current === "STATS" &&
-        statsPitchInteractiveRef.current &&
-        statsArmRef.current != null &&
-        Boolean(onStatsPitchTapRef.current);
-      statsHit.eventMode = statsInteractiveInit ? "static" : "none";
-      const statsDots = new Graphics();
-      statsDots.eventMode = "none";
-      statsDots.zIndex = 1;
-      statsLayer.addChild(statsHit);
-      statsLayer.addChild(statsDots);
-      world.addChild(statsLayer);
-      statsLayer.visible = surfaceModeRef.current === "STATS";
-      statsPixiRef.current = { statsLayer, statsHit, statsDots };
-      drawStatsEventsGraphics(statsDots, statsLoggedEventsRef.current, {
-        reviewMode: statsReviewModeRef.current,
-        worldToScreenScale: worldScaleRef.current,
-      });
-
-      statsHit.on("pointerdown", (e: FederatedPointerEvent) => {
-        if (surfaceModeRef.current !== "STATS") return;
-        if (!statsPitchInteractiveRef.current) return;
-        if (!statsArmRef.current) return;
-        const fire = onStatsPitchTapRef.current;
-        if (!fire) return;
-        e.stopPropagation();
-        const hostEl = hostRef.current;
-        if (!hostEl) return;
-        const r = hostEl.getBoundingClientRect();
-        const stageX = e.clientX - r.left;
-        const stageY = e.clientY - r.top;
-        const { nx, ny } = viewportCssToBoardNorm(
-          stageX,
-          stageY,
-          r.width,
-          r.height,
+        const fallbackWidth = Math.max(1, Math.floor(window.innerWidth || 640));
+        const fallbackHeight = Math.max(
+          1,
+          Math.floor(window.innerHeight || 400),
         );
-        fire({
-          nx,
-          ny,
-          atMs: Date.now(),
-          stageX,
-          stageY,
+        const initialWidth = Math.max(1, host.clientWidth || fallbackWidth);
+        const initialHeight = Math.max(1, host.clientHeight || fallbackHeight);
+
+        const app = new Application();
+        await app.init({
+          width: initialWidth,
+          height: initialHeight,
+          backgroundAlpha: 0,
+          antialias: true,
+          autoDensity: true,
+          resolution: Math.min(2, window.devicePixelRatio || 1),
         });
-      });
+        (app as { autoDestroy?: boolean }).autoDestroy = false;
 
-      setStatsOverlayEpoch((n) => n + 1);
+        if (cancelled) {
+          app.destroy(true, { children: true });
+          return;
+        }
 
-      attachPitch(sportRef.current);
-      layout();
+        appRef.current = app;
+        if (app.canvas.parentElement !== host) {
+          host.appendChild(app.canvas as HTMLCanvasElement);
+        }
+        console.log("Canvas mounted", host);
+        app.canvas.style.width = `${initialWidth}px`;
+        app.canvas.style.height = `${initialHeight}px`;
+        app.canvas.style.maxWidth = "100%";
+        app.canvas.style.maxHeight = "100%";
+        app.canvas.style.display = "block";
+        app.canvas.style.touchAction = "none";
+        app.canvas.style.userSelect = "none";
 
-      const redrawPaths = () => {
-        drawShadowRunsGraphics(shadowPathGraphics, pathStore.getAllShadowRuns());
-        drawMovementPathsGraphics(pathGraphics, pathStore.getAllPaths());
-      };
-      redrawPaths();
-      unsubPaths = pathStore.subscribe(redrawPaths);
+        const world = new Container();
+        worldRef.current = world;
+        app.stage.addChild(world);
 
-      const athletesApi = mountAthletesPixi({
-        layer: athletesLayer,
-        hostEl: host,
-        initialAthletes: createDefaultMicroAthletes(),
-        pathRecording: {
-          store: pathStore,
-          isRecording: () => recordingModeRef.current,
-          isShadowRecording: () => shadowRecordingModeRef.current,
-          isPlaybackDriving: () => playbackDrivingRef.current,
-          onSelectionChange: (id) => {
-            selectedAthleteIdRef.current = id;
-            if (recordingModeRef.current && id != null) {
-              pathStore.startPath(id);
-            }
-            if (shadowRecordingModeRef.current && id != null) {
-              pathStore.startShadowPath(id);
-            }
-          },
-        },
-      });
-      athletesDisposeRef.current = athletesApi.dispose;
-      releaseAthleteInputRef.current = athletesApi.releaseTransientInput;
+        const pitchHolder = new Container();
+        pitchHolderRef.current = pitchHolder;
+        const pathsLayer = new Container();
+        pathsLayer.sortableChildren = true;
+        const shadowPathGraphics = new Graphics();
+        shadowPathGraphics.zIndex = 0;
+        const pathGraphics = new Graphics();
+        pathGraphics.zIndex = 1;
+        pathsLayer.addChild(shadowPathGraphics);
+        pathsLayer.addChild(pathGraphics);
+        pathsLayer.sortChildren();
+        const shadowGhostLayer = new Container();
+        const shadowGhostGraphics = new Graphics();
+        shadowGhostLayer.addChild(shadowGhostGraphics);
+        const athletesLayer = new Container();
+        world.addChild(pitchHolder);
+        world.addChild(pathsLayer);
+        world.addChild(shadowGhostLayer);
+        world.addChild(athletesLayer);
 
-      const playback = new SimulatorPlaybackController({
-        ticker: app.ticker,
-        pathStore,
-        applyPose: (id, nx, ny, h) => {
-          athletesApi.applyKinematic(id, nx, ny, h);
-        },
-        flushVisuals: (dirtyAthleteIds) => {
-          athletesApi.flushVisuals(dirtyAthleteIds);
-        },
-        setPlaybackDriving: (v) => {
-          playbackDrivingRef.current = v;
-        },
-        updateShadowGhosts: (poses) => {
-          drawShadowPlaybackGhosts(shadowGhostGraphics, poses);
-        },
-      });
-      playbackControllerRef.current = playback;
+        const statsLayer = new Container();
+        statsLayer.sortableChildren = true;
+        const statsHit = new Graphics();
+        statsHit.zIndex = 0;
+        statsHit
+          .rect(0, 0, BOARD_PITCH_VIEWBOX.w, BOARD_PITCH_VIEWBOX.h)
+          .fill({ color: 0xffffff, alpha: 0.0001 });
+        const statsInteractiveInit =
+          surfaceModeRef.current === "STATS" &&
+          statsPitchInteractiveRef.current &&
+          statsArmRef.current != null &&
+          Boolean(onStatsPitchTapRef.current);
+        statsHit.eventMode = statsInteractiveInit ? "static" : "none";
+        const statsDots = new Graphics();
+        statsDots.eventMode = "none";
+        statsDots.zIndex = 1;
+        statsLayer.addChild(statsHit);
+        statsLayer.addChild(statsDots);
+        world.addChild(statsLayer);
+        statsLayer.visible = surfaceModeRef.current === "STATS";
+        statsPixiRef.current = { statsLayer, statsHit, statsDots };
+        drawStatsEventsGraphics(statsDots, statsLoggedEventsRef.current, {
+          reviewMode: statsReviewModeRef.current,
+          worldToScreenScale: worldScaleRef.current,
+        });
 
-      ro = new ResizeObserver(() => {
+        statsHit.on("pointerdown", (e: FederatedPointerEvent) => {
+          if (surfaceModeRef.current !== "STATS") return;
+          if (!statsPitchInteractiveRef.current) return;
+          if (!statsArmRef.current) return;
+          const fire = onStatsPitchTapRef.current;
+          if (!fire) return;
+          e.stopPropagation();
+          const hostEl = hostRef.current;
+          if (!hostEl) return;
+          const r = hostEl.getBoundingClientRect();
+          const stageX = e.clientX - r.left;
+          const stageY = e.clientY - r.top;
+          const { nx, ny } = viewportCssToBoardNorm(
+            stageX,
+            stageY,
+            r.width,
+            r.height,
+          );
+          fire({
+            nx,
+            ny,
+            atMs: Date.now(),
+            stageX,
+            stageY,
+          });
+        });
+
+        setStatsOverlayEpoch((n) => n + 1);
+
+        attachPitch(sportRef.current);
         layout();
-        setResizeGen((n) => n + 1);
-      });
-      ro.observe(host);
+
+        const redrawPaths = () => {
+          drawShadowRunsGraphics(shadowPathGraphics, pathStore.getAllShadowRuns());
+          drawMovementPathsGraphics(pathGraphics, pathStore.getAllPaths());
+        };
+        redrawPaths();
+        unsubPaths = pathStore.subscribe(redrawPaths);
+
+        const athletesApi = mountAthletesPixi({
+          layer: athletesLayer,
+          hostEl: host,
+          initialAthletes: createDefaultMicroAthletes(),
+          pathRecording: {
+            store: pathStore,
+            isRecording: () => recordingModeRef.current,
+            isShadowRecording: () => shadowRecordingModeRef.current,
+            isPlaybackDriving: () => playbackDrivingRef.current,
+            onSelectionChange: (id) => {
+              selectedAthleteIdRef.current = id;
+              if (recordingModeRef.current && id != null) {
+                pathStore.startPath(id);
+              }
+              if (shadowRecordingModeRef.current && id != null) {
+                pathStore.startShadowPath(id);
+              }
+            },
+          },
+        });
+        athletesDisposeRef.current = athletesApi.dispose;
+        releaseAthleteInputRef.current = athletesApi.releaseTransientInput;
+
+        const playback = new SimulatorPlaybackController({
+          ticker: app.ticker,
+          pathStore,
+          applyPose: (id, nx, ny, h) => {
+            athletesApi.applyKinematic(id, nx, ny, h);
+          },
+          flushVisuals: (dirtyAthleteIds) => {
+            athletesApi.flushVisuals(dirtyAthleteIds);
+          },
+          setPlaybackDriving: (v) => {
+            playbackDrivingRef.current = v;
+          },
+          updateShadowGhosts: (poses) => {
+            drawShadowPlaybackGhosts(shadowGhostGraphics, poses);
+          },
+        });
+        playbackControllerRef.current = playback;
+
+        ro = new ResizeObserver(() => {
+          layout();
+          setResizeGen((n) => n + 1);
+        });
+        ro.observe(host);
+      } catch (err) {
+        console.error("[simulator-pixi] init failed", err);
+        setPixiFailed(true);
+      } finally {
+        initializingRef.current = false;
+      }
     })();
 
     return () => {
       cancelled = true;
+      initializingRef.current = false;
       ro?.disconnect();
       ro = null;
       unsubPaths?.();
@@ -402,7 +429,7 @@ export const SimulatorPixiSurface = forwardRef<
         } catch {
           /* canvas already detached */
         }
-        app.destroy(true, { children: true, texture: true });
+        app.destroy(true, { children: true });
       }
     };
   }, [pathStore]);
@@ -466,18 +493,26 @@ export const SimulatorPixiSurface = forwardRef<
       <div
         ref={hostRef}
         className={cn(
-          "relative z-10 mx-auto min-h-0 w-full max-w-full overflow-hidden rounded-lg bg-transparent",
+          "relative z-10 mx-auto min-h-[320px] w-full max-w-full overflow-hidden rounded-lg bg-transparent",
           className,
         )}
         style={{
           aspectRatio: getPitchBoardAspectRatio(sport),
+          width: "100%",
+          height: "100%",
           touchAction: "none",
           WebkitUserSelect: "none",
           userSelect: "none",
         }}
         aria-label="Simulator pitch"
         role="img"
-      />
+      >
+        {pixiFailed ? (
+          <div className="absolute inset-0 z-20 grid place-items-center bg-black/35 text-sm font-medium text-white">
+            Simulator failed to load
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 });
