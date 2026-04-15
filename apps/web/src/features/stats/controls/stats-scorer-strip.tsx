@@ -37,11 +37,15 @@ export function StatsScorerStrip({
             : "No player — fast logging; pick a name to attribute scores"}
         </span>
       </div>
-      <div className="flex flex-wrap gap-1">
+      <div
+        className="flex gap-1 overflow-x-auto pb-1 pr-0.5"
+        role="group"
+        aria-label="Scorer selection"
+      >
         <button
           type="button"
           className={cn(
-            "rounded-md border px-2 py-1 text-[9px] font-semibold uppercase tracking-wide transition",
+            "shrink-0 rounded-md border px-2 py-1 text-[9px] font-semibold uppercase tracking-wide transition",
             noPlayerActive
               ? "border-slate-300/50 bg-slate-500/25 text-slate-50"
               : "border-white/15 bg-white/5 text-emerald-100/85 hover:border-white/25 hover:bg-white/10",
@@ -57,14 +61,17 @@ export function StatsScorerStrip({
               key={p.id}
               type="button"
               className={cn(
-                "max-w-[7.5rem] truncate rounded-md border px-2 py-1 text-[9px] font-semibold transition",
+                "shrink-0 rounded-md border px-2 py-1 text-[9px] font-semibold transition",
                 isActive
                   ? "border-emerald-300/60 bg-emerald-500/30 text-emerald-50"
                   : "border-white/15 bg-white/5 text-emerald-100/90 hover:border-white/25 hover:bg-white/10",
               )}
-              title={p.name}
+              title={`#${p.number} ${p.name}`}
               onClick={() => onSetActiveScorer(p.id)}
             >
+              <span className="mr-1 rounded-sm bg-black/15 px-1 py-0.5 text-[8px] font-bold tabular-nums">
+                #{p.number}
+              </span>
               {p.name}
             </button>
           );

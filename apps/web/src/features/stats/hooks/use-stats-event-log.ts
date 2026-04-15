@@ -5,6 +5,7 @@ import { useCallback, useEffect, useReducer, useRef } from "react";
 import type { StatsPitchTapPayload } from "@src/features/stats/types/stats-pitch-tap";
 import {
   createStatsLoggedEvent,
+  type StatsPeriodPhase,
   type StatsLoggedEvent,
 } from "@src/features/stats/model/stats-logged-event";
 import {
@@ -35,7 +36,11 @@ type State = {
 type Action =
   | { type: "arm"; kind: StatsV1EventKind }
   | { type: "clearArm" }
-  | { type: "logTap"; payload: StatsPitchTapPayload }
+  | {
+      type: "logTap";
+      payload: StatsPitchTapPayload;
+      periodPhase?: StatsPeriodPhase;
+    }
   | { type: "undoLastEvent" }
   | { type: "resetEvents" }
   | { type: "setActiveScorer"; playerId: string | null }
@@ -100,6 +105,7 @@ function reducer(state: State, action: Action): State {
         nx: action.payload.nx,
         ny: action.payload.ny,
         timestampMs: action.payload.atMs,
+        periodPhase: action.periodPhase,
         playerId: playerForScore === undefined ? undefined : playerForScore,
       });
       return {
@@ -134,6 +140,7 @@ function readStoredActiveScorerId(): string | null {
 
 export type UseStatsEventLogOptions = {
   onStatsEventLogged?: (event: StatsLoggedEvent) => void;
+  resolvePeriodPhase?: () => StatsPeriodPhase;
 };
 
 export function useStatsEventLog(options?: UseStatsEventLogOptions) {
@@ -144,6 +151,8 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
   const skipNextPersistRef = useRef(true);
   const onStatsEventLoggedRef = useRef(options?.onStatsEventLogged);
   onStatsEventLoggedRef.current = options?.onStatsEventLogged;
+  const resolvePeriodPhaseRef = useRef(options?.resolvePeriodPhase);
+  resolvePeriodPhaseRef.current = options?.resolvePeriodPhase;
   const prevEventCountRef = useRef(0);
 
   useEffect(() => {
@@ -243,7 +252,11 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
   }, []);
 
   const logTap = useCallback((payload: StatsPitchTapPayload) => {
-    dispatch({ type: "logTap", payload });
+    dispatch({
+      type: "logTap",
+      payload,
+      periodPhase: resolvePeriodPhaseRef.current?.(),
+    });
   }, []);
 
   const undoLastEvent = useCallback(() => {
