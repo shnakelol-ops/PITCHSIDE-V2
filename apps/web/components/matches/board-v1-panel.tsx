@@ -649,7 +649,7 @@ export function BoardV1Panel({ matchId, standalone = false }: BoardV1PanelProps)
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start gap-4">
             <div
-              className="mt-1 hidden h-[4.25rem] w-1.5 shrink-0 rounded-full bg-gradient-to-b from-pitchside-400 via-pitchside-600 to-pitchside-800 shadow-[0_0_28px_rgba(52,211,153,0.35)] sm:block"
+              className="mt-1 h-[4.25rem] w-1.5 shrink-0 rounded-full bg-gradient-to-b from-pitchside-400 via-pitchside-600 to-pitchside-800 shadow-[0_0_28px_rgba(52,211,153,0.35)]"
               aria-hidden
             />
             <div className="space-y-1">
