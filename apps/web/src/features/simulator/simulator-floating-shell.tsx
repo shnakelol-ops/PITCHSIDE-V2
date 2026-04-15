@@ -529,7 +529,7 @@ export function SimulatorFloatingShell({
           onStatsPitchTap={surfaceMode === "STATS" ? onStatsPitchTapGuarded : undefined}
           statsReviewMode={reviewMode}
           statsPitchInteractive={canStatsPitchLog}
-          className="h-full w-full !max-h-[100dvh] !rounded-md !border-0 !bg-transparent !shadow-none !ring-0"
+          className="w-full !max-h-[100dvh] !rounded-md !border-0 !bg-transparent !shadow-none !ring-0"
         />
       </div>
 
