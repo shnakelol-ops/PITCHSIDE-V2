@@ -1,4 +1,4 @@
-import { Circle, Container, FillGradient, Graphics } from "pixi.js";
+import { Circle, Container, FillGradient, Graphics, Text } from "pixi.js";
 
 import { boardNormToWorld } from "@src/lib/pitch-coordinates";
 import type { MicroAthlete } from "@src/features/simulator/model/micro-athlete";
@@ -17,6 +17,12 @@ const SCALE_IDLE = 1;
 const SCALE_SELECTED = 1.065;
 const SCALE_DRAGGING = 1.05;
 const SCALE_LERP = 0.26;
+
+function fallbackAthleteLabel(id: string): string {
+  const seq = id.match(/(\d+)$/)?.[1];
+  if (seq) return `P${seq}`;
+  return id.toUpperCase().slice(0, 6);
+}
 
 function teamBodyGradient(team: MicroAthlete["team"]): FillGradient {
   /** Light from forward-above (+x, -y local) — subtle chest/head highlight. */
@@ -100,10 +106,35 @@ export function createMicroAthleteView(): MicroAthleteView {
   const selection = new Graphics();
   selection.zIndex = 3;
 
+  const labelWrap = new Container();
+  labelWrap.zIndex = 4;
+  labelWrap.eventMode = "none";
+  labelWrap.position.set(0, -(R * 1.7));
+
+  const labelPlate = new Graphics();
+  labelPlate.eventMode = "none";
+
+  const labelText = new Text({
+    text: "",
+    style: {
+      fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif",
+      fontSize: 2.55,
+      fontWeight: "600",
+      fill: 0xf8fafc,
+      letterSpacing: 0.16,
+    },
+  });
+  labelText.anchor.set(0.5, 0.5);
+  labelText.eventMode = "none";
+
+  labelWrap.addChild(labelPlate);
+  labelWrap.addChild(labelText);
+
   container.addChild(shadow);
   container.addChild(body);
   container.addChild(direction);
   container.addChild(selection);
+  container.addChild(labelWrap);
 
   let bodyGradient: FillGradient | null = null;
 
@@ -165,6 +196,22 @@ export function createMicroAthleteView(): MicroAthleteView {
 
   let lastTeam: MicroAthlete["team"] = "home";
   let lastSelectionDrawn: boolean | null = null;
+  let lastLabel = "";
+
+  const redrawLabelPlate = (selected: boolean) => {
+    const padX = 0.66;
+    const padY = 0.34;
+    const w = Math.max(2.3, labelText.width + padX * 2);
+    const h = Math.max(1.34, labelText.height + padY * 2);
+    labelPlate.clear();
+    labelPlate
+      .roundRect(-w / 2, -h / 2, w, h, 0.46)
+      .fill({ color: 0x020617, alpha: selected ? 0.74 : 0.62 })
+      .stroke({
+        width: 0.1,
+        color: selected ? "rgba(248,250,252,0.38)" : "rgba(248,250,252,0.24)",
+      });
+  };
 
   const sync = (
     athlete: MicroAthlete,
@@ -174,15 +221,28 @@ export function createMicroAthleteView(): MicroAthleteView {
     const { x, y } = boardNormToWorld(athlete.nx, athlete.ny);
     container.position.set(x, y);
     container.rotation = athlete.headingRad;
+    labelWrap.rotation = -athlete.headingRad;
+    labelWrap.alpha = selected ? 0.98 : 0.92;
 
     if (lastTeam !== athlete.team) {
       lastTeam = athlete.team;
       redrawBody(athlete.team);
     }
 
+    const nextLabel =
+      athlete.label && athlete.label.trim().length > 0
+        ? athlete.label.trim().slice(0, 18)
+        : fallbackAthleteLabel(athlete.id);
+    if (nextLabel !== lastLabel) {
+      lastLabel = nextLabel;
+      labelText.text = nextLabel;
+      redrawLabelPlate(selected);
+    }
+
     if (lastSelectionDrawn !== selected) {
       lastSelectionDrawn = selected;
       selection.clear();
+      redrawLabelPlate(selected);
       if (selected) {
         selection
           .circle(0, 0, R_VIS + 1.12)

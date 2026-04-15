@@ -7,6 +7,8 @@ export type MicroAthleteTeam = "home" | "away";
 
 export type MicroAthlete = {
   id: string;
+  /** Short on-pitch label rendered above the athlete token. */
+  label?: string;
   nx: number;
   ny: number;
   /** Facing / intent direction (radians). */
@@ -24,6 +26,7 @@ export function createDefaultMicroAthletes(): MicroAthlete[] {
   return [
     {
       id: "ma-1",
+      label: "A O'Neil",
       nx: 0.28,
       ny: 0.48,
       headingRad: 0,
@@ -31,6 +34,7 @@ export function createDefaultMicroAthletes(): MicroAthlete[] {
     },
     {
       id: "ma-2",
+      label: "C Byrne",
       nx: 0.42,
       ny: 0.42,
       headingRad: Math.PI / 4,
@@ -38,6 +42,7 @@ export function createDefaultMicroAthletes(): MicroAthlete[] {
     },
     {
       id: "ma-3",
+      label: "M Walsh",
       nx: 0.55,
       ny: 0.52,
       headingRad: Math.PI / 2,
@@ -45,6 +50,7 @@ export function createDefaultMicroAthletes(): MicroAthlete[] {
     },
     {
       id: "ma-4",
+      label: "R Kelly",
       nx: 0.72,
       ny: 0.45,
       headingRad: -Math.PI / 3,
