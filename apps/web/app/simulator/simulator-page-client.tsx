@@ -16,6 +16,10 @@ import {
   type SimulatorSurfaceMode,
 } from "@src/features/simulator/pixi/simulator-pixi-surface";
 import { useStatsEventLog } from "@src/features/stats/hooks/use-stats-event-log";
+import {
+  formatSimulatorClockDisplay,
+  useSimulatorMatchClock,
+} from "@src/features/stats/hooks/use-simulator-match-clock";
 import { useStatsVoiceRecorder } from "@src/features/stats/hooks/use-stats-voice-recorder";
 import type { StatsV1EventKind } from "@src/features/stats/model/stats-v1-event-kind";
 
@@ -75,6 +79,9 @@ export default function SimulatorPageClient() {
     attachVoiceNoteToEvent,
     addVoiceMoment,
   } = useStatsEventLog();
+  const matchClock = useSimulatorMatchClock(surfaceMode === "STATS");
+  const { phase: matchPhase, setPhase: setMatchPhase, firstHalfSec, secondHalfSec } =
+    matchClock;
   const recorder = useStatsVoiceRecorder();
   const [pendingVoiceId, setPendingVoiceId] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
@@ -113,11 +120,18 @@ export default function SimulatorPageClient() {
   const lastStatsEvent =
     statsEvents.length > 0 ? statsEvents[statsEvents.length - 1] : undefined;
   const canStatsVoiceRecord = reviewMode === "live";
+  const clockDisplay = useMemo(
+    () => formatSimulatorClockDisplay(matchPhase, firstHalfSec, secondHalfSec),
+    [firstHalfSec, matchPhase, secondHalfSec],
+  );
 
   useEffect(() => {
     if (surfaceMode === "STATS") {
       if (statsArm == null) {
         armKind("SHOT");
+      }
+      if (matchPhase === "pre_match") {
+        setMatchPhase("first_half");
       }
       return;
     }
@@ -126,7 +140,15 @@ export default function SimulatorPageClient() {
       setPendingVoiceId(null);
     }
     setVoiceError(null);
-  }, [armKind, pendingVoiceId, removeVoiceBlob, statsArm, surfaceMode]);
+  }, [
+    armKind,
+    matchPhase,
+    pendingVoiceId,
+    removeVoiceBlob,
+    setMatchPhase,
+    statsArm,
+    surfaceMode,
+  ]);
 
   const onStartVoice = useCallback(async () => {
     setVoiceError(null);
@@ -175,6 +197,34 @@ export default function SimulatorPageClient() {
     setPendingVoiceId(null);
     setVoiceError(null);
   }, [pendingVoiceId, removeVoiceBlob]);
+
+  const selectStatsEvent = useCallback(
+    (kind: StatsV1EventKind) => {
+      armKind(kind);
+      setUtilityOpen(false);
+    },
+    [armKind],
+  );
+
+  const onSetLiveReview = useCallback(() => {
+    setReviewMode("live");
+    if (matchPhase === "pre_match" || matchPhase === "halftime" || matchPhase === "full_time") {
+      setMatchPhase("first_half");
+    }
+  }, [matchPhase, setMatchPhase, setReviewMode]);
+
+  const onSetHalftimeReview = useCallback(() => {
+    if (matchPhase === "pre_match") {
+      setMatchPhase("first_half");
+    }
+    setReviewMode("halftime");
+    setMatchPhase("halftime");
+  }, [matchPhase, setMatchPhase, setReviewMode]);
+
+  const onSetFullTimeReview = useCallback(() => {
+    setReviewMode("full_time");
+    setMatchPhase("full_time");
+  }, [setMatchPhase, setReviewMode]);
 
   const onExportPitchPng = useCallback(() => {
     setPitchExportError(null);
@@ -242,6 +292,58 @@ export default function SimulatorPageClient() {
             </Button>
           </div>
         </div>
+
+        {surfaceMode === "STATS" ? (
+          <aside
+            className="pointer-events-none absolute left-[max(0.45rem,env(safe-area-inset-left))] top-1/2 z-40 -translate-y-1/2"
+            aria-label="Live matchday rail"
+          >
+            <div className="simulator-live-rail pointer-events-none flex w-[3.2rem] flex-col items-stretch gap-1 rounded-2xl p-1.5 backdrop-blur-md">
+              <Button
+                type="button"
+                variant="secondary"
+                className="simulator-live-rail-chip pointer-events-auto min-h-9 rounded-xl px-1 py-1 text-[9px] font-semibold"
+                aria-pressed={reviewMode === "live"}
+                onClick={onSetLiveReview}
+              >
+                {clockDisplay}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="simulator-live-rail-chip pointer-events-auto min-h-8 rounded-lg px-1 py-1 text-[9px] font-semibold"
+                aria-pressed={reviewMode === "halftime"}
+                onClick={onSetHalftimeReview}
+              >
+                HT
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="simulator-live-rail-chip pointer-events-auto min-h-8 rounded-lg px-1 py-1 text-[9px] font-semibold"
+                aria-pressed={reviewMode === "full_time"}
+                onClick={onSetFullTimeReview}
+              >
+                FT
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="utility-gold-action simulator-live-rail-chip pointer-events-auto min-h-8 rounded-lg px-1 py-1 text-[9px] font-semibold"
+                disabled={!canStatsVoiceRecord && !recorder.isRecording}
+                onClick={() => {
+                  if (recorder.isRecording) {
+                    void onStopVoice();
+                    return;
+                  }
+                  void onStartVoice();
+                }}
+              >
+                {recorder.isRecording ? "Stop" : "Voice"}
+              </Button>
+            </div>
+          </aside>
+        ) : null}
 
         <aside
           ref={utilityWrapRef}
@@ -420,7 +522,7 @@ export default function SimulatorPageClient() {
                           variant="secondary"
                           className="pointer-events-auto min-h-8 rounded-lg px-2 py-1 text-[10px]"
                           aria-pressed={statsArm === kind}
-                          onClick={() => armKind(kind)}
+                          onClick={() => selectStatsEvent(kind)}
                         >
                           {statsEventLabel(kind)}
                         </Button>
@@ -434,7 +536,7 @@ export default function SimulatorPageClient() {
                           variant="secondary"
                           className="pointer-events-auto min-h-8 rounded-lg px-2 py-1 text-[10px]"
                           aria-pressed={statsArm === kind}
-                          onClick={() => armKind(kind)}
+                          onClick={() => selectStatsEvent(kind)}
                         >
                           {statsEventLabel(kind)}
                         </Button>
@@ -451,7 +553,7 @@ export default function SimulatorPageClient() {
                         variant="secondary"
                         className="pointer-events-auto min-h-8 rounded-lg px-2 py-1 text-[10px]"
                         aria-pressed={reviewMode === "live"}
-                        onClick={() => setReviewMode("live")}
+                        onClick={onSetLiveReview}
                       >
                         Live
                       </Button>
@@ -460,7 +562,7 @@ export default function SimulatorPageClient() {
                         variant="secondary"
                         className="pointer-events-auto min-h-8 rounded-lg px-2 py-1 text-[10px]"
                         aria-pressed={reviewMode === "halftime"}
-                        onClick={() => setReviewMode("halftime")}
+                        onClick={onSetHalftimeReview}
                       >
                         HT
                       </Button>
@@ -469,7 +571,7 @@ export default function SimulatorPageClient() {
                         variant="secondary"
                         className="pointer-events-auto min-h-8 rounded-lg px-2 py-1 text-[10px]"
                         aria-pressed={reviewMode === "full_time"}
-                        onClick={() => setReviewMode("full_time")}
+                        onClick={onSetFullTimeReview}
                       >
                         FT
                       </Button>
@@ -611,6 +713,28 @@ export default function SimulatorPageClient() {
           color: #f8fafc !important;
         }
 
+        .simulator-direct .simulator-live-rail-shell {
+          border: 1px solid rgba(177, 191, 227, 0.22) !important;
+          background: linear-gradient(
+            180deg,
+            rgba(38, 52, 80, 0.64) 0%,
+            rgba(23, 33, 54, 0.6) 100%
+          ) !important;
+          box-shadow: 0 16px 34px -26px rgba(0, 0, 0, 0.82) !important;
+        }
+
+        .simulator-direct .simulator-live-rail-chip {
+          border: 1px solid rgba(175, 191, 226, 0.24) !important;
+          background: rgba(68, 84, 122, 0.5) !important;
+          color: #eef2ff !important;
+          box-shadow: 0 6px 16px -14px rgba(0, 0, 0, 0.72) !important;
+        }
+
+        .simulator-direct .simulator-live-rail-chip:hover:not(:disabled) {
+          background: rgba(82, 103, 146, 0.56) !important;
+          border-color: rgba(196, 210, 244, 0.34) !important;
+        }
+
         .simulator-direct .simulator-utility-trigger {
           border-color: rgba(170, 188, 228, 0.46) !important;
           background: linear-gradient(
@@ -670,6 +794,13 @@ export default function SimulatorPageClient() {
         }
 
         @media (orientation: landscape) {
+          .simulator-direct .simulator-left-rail {
+            left: max(0.32rem, env(safe-area-inset-left)) !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            bottom: auto !important;
+          }
+
           .simulator-direct .simulator-utility-panel {
             width: min(
               11.5rem,

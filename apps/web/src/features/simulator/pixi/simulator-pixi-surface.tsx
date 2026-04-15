@@ -97,6 +97,8 @@ export const SimulatorPixiSurface = forwardRef<
   const pitchDisposeRef = useRef<(() => void) | null>(null);
   const athletesDisposeRef = useRef<(() => void) | null>(null);
   const athletesLayerRef = useRef<PixiContainer | null>(null);
+  const pathsLayerRef = useRef<PixiContainer | null>(null);
+  const shadowGhostLayerRef = useRef<PixiContainer | null>(null);
   const sportRef = useRef<PitchSport>(sport);
   const recordingModeRef = useRef(recordingMode);
   const shadowRecordingModeRef = useRef(shadowRecordingMode);
@@ -248,6 +250,8 @@ export const SimulatorPixiSurface = forwardRef<
       pitchHolderRef.current = pitchHolder;
       const pathsLayer = new Container();
       pathsLayer.sortableChildren = true;
+      pathsLayerRef.current = pathsLayer;
+      pathsLayer.visible = surfaceModeRef.current === "SIMULATOR";
       const shadowPathGraphics = new Graphics();
       shadowPathGraphics.zIndex = 0;
       const pathGraphics = new Graphics();
@@ -256,6 +260,8 @@ export const SimulatorPixiSurface = forwardRef<
       pathsLayer.addChild(pathGraphics);
       pathsLayer.sortChildren();
       const shadowGhostLayer = new Container();
+      shadowGhostLayerRef.current = shadowGhostLayer;
+      shadowGhostLayer.visible = surfaceModeRef.current === "SIMULATOR";
       const shadowGhostGraphics = new Graphics();
       shadowGhostLayer.addChild(shadowGhostGraphics);
       const athletesLayer = new Container();
@@ -403,6 +409,8 @@ export const SimulatorPixiSurface = forwardRef<
       };
       pitchHolderRef.current = null;
       athletesLayerRef.current = null;
+      pathsLayerRef.current = null;
+      shadowGhostLayerRef.current = null;
       const app = appRef.current;
       appRef.current = null;
       worldRef.current = null;
@@ -426,6 +434,12 @@ export const SimulatorPixiSurface = forwardRef<
     if (!statsHit || !statsDots || !statsLayer) return;
     if (athletesLayerRef.current) {
       athletesLayerRef.current.visible = surfaceMode === "SIMULATOR";
+    }
+    if (pathsLayerRef.current) {
+      pathsLayerRef.current.visible = surfaceMode === "SIMULATOR";
+    }
+    if (shadowGhostLayerRef.current) {
+      shadowGhostLayerRef.current.visible = surfaceMode === "SIMULATOR";
     }
     const canLog =
       surfaceMode === "STATS" &&
