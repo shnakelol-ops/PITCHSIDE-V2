@@ -62,9 +62,10 @@ function teamBodyGradient(team: MicroAthlete["team"]): FillGradient {
  * One closed path: compact teardrop/jersey silhouette (+x = facing).
  */
 function drawAthleteSilhouette(g: Graphics, gradient: FillGradient, m: number): void {
-  g.moveTo(-0.62 * m, 0);
-  g.bezierCurveTo(-0.54 * m, -0.56 * m, 0.22 * m, -0.84 * m, 0.98 * m, 0);
-  g.bezierCurveTo(0.22 * m, 0.84 * m, -0.54 * m, 0.56 * m, -0.62 * m, 0);
+  g.moveTo(-0.58 * m, -0.04 * m);
+  g.bezierCurveTo(-0.46 * m, -0.5 * m, 0.16 * m, -0.72 * m, 0.66 * m, -0.46 * m);
+  g.bezierCurveTo(0.96 * m, -0.27 * m, 0.96 * m, 0.27 * m, 0.66 * m, 0.46 * m);
+  g.bezierCurveTo(0.16 * m, 0.72 * m, -0.46 * m, 0.5 * m, -0.58 * m, 0.04 * m);
   g.closePath();
   g.fill(gradient);
   g.stroke({
@@ -81,6 +82,7 @@ export type MicroAthleteView = {
     athlete: MicroAthlete,
     selected: boolean,
     dragging: boolean,
+    showLabel: boolean,
   ) => boolean;
   dispose: () => void;
 };
@@ -160,9 +162,8 @@ export function createMicroAthleteView(): MicroAthleteView {
 
   const redrawDirection = () => {
     direction.clear();
-    // Forward-facing cue without triangular glyphs.
-    const seamStartX = R * 0.04;
-    const seamEndX = R * 0.64;
+    const seamStartX = R * 0.02;
+    const seamEndX = R * 0.58;
     direction
       .moveTo(seamStartX, 0)
       .lineTo(seamEndX, 0)
@@ -172,20 +173,18 @@ export function createMicroAthleteView(): MicroAthleteView {
         cap: "round",
       });
     direction
-      .circle(FRONT_BEACON_X, 0, FRONT_BEACON_R)
-      .fill({ color: "rgba(248,250,252,0.72)" })
+      .roundRect(
+        FRONT_BEACON_X - FRONT_BEACON_R * 0.9,
+        -FRONT_BEACON_R,
+        FRONT_BEACON_R * 1.8,
+        FRONT_BEACON_R * 2,
+        FRONT_BEACON_R * 0.72,
+      )
+      .fill({ color: "rgba(248,250,252,0.62)" })
       .stroke({
-        width: 0.18,
+        width: 0.16,
         color: "rgba(15,23,42,0.5)",
         join: "round",
-        cap: "round",
-      });
-    direction
-      .circle(FRONT_BEACON_X + FRONT_BEACON_R * 1.48, 0, FRONT_BEACON_R * 0.46)
-      .fill({ color: "rgba(248,250,252,0.55)" })
-      .stroke({
-        width: 0.12,
-        color: "rgba(15,23,42,0.4)",
         cap: "round",
       });
   };
@@ -217,32 +216,36 @@ export function createMicroAthleteView(): MicroAthleteView {
     athlete: MicroAthlete,
     selected: boolean,
     dragging: boolean,
+    showLabel: boolean,
   ): boolean => {
     const { x, y } = boardNormToWorld(athlete.nx, athlete.ny);
     container.position.set(x, y);
     container.rotation = athlete.headingRad;
     labelWrap.rotation = -athlete.headingRad;
     labelWrap.alpha = selected ? 0.98 : 0.92;
+    labelWrap.visible = showLabel;
 
     if (lastTeam !== athlete.team) {
       lastTeam = athlete.team;
       redrawBody(athlete.team);
     }
 
-    const nextLabel =
-      athlete.label && athlete.label.trim().length > 0
-        ? athlete.label.trim().slice(0, 18)
-        : fallbackAthleteLabel(athlete.id);
-    if (nextLabel !== lastLabel) {
-      lastLabel = nextLabel;
-      labelText.text = nextLabel;
-      redrawLabelPlate(selected);
+    if (showLabel) {
+      const nextLabel =
+        athlete.label && athlete.label.trim().length > 0
+          ? athlete.label.trim().slice(0, 18)
+          : fallbackAthleteLabel(athlete.id);
+      if (nextLabel !== lastLabel) {
+        lastLabel = nextLabel;
+        labelText.text = nextLabel;
+        redrawLabelPlate(selected);
+      }
     }
 
     if (lastSelectionDrawn !== selected) {
       lastSelectionDrawn = selected;
       selection.clear();
-      redrawLabelPlate(selected);
+      if (showLabel) redrawLabelPlate(selected);
       if (selected) {
         selection
           .circle(0, 0, R_VIS + 1.12)

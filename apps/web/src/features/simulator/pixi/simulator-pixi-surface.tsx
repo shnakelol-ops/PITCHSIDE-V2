@@ -60,6 +60,8 @@ export type SimulatorPixiSurfaceProps = {
   statsReviewMode?: StatsReviewMode;
   /** When false (e.g. HT/FT review), pitch stops accepting logs; dots stay visible. */
   statsPitchInteractive?: boolean;
+  /** Cosmetic only; hides/shows athlete labels without touching athlete state. */
+  showAthleteLabels?: boolean;
   className?: string;
 };
 
@@ -83,6 +85,7 @@ export const SimulatorPixiSurface = forwardRef<
     onStatsPitchTap,
     statsReviewMode = "live",
     statsPitchInteractive = true,
+    showAthleteLabels = true,
     className,
   },
   ref,
@@ -93,6 +96,7 @@ export const SimulatorPixiSurface = forwardRef<
   const pitchHolderRef = useRef<PixiContainer | null>(null);
   const pitchDisposeRef = useRef<(() => void) | null>(null);
   const athletesDisposeRef = useRef<(() => void) | null>(null);
+  const athletesLayerRef = useRef<PixiContainer | null>(null);
   const sportRef = useRef<PitchSport>(sport);
   const recordingModeRef = useRef(recordingMode);
   const shadowRecordingModeRef = useRef(shadowRecordingMode);
@@ -102,6 +106,7 @@ export const SimulatorPixiSurface = forwardRef<
   const statsPitchInteractiveRef = useRef(statsPitchInteractive);
   const statsReviewModeRef = useRef(statsReviewMode);
   const statsLoggedEventsRef = useRef(statsLoggedEvents);
+  const showAthleteLabelsRef = useRef(showAthleteLabels);
   const worldScaleRef = useRef(1);
   const statsPixiRef = useRef<{
     statsLayer: PixiContainer | null;
@@ -120,8 +125,10 @@ export const SimulatorPixiSurface = forwardRef<
   statsPitchInteractiveRef.current = statsPitchInteractive;
   statsReviewModeRef.current = statsReviewMode;
   statsLoggedEventsRef.current = statsLoggedEvents;
+  showAthleteLabelsRef.current = showAthleteLabels;
   const selectedAthleteIdRef = useRef<string | null>(null);
   const playbackDrivingRef = useRef(false);
+  const flushAthletesVisualsRef = useRef<(() => void) | null>(null);
   const playbackControllerRef = useRef<SimulatorPlaybackController | null>(
     null,
   );
@@ -252,6 +259,8 @@ export const SimulatorPixiSurface = forwardRef<
       const shadowGhostGraphics = new Graphics();
       shadowGhostLayer.addChild(shadowGhostGraphics);
       const athletesLayer = new Container();
+      athletesLayerRef.current = athletesLayer;
+      athletesLayer.visible = surfaceModeRef.current === "SIMULATOR";
       world.addChild(pitchHolder);
       world.addChild(pathsLayer);
       world.addChild(shadowGhostLayer);
@@ -326,6 +335,7 @@ export const SimulatorPixiSurface = forwardRef<
         layer: athletesLayer,
         hostEl: host,
         initialAthletes: createDefaultMicroAthletes(),
+        showLabels: () => showAthleteLabelsRef.current,
         pathRecording: {
           store: pathStore,
           isRecording: () => recordingModeRef.current,
@@ -344,6 +354,7 @@ export const SimulatorPixiSurface = forwardRef<
       });
       athletesDisposeRef.current = athletesApi.dispose;
       releaseAthleteInputRef.current = athletesApi.releaseTransientInput;
+      flushAthletesVisualsRef.current = () => athletesApi.flushVisuals();
 
       const playback = new SimulatorPlaybackController({
         ticker: app.ticker,
@@ -384,12 +395,14 @@ export const SimulatorPixiSurface = forwardRef<
       athletesDisposeRef.current?.();
       athletesDisposeRef.current = null;
       releaseAthleteInputRef.current = null;
+      flushAthletesVisualsRef.current = null;
       statsPixiRef.current = {
         statsLayer: null,
         statsHit: null,
         statsDots: null,
       };
       pitchHolderRef.current = null;
+      athletesLayerRef.current = null;
       const app = appRef.current;
       appRef.current = null;
       worldRef.current = null;
@@ -405,8 +418,15 @@ export const SimulatorPixiSurface = forwardRef<
   }, [pathStore]);
 
   useEffect(() => {
+    flushAthletesVisualsRef.current?.();
+  }, [showAthleteLabels]);
+
+  useEffect(() => {
     const { statsHit, statsDots, statsLayer } = statsPixiRef.current;
     if (!statsHit || !statsDots || !statsLayer) return;
+    if (athletesLayerRef.current) {
+      athletesLayerRef.current.visible = surfaceMode === "SIMULATOR";
+    }
     const canLog =
       surfaceMode === "STATS" &&
       statsPitchInteractive &&
@@ -428,6 +448,7 @@ export const SimulatorPixiSurface = forwardRef<
     statsPitchInteractive,
     statsArm,
     onStatsPitchTap,
+    showAthleteLabels,
     statsOverlayEpoch,
     resizeGen,
   ]);

@@ -19,8 +19,8 @@ export type MicroAthlete = {
 /** Body radius in pitch world units (160×100 space). */
 export const MICRO_ATHLETE_RADIUS_WORLD = 2.15;
 
-/** Hit target slightly larger than visual — tuned for phone/tablet coaching taps. */
-export const MICRO_ATHLETE_HIT_RADIUS_WORLD = 3.25;
+/** Hit target intentionally generous for reliable phone drag pickup. */
+export const MICRO_ATHLETE_HIT_RADIUS_WORLD = 4.1;
 
 export function createDefaultMicroAthletes(): MicroAthlete[] {
   return [

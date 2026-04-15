@@ -56,6 +56,7 @@ export default function SimulatorPageClient() {
   const [sport, setSport] = useState<PitchSport>("gaelic");
   const [pathRecording, setPathRecording] = useState(false);
   const [shadowRecording, setShadowRecording] = useState(false);
+  const [showLabels, setShowLabels] = useState(true);
   const [utilityOpen, setUtilityOpen] = useState(false);
   const utilityWrapRef = useRef<HTMLDivElement | null>(null);
   const surfaceHostRef = useRef<HTMLDivElement | null>(null);
@@ -207,13 +208,14 @@ export default function SimulatorPageClient() {
           onStatsPitchTap={surfaceMode === "STATS" ? logTap : undefined}
           statsReviewMode={reviewMode}
           statsPitchInteractive={surfaceMode === "STATS"}
+          showAthleteLabels={showLabels}
           className="h-full w-full !max-h-[100dvh] !rounded-md !border-0 !bg-transparent !shadow-none !ring-0"
         />
       </div>
 
       <div className="pointer-events-none absolute inset-0 z-30">
-        <div className="pointer-events-none absolute bottom-[max(0.6rem,env(safe-area-inset-bottom))] left-1/2 z-40 -translate-x-1/2">
-          <div className="pointer-events-none flex items-center gap-1 rounded-xl border border-white/15 bg-[rgba(16,18,26,0.74)] px-2 py-1 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.78)] backdrop-blur-md">
+        <div className="pointer-events-none absolute bottom-[max(0.55rem,env(safe-area-inset-bottom))] left-1/2 z-40 -translate-x-1/2">
+          <div className="simulator-transport-strip pointer-events-none flex items-center gap-1 rounded-xl px-2 py-1 backdrop-blur-md">
             <Button
               type="button"
               variant="secondary"
@@ -245,34 +247,34 @@ export default function SimulatorPageClient() {
           ref={utilityWrapRef}
           className="pointer-events-none absolute z-40 flex flex-col items-end"
           style={{
-            top: "max(0.75rem, env(safe-area-inset-top))",
-            right: "max(0.75rem, env(safe-area-inset-right))",
-            bottom: "max(0.75rem, env(safe-area-inset-bottom))",
+            top: "max(0.55rem, env(safe-area-inset-top))",
+            right: "max(0.45rem, env(safe-area-inset-right))",
+            bottom: "max(0.55rem, env(safe-area-inset-bottom))",
           }}
         >
           <button
             type="button"
             aria-label={utilityOpen ? "Close utility menu" : "Open utility menu"}
             aria-expanded={utilityOpen}
-            className={`pointer-events-auto ml-auto inline-flex size-12 items-center justify-center rounded-full border transition duration-150 ${
+            className={`simulator-utility-trigger pointer-events-auto ml-auto inline-flex size-11 items-center justify-center rounded-full border transition duration-150 ${
               utilityOpen
-                ? "border-sky-300/65 bg-[rgba(34,66,112,0.88)] text-sky-100 shadow-[0_0_0_1px_rgba(125,211,252,0.45),0_16px_36px_-18px_rgba(56,189,248,0.65)]"
-                : "border-sky-300/45 bg-[rgba(28,38,56,0.92)] text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.28),0_20px_44px_-22px_rgba(14,165,233,0.55),0_18px_36px_-20px_rgba(0,0,0,0.8)]"
+                ? "is-open text-amber-50"
+                : "text-slate-100"
             }`}
             onClick={() => setUtilityOpen((v) => !v)}
           >
             <SlidersHorizontal className="size-5" />
           </button>
           <div
-            className={`mt-2 origin-top-right overflow-y-auto rounded-[18px] border border-sky-200/20 bg-[rgba(18,22,34,0.8)] p-2.5 shadow-[0_22px_52px_-24px_rgba(0,0,0,0.86),0_0_0_1px_rgba(125,211,252,0.14),0_0_28px_-16px_rgba(56,189,248,0.42)] backdrop-blur-md transition duration-150 ${
+            className={`simulator-utility-panel mt-1.5 origin-top-right overflow-y-auto rounded-[16px] p-2 transition duration-150 ${
               utilityOpen
                 ? "pointer-events-auto scale-100 opacity-100"
                 : "pointer-events-none scale-[0.96] opacity-0"
             }`}
             style={{
               width:
-                "min(18rem, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 1.5rem))",
-              maxHeight: "calc(100% - 3.5rem)",
+                "min(12.75rem, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 0.7rem))",
+              maxHeight: "min(64dvh, calc(100% - 3rem))",
             }}
           >
             <div className="space-y-2">
@@ -368,6 +370,15 @@ export default function SimulatorPageClient() {
                       Shadow
                     </Button>
                   </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="pointer-events-auto min-h-8 w-full rounded-lg px-2 py-1 text-[10px]"
+                    aria-pressed={showLabels}
+                    onClick={() => setShowLabels((prev) => !prev)}
+                  >
+                    Labels {showLabels ? "On" : "Off"}
+                  </Button>
                   <div className="grid grid-cols-2 gap-1">
                     <Button
                       type="button"
@@ -473,7 +484,7 @@ export default function SimulatorPageClient() {
                         <Button
                           type="button"
                           variant="secondary"
-                          className="pointer-events-auto min-h-8 rounded-lg px-2 py-1 text-[10px]"
+                          className="utility-gold-action pointer-events-auto min-h-8 rounded-lg px-2 py-1 text-[10px]"
                           disabled={!canStatsVoiceRecord}
                           onClick={() => void onStartVoice()}
                         >
@@ -483,7 +494,7 @@ export default function SimulatorPageClient() {
                         <Button
                           type="button"
                           variant="secondary"
-                          className="pointer-events-auto min-h-8 rounded-lg px-2 py-1 text-[10px]"
+                          className="utility-gold-action pointer-events-auto min-h-8 rounded-lg px-2 py-1 text-[10px]"
                           onClick={() => void onStopVoice()}
                         >
                           Stop
@@ -582,6 +593,90 @@ export default function SimulatorPageClient() {
         .simulator-direct .simulator-pitch-wrapper {
           border-radius: 0 !important;
           background: #0b0f0c !important;
+        }
+
+        .simulator-direct .simulator-transport-strip {
+          border: 1px solid rgba(186, 198, 234, 0.22) !important;
+          background: linear-gradient(
+            180deg,
+            rgba(32, 44, 69, 0.74) 0%,
+            rgba(20, 28, 47, 0.72) 100%
+          ) !important;
+          box-shadow: 0 14px 34px -24px rgba(0, 0, 0, 0.82) !important;
+        }
+
+        .simulator-direct .simulator-transport-strip button {
+          border: 1px solid rgba(171, 186, 223, 0.28) !important;
+          background: rgba(64, 80, 117, 0.56) !important;
+          color: #f8fafc !important;
+        }
+
+        .simulator-direct .simulator-utility-trigger {
+          border-color: rgba(170, 188, 228, 0.46) !important;
+          background: linear-gradient(
+            180deg,
+            rgba(38, 54, 84, 0.92) 0%,
+            rgba(23, 34, 56, 0.9) 100%
+          ) !important;
+          box-shadow:
+            0 10px 24px -18px rgba(0, 0, 0, 0.85),
+            0 0 0 1px rgba(148, 163, 184, 0.26) !important;
+        }
+
+        .simulator-direct .simulator-utility-trigger.is-open {
+          border-color: rgba(245, 207, 120, 0.66) !important;
+          box-shadow:
+            0 0 0 1px rgba(245, 207, 120, 0.28),
+            0 14px 30px -20px rgba(217, 145, 26, 0.6) !important;
+        }
+
+        .simulator-direct .simulator-utility-panel {
+          border: 1px solid rgba(177, 191, 227, 0.26) !important;
+          background: linear-gradient(
+            180deg,
+            rgba(37, 50, 78, 0.8) 0%,
+            rgba(22, 32, 53, 0.76) 100%
+          ) !important;
+          box-shadow:
+            0 20px 44px -28px rgba(0, 0, 0, 0.86),
+            0 0 0 1px rgba(148, 163, 184, 0.14),
+            0 0 18px -14px rgba(250, 204, 21, 0.34) !important;
+        }
+
+        .simulator-direct .simulator-utility-panel button {
+          border: 1px solid rgba(175, 191, 226, 0.22) !important;
+          background: rgba(68, 84, 122, 0.52) !important;
+          color: #eef2ff !important;
+          box-shadow: 0 6px 16px -14px rgba(0, 0, 0, 0.72) !important;
+        }
+
+        .simulator-direct .simulator-utility-panel button:hover:not(:disabled) {
+          background: rgba(82, 103, 146, 0.56) !important;
+          border-color: rgba(196, 210, 244, 0.34) !important;
+        }
+
+        .simulator-direct .simulator-utility-panel button[aria-pressed="true"],
+        .simulator-direct .simulator-utility-panel button.utility-gold-action:not(:disabled) {
+          border-color: rgba(246, 210, 130, 0.62) !important;
+          background: rgba(112, 92, 48, 0.56) !important;
+          color: #fff8e6 !important;
+          box-shadow:
+            0 0 0 1px rgba(246, 210, 130, 0.16),
+            0 10px 20px -16px rgba(217, 145, 26, 0.62) !important;
+        }
+
+        .simulator-direct .simulator-utility-panel button:disabled {
+          opacity: 0.52 !important;
+        }
+
+        @media (orientation: landscape) {
+          .simulator-direct .simulator-utility-panel {
+            width: min(
+              11.5rem,
+              calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 0.55rem)
+            ) !important;
+            max-height: min(72dvh, calc(100% - 2.65rem)) !important;
+          }
         }
 
         .simulator-direct canvas {

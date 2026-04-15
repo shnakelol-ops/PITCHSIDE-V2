@@ -38,6 +38,8 @@ export type MountAthletesPixiOptions = {
   hostEl: HTMLElement;
   initialAthletes: MicroAthlete[];
   pathRecording?: PathRecordingConfig;
+  /** Cosmetic toggle only; keeps athlete state intact. */
+  showLabels?: () => boolean;
 };
 
 /**
@@ -163,9 +165,9 @@ export function mountAthletesPixi(
         height: rect.height,
       };
       const athlete = findAthlete(selectedId);
-      if (!pathRecording.store.getPath(selectedId)) {
-        pathRecording.store.startPath(selectedId);
-      }
+      // Each draw gesture starts a fresh path for this athlete; avoids implicit joins
+      // between separate path captures.
+      pathRecording.store.startPath(selectedId);
       if (athlete) {
         pathRecording.store.appendPoint(selectedId, athlete.nx, athlete.ny);
       }
@@ -250,7 +252,8 @@ export function mountAthletesPixi(
     if (!a) return false;
     const v = ensureView(id);
     const dragging = drag?.id === id;
-    return v.sync(a, selectedId === id, dragging);
+    const labelsVisible = options.showLabels?.() ?? true;
+    return v.sync(a, selectedId === id, dragging, labelsVisible);
   };
 
   const syncAll = (): boolean => {
