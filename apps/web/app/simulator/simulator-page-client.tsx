@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 
-import { SimulatorBoardShell } from "@src/features/simulator/simulator-board-shell";
+import { SimulatorFloatingShell } from "@src/features/simulator/simulator-floating-shell";
 
 /** Same heuristic as `POST /api/events` `matchId` (CUID). */
 function isPersistableMatchId(raw: string | null): raw is string {
@@ -18,7 +18,7 @@ export default function SimulatorPageClient() {
   const linkedMatchId = isPersistableMatchId(matchIdRaw) ? matchIdRaw : null;
 
   return (
-    <SimulatorBoardShell
+    <SimulatorFloatingShell
       initialSurfaceMode={initialSurfaceMode}
       linkedMatchId={linkedMatchId}
     />
