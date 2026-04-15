@@ -42,30 +42,48 @@ export function useSimulatorMatchClock(active: boolean) {
   const [phase, setPhase] = useState<SimulatorMatchPhase>("pre_match");
   const [firstHalfSec, setFirstHalfSec] = useState(0);
   const [secondHalfSec, setSecondHalfSec] = useState(0);
+  const [running, setRunning] = useState(false);
   const clockLabelRef = useRef("00:00 · pre");
+  const lastTickRef = useRef<number | null>(null);
 
   useEffect(() => {
     clockLabelRef.current = buildClockLabel(phase, firstHalfSec, secondHalfSec);
   }, [phase, firstHalfSec, secondHalfSec]);
 
   useEffect(() => {
-    if (!active) return;
-    if (phase !== "first_half" && phase !== "second_half") return;
+    if (!active || !running) {
+      lastTickRef.current = null;
+      return;
+    }
+    if (phase !== "first_half" && phase !== "second_half") {
+      lastTickRef.current = null;
+      return;
+    }
     const id = window.setInterval(() => {
+      const now = Date.now();
+      const prev = lastTickRef.current ?? now;
+      const deltaSec = Math.max(0, Math.floor((now - prev) / 1000));
+      lastTickRef.current = now;
+      if (deltaSec <= 0) return;
       if (phase === "first_half") {
-        setFirstHalfSec((t) => t + 1);
+        setFirstHalfSec((t) => t + deltaSec);
       } else {
-        setSecondHalfSec((t) => t + 1);
+        setSecondHalfSec((t) => t + deltaSec);
       }
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [active, phase]);
+    }, 250);
+    return () => {
+      window.clearInterval(id);
+      lastTickRef.current = null;
+    };
+  }, [active, running, phase]);
 
   return {
     phase,
     setPhase,
     firstHalfSec,
     secondHalfSec,
+    running,
+    setRunning,
     clockLabelRef,
   };
 }
