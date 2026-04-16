@@ -1,3 +1,5 @@
+import { SimulatorPixiSurface } from "@src/features/simulator/pixi/simulator-pixi-surface";
+
 export default function Page() {
   return (
     <div
@@ -6,24 +8,21 @@ export default function Page() {
         color: "#fff",
         height: "100vh",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        flexDirection: "column",
         padding: "24px",
+        gap: "16px",
       }}
     >
       <div
         style={{
-          width: "100%",
-          maxWidth: "1280px",
-          height: "100%",
-          border: "1px solid rgba(255,255,255,0.2)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
           fontSize: "24px",
+          textAlign: "center",
         }}
       >
-        SHELL ONLY WORKS
+        PIXI SURFACE TEST
+      </div>
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <SimulatorPixiSurface sport="soccer" />
       </div>
     </div>
   );
