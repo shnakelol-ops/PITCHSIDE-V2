@@ -543,7 +543,7 @@ export function SimulatorFloatingShell({
           </p>
         </div>
 
-        <div className="pointer-events-none absolute bottom-[max(0.55rem,env(safe-area-inset-bottom))] left-1/2 z-40 -translate-x-1/2">
+        <div className="pointer-events-none absolute bottom-[max(0.55rem,env(safe-area-inset-bottom))] left-1/2 z-50 -translate-x-1/2">
           <div className="simulator-transport-strip pointer-events-none flex items-center gap-1 rounded-xl px-2 py-1 backdrop-blur-md">
             {surfaceMode === "SIMULATOR" ? (
               <>
@@ -664,7 +664,6 @@ export function SimulatorFloatingShell({
           style={{
             top: "max(0.55rem, env(safe-area-inset-top))",
             right: "max(0.45rem, env(safe-area-inset-right))",
-            bottom: "max(0.55rem, env(safe-area-inset-bottom))",
           }}
         >
           <button
@@ -687,7 +686,8 @@ export function SimulatorFloatingShell({
             style={{
               width:
                 "min(17rem, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 0.7rem))",
-              maxHeight: "min(72dvh, calc(100% - 3rem))",
+              maxHeight:
+                "calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 4.25rem)",
             }}
           >
             <div className="space-y-2">
