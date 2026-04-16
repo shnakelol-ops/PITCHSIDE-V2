@@ -2,7 +2,7 @@ import type { FederatedPointerEvent } from "pixi.js";
 import { Container, Graphics } from "pixi.js";
 
 import { BOARD_PITCH_VIEWBOX } from "@src/constants/pitch-space";
-import type { MicroAthlete } from "@src/features/simulator/model/micro-athlete";
+import { MicroAthlete } from "@src/features/simulator/model/micro-athlete";
 import { createMicroAthleteView } from "@src/features/simulator/pixi/micro-athlete-view";
 import type { MovementPathStore } from "@src/features/simulator/path/movement-path-store";
 import { clamp01, viewportCssToBoardNorm } from "@src/lib/pitch-coordinates";
@@ -428,7 +428,17 @@ export function mountAthletesPixi(
   };
 
   return {
-    getAthletes: () => athletes.map((a) => ({ ...a })),
+    getAthletes: () =>
+      athletes.map(
+        (a) =>
+          new MicroAthlete({
+            id: a.id,
+            nx: a.nx,
+            ny: a.ny,
+            headingRad: a.headingRad,
+            team: a.team,
+          }),
+      ),
     applyKinematic,
     flushVisuals,
     releaseTransientInput,

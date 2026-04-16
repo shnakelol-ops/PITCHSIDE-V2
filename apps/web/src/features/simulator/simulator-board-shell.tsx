@@ -35,7 +35,10 @@ import {
 } from "@src/features/stats/hooks/use-simulator-match-clock";
 import { useStatsVoiceRecorder } from "@src/features/stats/hooks/use-stats-voice-recorder";
 import { findLatestScorePendingScorer } from "@src/features/stats/model/stats-scorer-utils";
-import type { StatsLoggedEvent } from "@src/features/stats/model/stats-logged-event";
+import type {
+  StatsLoggedEvent,
+  StatsPeriodPhase,
+} from "@src/features/stats/model/stats-logged-event";
 import {
   isStatsV1ScoreKind,
   STATS_V1_EVENT_KINDS,
@@ -43,7 +46,11 @@ import {
   STATS_V1_SCORE_KINDS,
   type StatsV1EventKind,
 } from "@src/features/stats/model/stats-v1-event-kind";
-import { STATS_DEV_PLACEHOLDER_ROSTER } from "@src/features/stats/types/stats-roster";
+import type { StatsPitchTapPayload } from "@src/features/stats/types/stats-pitch-tap";
+import {
+  STATS_DEV_PLACEHOLDER_ROSTER,
+  type StatsRosterPlayer,
+} from "@src/features/stats/types/stats-roster";
 import type { StatsReviewMode } from "@src/features/stats/types/stats-review-mode";
 import { cn } from "@pitchside/utils";
 
@@ -235,6 +242,21 @@ function matchMorphLabel(phase: SimulatorMatchPhase): string {
   }
 }
 
+function matchPhaseToStatsPeriodPhase(phase: SimulatorMatchPhase): StatsPeriodPhase {
+  switch (phase) {
+    case "first_half":
+      return "first_half";
+    case "second_half":
+      return "second_half";
+    case "halftime":
+      return "half_time";
+    case "full_time":
+      return "full_time";
+    default:
+      return "unspecified";
+  }
+}
+
 export type SimulatorBoardShellProps = {
   initialSurfaceMode?: SimulatorSurfaceMode;
   /** When set (e.g. `?matchId=` on `/simulator`), new STATS logs POST to `/api/events`. */
@@ -322,6 +344,8 @@ export function SimulatorBoardShell({
     setPhase: setMatchPhase,
     firstHalfSec,
     secondHalfSec,
+    running: matchClockRunning,
+    setRunning: setMatchClockRunning,
     clockLabelRef: matchClockLabelRef,
   } = matchClock;
 
@@ -348,6 +372,11 @@ export function SimulatorBoardShell({
     });
   }, []);
 
+  const resolveCurrentPeriodPhase = useCallback(
+    () => matchPhaseToStatsPeriodPhase(matchPhase),
+    [matchPhase],
+  );
+
   const {
     events: statsEvents,
     arm: statsArm,
@@ -366,7 +395,10 @@ export function SimulatorBoardShell({
     playVoiceNote,
     attachVoiceNoteToEvent,
     addVoiceMoment,
-  } = useStatsEventLog({ onStatsEventLogged });
+  } = useStatsEventLog({
+    onStatsEventLogged,
+    resolvePeriodPhase: resolveCurrentPeriodPhase,
+  });
 
   const recorder = useStatsVoiceRecorder();
   const [pendingVoiceId, setPendingVoiceId] = useState<string | null>(null);
@@ -374,12 +406,28 @@ export function SimulatorBoardShell({
   const [pitchExportError, setPitchExportError] = useState<string | null>(null);
   const [pitchMarkerViewFilter, setPitchMarkerViewFilter] =
     useState<PitchMarkerViewFilter>("all");
+  const [statsPlayers, setStatsPlayers] = useState<StatsRosterPlayer[]>(
+    STATS_DEV_PLACEHOLDER_ROSTER,
+  );
+  const [playerNameDraft, setPlayerNameDraft] = useState("");
+  const [playerNumberDraft, setPlayerNumberDraft] = useState("");
 
   const isStatsLive = reviewMode === "live";
 
   const canStatsPitchLog =
     reviewMode === "live" &&
     (matchPhase === "first_half" || matchPhase === "second_half");
+  const canStatsPitchLogRef = useRef(canStatsPitchLog);
+  canStatsPitchLogRef.current = canStatsPitchLog;
+
+  const onStatsPitchTapGuarded = useCallback(
+    (payload: StatsPitchTapPayload) => {
+      // Hard data-integrity guard: HT/FT (or any non-live/non-playing phase) must never log.
+      if (!canStatsPitchLogRef.current) return;
+      logTap(payload);
+    },
+    [logTap],
+  );
 
   const matchClockDisplay = useMemo(
     () =>
@@ -391,10 +439,15 @@ export function SimulatorBoardShell({
     [matchPhase, firstHalfSec, secondHalfSec],
   );
 
-  const onMatchMorph = useCallback(() => {
+  const persistPhase = useCallback((nextPeriod: MatchPeriod) => {
     const mid = linkedMatchIdRef.current;
     const label = matchClockLabelRef.current;
-    const failPhase = (err: unknown) => {
+    if (!mid) return;
+    void persistSimulatorPhaseChange({
+      matchId: mid,
+      matchPeriod: nextPeriod,
+      clockLabel: label,
+    }).catch((err: unknown) => {
       console.error("[simulator-stats] phase persist failed", err);
       const message =
         err instanceof Error ? err.message : "Couldn’t save phase.";
@@ -406,58 +459,76 @@ export function SimulatorBoardShell({
         setStatsPersistError(null);
         persistErrorClearTimerRef.current = null;
       }, 8000);
-    };
-    const post = (p: MatchPeriod) => {
-      if (!mid) return Promise.resolve();
-      return persistSimulatorPhaseChange({
-        matchId: mid,
-        matchPeriod: p,
-        clockLabel: label,
-      });
-    };
+    });
+  }, []);
 
-    switch (matchPhase) {
-      case "pre_match":
-        setMatchPhase("first_half");
-        setReviewMode("live");
-        linkedMatchPeriodRef.current = MatchPeriod.FIRST_HALF;
-        setLinkedMatchPeriod(MatchPeriod.FIRST_HALF);
-        void post(MatchPeriod.FIRST_HALF).catch(failPhase);
-        break;
-      case "first_half":
-        setMatchPhase("halftime");
-        setReviewMode("halftime");
-        linkedMatchPeriodRef.current = MatchPeriod.HALF_TIME;
-        setLinkedMatchPeriod(MatchPeriod.HALF_TIME);
-        void post(MatchPeriod.HALF_TIME).catch(failPhase);
-        break;
-      case "halftime":
-        setMatchPhase("second_half");
-        setReviewMode("live");
-        linkedMatchPeriodRef.current = MatchPeriod.SECOND_HALF;
-        setLinkedMatchPeriod(MatchPeriod.SECOND_HALF);
-        void post(MatchPeriod.SECOND_HALF).catch(failPhase);
-        break;
-      case "second_half":
-        setMatchPhase("full_time");
-        setReviewMode("full_time");
-        linkedMatchPeriodRef.current = MatchPeriod.FULL_TIME;
-        setLinkedMatchPeriod(MatchPeriod.FULL_TIME);
-        void post(MatchPeriod.FULL_TIME).catch(failPhase);
-        break;
-      default:
-        break;
+  const onStartMatch = useCallback(() => {
+    setMatchPhase("first_half");
+    setReviewMode("live");
+    setMatchClockRunning(true);
+    linkedMatchPeriodRef.current = MatchPeriod.FIRST_HALF;
+    setLinkedMatchPeriod(MatchPeriod.FIRST_HALF);
+    persistPhase(MatchPeriod.FIRST_HALF);
+  }, [persistPhase, setMatchClockRunning, setMatchPhase, setReviewMode]);
+
+  const onStopMatchClock = useCallback(() => {
+    setMatchClockRunning(false);
+  }, [setMatchClockRunning]);
+
+  const onResumeMatchClock = useCallback(() => {
+    if (matchPhase === "first_half" || matchPhase === "second_half") {
+      setMatchClockRunning(true);
     }
-  }, [matchPhase, setMatchPhase, setReviewMode, setLinkedMatchPeriod]);
+  }, [matchPhase, setMatchClockRunning]);
+
+  const onHalfTime = useCallback(() => {
+    if (matchPhase !== "first_half") return;
+    setMatchClockRunning(false);
+    setMatchPhase("halftime");
+    setReviewMode("halftime");
+    linkedMatchPeriodRef.current = MatchPeriod.HALF_TIME;
+    setLinkedMatchPeriod(MatchPeriod.HALF_TIME);
+    persistPhase(MatchPeriod.HALF_TIME);
+  }, [matchPhase, persistPhase, setMatchClockRunning, setMatchPhase, setReviewMode]);
+
+  const onStartSecondHalf = useCallback(() => {
+    if (matchPhase !== "halftime") return;
+    setMatchPhase("second_half");
+    setReviewMode("live");
+    setMatchClockRunning(true);
+    linkedMatchPeriodRef.current = MatchPeriod.SECOND_HALF;
+    setLinkedMatchPeriod(MatchPeriod.SECOND_HALF);
+    persistPhase(MatchPeriod.SECOND_HALF);
+  }, [matchPhase, persistPhase, setMatchClockRunning, setMatchPhase, setReviewMode]);
+
+  const onFullTime = useCallback(() => {
+    if (matchPhase !== "second_half") return;
+    setMatchClockRunning(false);
+    setMatchPhase("full_time");
+    setReviewMode("full_time");
+    linkedMatchPeriodRef.current = MatchPeriod.FULL_TIME;
+    setLinkedMatchPeriod(MatchPeriod.FULL_TIME);
+    persistPhase(MatchPeriod.FULL_TIME);
+  }, [matchPhase, persistPhase, setMatchClockRunning, setMatchPhase, setReviewMode]);
 
   useEffect(() => {
     if (canStatsPitchLog) setPitchMarkerViewFilter("all");
   }, [canStatsPitchLog]);
 
+  const statsEventsForReviewWindow = useMemo(() => {
+    if (reviewMode === "live") return statsEvents;
+    if (reviewMode === "halftime") {
+      return statsEvents.filter(
+        (e) => e.periodPhase === "first_half" || e.periodPhase === "half_time",
+      );
+    }
+    return statsEvents;
+  }, [reviewMode, statsEvents]);
+
   const statsEventsForPitchView = useMemo(() => {
-    if (isStatsLive || pitchMarkerViewFilter === "all") return statsEvents;
-    return statsEvents.filter((e) => e.kind === pitchMarkerViewFilter);
-  }, [statsEvents, isStatsLive, pitchMarkerViewFilter]);
+    if (isStatsLive || pitchMarkerViewFilter === "all") return statsEventsForReviewWindow;
+    return statsEventsForReviewWindow.filter((e) => e.kind === pitchMarkerViewFilter);
+  }, [statsEventsForReviewWindow, isStatsLive, pitchMarkerViewFilter]);
   const pendingScore = useMemo(
     () => findLatestScorePendingScorer(statsEvents),
     [statsEvents],
@@ -526,6 +597,19 @@ export function SimulatorBoardShell({
     setCaptureError(null);
   }, [pendingVoiceId, removeVoiceBlob]);
 
+  const onAddStatsPlayer = useCallback(() => {
+    const nextName = playerNameDraft.trim();
+    const nextNumber = playerNumberDraft.trim();
+    if (!nextName || !nextNumber) return;
+    setStatsPlayers((prev) => {
+      if (prev.length >= 15) return prev;
+      const id = `stats-player-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      return [...prev, { id, name: nextName, number: nextNumber }];
+    });
+    setPlayerNameDraft("");
+    setPlayerNumberDraft("");
+  }, [playerNameDraft, playerNumberDraft]);
+
   const setMainRecording = (on: boolean) => {
     setPathRecording(on);
     if (on) setShadowRecording(false);
@@ -593,36 +677,106 @@ export function SimulatorBoardShell({
       <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14">
         <aside className="order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
           <ToolRail title="Transport" className="min-w-0 flex-1 lg:flex-none">
-            <div
-              className="grid grid-cols-3 gap-2 lg:grid-cols-1"
-              role="group"
-              aria-label="Playback transport"
-            >
-              <Button
-                type="button"
-                variant="secondary"
-                className={cn(btnBase, btnIdle)}
-                onClick={() => surfaceRef.current?.play()}
+            {surfaceMode === "SIMULATOR" ? (
+              <div
+                className="grid grid-cols-3 gap-2 lg:grid-cols-1"
+                role="group"
+                aria-label="Playback transport"
               >
-                Play
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className={cn(btnBase, btnIdle)}
-                onClick={() => surfaceRef.current?.pause()}
-              >
-                Pause
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className={cn(btnBase, btnIdle)}
-                onClick={() => surfaceRef.current?.reset()}
-              >
-                Reset
-              </Button>
-            </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className={cn(btnBase, btnIdle)}
+                  onClick={() => surfaceRef.current?.play()}
+                >
+                  Play
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className={cn(btnBase, btnIdle)}
+                  onClick={() => surfaceRef.current?.pause()}
+                >
+                  Pause
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className={cn(btnBase, btnIdle)}
+                  onClick={() => surfaceRef.current?.reset()}
+                >
+                  Reset
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1.5" role="group" aria-label="Stats match clock">
+                {matchPhase === "pre_match" ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className={cn("min-h-8 py-1.5 text-[10px]", btnBase, btnSportOn)}
+                    onClick={onStartMatch}
+                  >
+                    Start Match
+                  </Button>
+                ) : null}
+                {(matchPhase === "first_half" || matchPhase === "second_half") &&
+                matchClockRunning ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className={cn("min-h-8 py-1.5 text-[10px]", btnBase, btnIdle)}
+                    onClick={onStopMatchClock}
+                  >
+                    Stop
+                  </Button>
+                ) : null}
+                {(matchPhase === "first_half" || matchPhase === "second_half") &&
+                !matchClockRunning ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className={cn("min-h-8 py-1.5 text-[10px]", btnBase, btnSportOn)}
+                    onClick={onResumeMatchClock}
+                  >
+                    Resume
+                  </Button>
+                ) : null}
+                {matchPhase === "first_half" ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className={cn("min-h-8 py-1.5 text-[10px]", btnBase, btnRecordOn)}
+                    onClick={onHalfTime}
+                  >
+                    Half Time
+                  </Button>
+                ) : null}
+                {matchPhase === "halftime" ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className={cn("min-h-8 py-1.5 text-[10px]", btnBase, btnSportOn)}
+                    onClick={onStartSecondHalf}
+                  >
+                    Resume 2nd Half
+                  </Button>
+                ) : null}
+                {matchPhase === "second_half" ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className={cn("min-h-8 py-1.5 text-[10px]", btnBase, btnRecordOn)}
+                    onClick={onFullTime}
+                  >
+                    Full Time
+                  </Button>
+                ) : null}
+                <p className="text-[8px] font-semibold tabular-nums text-emerald-100/85">
+                  {matchClockDisplay}
+                </p>
+              </div>
+            )}
           </ToolRail>
         </aside>
 
@@ -715,9 +869,7 @@ export function SimulatorBoardShell({
                       surfaceMode === "STATS" ? statsEventsForPitchView : []
                     }
                     onStatsPitchTap={
-                      surfaceMode === "STATS" && canStatsPitchLog
-                        ? logTap
-                        : undefined
+                      surfaceMode === "STATS" ? onStatsPitchTapGuarded : undefined
                     }
                     statsReviewMode={reviewMode}
                     statsPitchInteractive={canStatsPitchLog}
@@ -764,7 +916,9 @@ export function SimulatorBoardShell({
                 Stats
               </Button>
             </div>
-            {surfaceMode === "STATS" ? (
+          </ToolRail>
+          {surfaceMode === "STATS" ? (
+            <ToolRail title="Stats V1" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
               <div
                 className="mt-1 flex max-h-[min(70vh,28rem)] flex-col gap-2 overflow-y-auto pr-0.5"
                 role="group"
@@ -782,28 +936,13 @@ export function SimulatorBoardShell({
                     </button>
                   ))}
                 </div>
-                <div className="flex flex-wrap items-end gap-2 border-b border-white/[0.06] pb-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[8px] font-semibold uppercase tracking-wide text-[rgba(228,226,220,0.5)]">
-                      Clock
-                    </p>
-                    <p className="font-mono text-[11px] font-semibold tabular-nums text-emerald-100/90">
-                      {matchClockDisplay}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={matchPhase === "full_time"}
-                    className={cn(
-                      "min-h-8 shrink-0 px-2 py-1.5 text-[9px]",
-                      btnBase,
-                      matchPhase === "full_time" ? btnIdle : btnSportOn,
-                    )}
-                    onClick={onMatchMorph}
-                  >
-                    {matchMorphLabel(matchPhase)}
-                  </Button>
+                <div className="rounded-md border border-white/[0.08] bg-black/10 px-2 py-2">
+                  <p className="text-[8px] font-semibold uppercase tracking-wide text-[rgba(228,226,220,0.55)]">
+                    Match state
+                  </p>
+                  <p className="font-mono text-[10px] font-semibold uppercase tracking-wide text-emerald-100/90">
+                    {matchPhase.replace(/_/g, " ")} · {matchClockRunning ? "running" : "stopped"}
+                  </p>
                 </div>
                 {statsPersistError ? (
                   <p
@@ -885,29 +1024,6 @@ export function SimulatorBoardShell({
                       );
                     })}
                   </div>
-                  <StatsScorerStrip
-                    players={STATS_DEV_PLACEHOLDER_ROSTER}
-                    pendingLabel={pendingScoreLabel}
-                    activeScorerId={activeScorerId}
-                    onSetActiveScorer={setActiveScorer}
-                  />
-                  <StatsVoiceStrip
-                    allowRecording={canStatsPitchLog}
-                    isRecording={recorder.isRecording}
-                    recordError={voiceError}
-                    onStartRecord={() => void onStartVoice()}
-                    onStopRecord={() => void onStopVoice()}
-                    pendingVoiceId={pendingVoiceId}
-                    canAttachToLastEvent={Boolean(
-                      lastStatsEvent && pendingVoiceId,
-                    )}
-                    onAttachToLastEvent={onAttachVoiceToLastEvent}
-                    onAttachAsMoment={onAttachVoiceAsMoment}
-                    onDiscardPending={onDiscardPendingVoice}
-                    voiceMomentIds={voiceMomentIds}
-                    eventsWithVoice={eventsWithVoice}
-                    onPlay={playVoiceNote}
-                  />
                   <div className="flex flex-wrap gap-1 pt-0.5">
                     <Button
                       type="button"
@@ -978,13 +1094,84 @@ export function SimulatorBoardShell({
                       </Button>
                     )}
                   </div>
-                  <p className="text-[9px] tabular-nums text-[rgba(228,226,220,0.5)]">
-                    Logged: {statsEvents.length}
-                  </p>
+                </div>
+                <StatsScorerStrip
+                  players={statsPlayers}
+                  pendingLabel={pendingScoreLabel}
+                  activeScorerId={activeScorerId}
+                  onSetActiveScorer={setActiveScorer}
+                />
+                <StatsVoiceStrip
+                  allowRecording={canStatsPitchLog}
+                  isRecording={recorder.isRecording}
+                  recordError={voiceError}
+                  onStartRecord={() => void onStartVoice()}
+                  onStopRecord={() => void onStopVoice()}
+                  pendingVoiceId={pendingVoiceId}
+                  canAttachToLastEvent={Boolean(
+                    lastStatsEvent && pendingVoiceId,
+                  )}
+                  onAttachToLastEvent={onAttachVoiceToLastEvent}
+                  onAttachAsMoment={onAttachVoiceAsMoment}
+                  onDiscardPending={onDiscardPendingVoice}
+                  voiceMomentIds={voiceMomentIds}
+                  eventsWithVoice={eventsWithVoice}
+                  onPlay={playVoiceNote}
+                />
+                <p className="text-[9px] tabular-nums text-[rgba(228,226,220,0.5)]">
+                  Logged: {statsEventsForReviewWindow.length}
+                </p>
+              </div>
+            </ToolRail>
+          ) : null}
+          {surfaceMode === "STATS" ? (
+            <ToolRail
+              title="Players"
+              className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none"
+            >
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-1 overflow-x-auto pb-1">
+                  {statsPlayers.map((p) => (
+                    <span
+                      key={p.id}
+                      className="shrink-0 rounded border border-white/20 bg-white/5 px-2 py-1 text-[9px] font-semibold text-emerald-100/90"
+                      title={p.name}
+                    >
+                      #{p.number} {p.name}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-[8px] text-emerald-100/60">
+                  Slide to browse players ({statsPlayers.length}/15)
+                </p>
+                <input
+                  type="text"
+                  value={playerNameDraft}
+                  onChange={(e) => setPlayerNameDraft(e.target.value)}
+                  placeholder="Player name"
+                  className="h-8 rounded border border-white/15 bg-black/20 px-2 text-[10px] text-emerald-50 placeholder:text-emerald-200/40"
+                />
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={playerNumberDraft}
+                    onChange={(e) => setPlayerNumberDraft(e.target.value)}
+                    placeholder="#"
+                    className="h-8 w-14 rounded border border-white/15 bg-black/20 px-2 text-[10px] text-emerald-50 placeholder:text-emerald-200/40"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className={cn("min-h-8 flex-1 py-1.5 text-[9px]", btnBase, btnIdle)}
+                    disabled={statsPlayers.length >= 15}
+                    onClick={onAddStatsPlayer}
+                  >
+                    Add player
+                  </Button>
                 </div>
               </div>
-            ) : null}
-          </ToolRail>
+            </ToolRail>
+          ) : null}
           <ToolRail title="Pitch" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
             <div className="flex flex-col gap-2" role="group" aria-label="Pitch sport">
               {SPORT_OPTIONS.map((opt) => (

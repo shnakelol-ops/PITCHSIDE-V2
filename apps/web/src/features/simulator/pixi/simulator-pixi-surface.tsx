@@ -208,6 +208,7 @@ export const SimulatorPixiSurface = forwardRef<
     let cancelled = false;
     let ro: ResizeObserver | null = null;
     let unsubPaths: (() => void) | null = null;
+    let redrawPaths: (() => void) | null = null;
 
     void (async () => {
       const { Application, Container, Graphics } = await import("pixi.js");
@@ -318,9 +319,12 @@ export const SimulatorPixiSurface = forwardRef<
       attachPitch(sportRef.current);
       layout();
 
-      const redrawPaths = () => {
+      redrawPaths = () => {
         drawShadowRunsGraphics(shadowPathGraphics, pathStore.getAllShadowRuns());
-        drawMovementPathsGraphics(pathGraphics, pathStore.getAllPaths());
+        drawMovementPathsGraphics(
+          pathGraphics,
+          playbackDrivingRef.current ? [] : pathStore.getAllPaths(),
+        );
       };
       redrawPaths();
       unsubPaths = pathStore.subscribe(redrawPaths);
@@ -359,6 +363,7 @@ export const SimulatorPixiSurface = forwardRef<
         },
         setPlaybackDriving: (v) => {
           playbackDrivingRef.current = v;
+          redrawPaths?.();
         },
         updateShadowGhosts: (poses) => {
           drawShadowPlaybackGhosts(shadowGhostGraphics, poses);
