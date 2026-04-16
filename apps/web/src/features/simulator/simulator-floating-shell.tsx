@@ -543,7 +543,7 @@ export function SimulatorFloatingShell({
           </p>
         </div>
 
-        <div className="pointer-events-none absolute bottom-[max(0.55rem,env(safe-area-inset-bottom))] left-1/2 z-50 -translate-x-1/2">
+        <div className="pointer-events-none absolute bottom-[max(0.55rem,env(safe-area-inset-bottom))] left-1/2 z-40 -translate-x-1/2">
           <div className="simulator-transport-strip pointer-events-none flex items-center gap-1 rounded-xl px-2 py-1 backdrop-blur-md">
             {surfaceMode === "SIMULATOR" ? (
               <>
@@ -664,6 +664,7 @@ export function SimulatorFloatingShell({
           style={{
             top: "max(0.55rem, env(safe-area-inset-top))",
             right: "max(0.45rem, env(safe-area-inset-right))",
+            bottom: "max(0.55rem, env(safe-area-inset-bottom))",
           }}
         >
           <button
@@ -678,19 +679,18 @@ export function SimulatorFloatingShell({
             <SlidersHorizontal className="size-5" />
           </button>
           <div
-            className={`simulator-utility-panel mt-1.5 origin-top-right overflow-y-auto overscroll-contain rounded-[14px] p-1.5 transition duration-150 ${
+            className={`simulator-utility-panel mt-1.5 origin-top-right overflow-y-auto rounded-[16px] p-2 transition duration-150 ${
               utilityOpen
                 ? "pointer-events-auto scale-100 opacity-100"
                 : "pointer-events-none scale-[0.96] opacity-0"
             }`}
             style={{
               width:
-                "min(14.5rem, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 1rem))",
-              maxHeight:
-                "min(60dvh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 5.5rem))",
+                "min(17rem, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 0.7rem))",
+              maxHeight: "min(72dvh, calc(100% - 3rem))",
             }}
           >
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <div className="space-y-1">
                 <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/86">
                   Mode
@@ -787,17 +787,17 @@ export function SimulatorFloatingShell({
                   ) : null}
                 </div>
               ) : (
-                <div className="space-y-1">
-                  <div className="rounded-lg border border-white/10 bg-black/20 px-1.5 py-0.5 text-[9px] text-stone-200/80">
+                <div className="space-y-2">
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[9px] text-stone-200/80">
                     {formatMatchPhaseLabel(matchPhase)} ·{" "}
                     {matchClockRunning ? "running" : "stopped"}
                   </div>
 
-                  <div className="space-y-0.5">
+                  <div className="space-y-1">
                     <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/86">
                       Review
                     </p>
-                    <div className="grid grid-cols-3 gap-0.5">
+                    <div className="grid grid-cols-3 gap-1">
                       {STATS_REVIEW_CHIPS.map(({ mode, label }) => (
                         <button
                           key={mode}
@@ -812,11 +812,11 @@ export function SimulatorFloatingShell({
                   </div>
 
                   {!isStatsLive ? (
-                    <div className="space-y-0.5">
+                    <div className="space-y-1">
                       <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/86">
                         Spatial review
                       </p>
-                      <div className="flex max-h-24 flex-wrap gap-0.5 overflow-y-auto">
+                      <div className="flex max-h-24 flex-wrap gap-1 overflow-y-auto">
                         {PITCH_VIEW_FILTER_CHIPS.map(({ id, label }) => (
                           <button
                             key={id}
@@ -833,20 +833,20 @@ export function SimulatorFloatingShell({
 
                   <div
                     className={cn(
-                      "space-y-0.5",
+                      "space-y-1",
                       !canStatsPitchLog && "pointer-events-none opacity-45",
                     )}
                   >
                     <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/86">
                       Field
                     </p>
-                    <div className="grid grid-cols-2 gap-0.5">
+                    <div className="grid grid-cols-2 gap-1">
                       {STATS_V1_FIELD_KINDS.map((k) => (
                         <Button
                           key={k}
                           type="button"
                           variant="secondary"
-                          className="pointer-events-auto min-h-7 rounded-lg px-1.5 py-0.5 text-[9px]"
+                          className="pointer-events-auto min-h-8 rounded-lg px-2 py-1 text-[10px]"
                           aria-pressed={statsArm === k}
                           onClick={() => armKind(k)}
                         >
@@ -857,13 +857,13 @@ export function SimulatorFloatingShell({
                     <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/86">
                       Score
                     </p>
-                    <div className="grid grid-cols-3 gap-0.5">
+                    <div className="grid grid-cols-3 gap-1">
                       {STATS_V1_SCORE_KINDS.map((k) => (
                         <Button
                           key={k}
                           type="button"
                           variant="secondary"
-                          className="pointer-events-auto min-h-7 rounded-lg px-1.5 py-0.5 text-[9px]"
+                          className="pointer-events-auto min-h-8 rounded-lg px-2 py-1 text-[10px]"
                           aria-pressed={statsArm === k}
                           onClick={() => armKind(k)}
                         >
@@ -880,38 +880,38 @@ export function SimulatorFloatingShell({
                     onSetActiveScorer={setActiveScorer}
                   />
 
-                  <div className="space-y-0.5 border-t border-white/10 pt-1">
+                  <div className="space-y-1 border-t border-white/10 pt-1.5">
                     <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/86">
                       Players ({statsPlayers.length}/15)
                     </p>
-                    <div className="flex gap-0.5 overflow-x-auto pb-0.5">
+                    <div className="flex gap-1 overflow-x-auto pb-1">
                       {statsPlayers.map((p) => (
                         <div
                           key={p.id}
-                          className="shrink-0 rounded-md border border-white/15 bg-white/5 px-1.5 py-0.5 text-[9px] text-stone-100/90"
+                          className="shrink-0 rounded-md border border-white/15 bg-white/5 px-2 py-1 text-[9px] text-stone-100/90"
                         >
                           <span className="mr-1 font-bold text-stone-200/80">#{p.number}</span>
                           {p.name}
                         </div>
                       ))}
                     </div>
-                    <div className="flex gap-0.5">
+                    <div className="flex gap-1">
                       <input
                         value={playerNumberDraft}
                         onChange={(e) => setPlayerNumberDraft(e.target.value)}
                         placeholder="#"
-                        className="min-w-0 w-12 rounded border border-white/15 bg-black/30 px-1.5 py-0.5 text-[9px] text-stone-100 outline-none focus:border-white/30"
+                        className="min-w-0 w-12 rounded border border-white/15 bg-black/30 px-2 py-1 text-[10px] text-stone-100 outline-none focus:border-white/30"
                       />
                       <input
                         value={playerNameDraft}
                         onChange={(e) => setPlayerNameDraft(e.target.value)}
                         placeholder="Player name"
-                        className="min-w-0 flex-1 rounded border border-white/15 bg-black/30 px-1.5 py-0.5 text-[9px] text-stone-100 outline-none focus:border-white/30"
+                        className="min-w-0 flex-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[10px] text-stone-100 outline-none focus:border-white/30"
                       />
                       <Button
                         type="button"
                         variant="secondary"
-                        className="min-h-7 rounded-lg px-1.5 py-0.5 text-[9px]"
+                        className="min-h-8 rounded-lg px-2 py-1 text-[10px]"
                         disabled={statsPlayers.length >= 15}
                         onClick={onAddStatsPlayer}
                       >
@@ -936,11 +936,11 @@ export function SimulatorFloatingShell({
                     onPlay={playVoiceNote}
                   />
 
-                  <div className="grid grid-cols-3 gap-0.5">
+                  <div className="grid grid-cols-3 gap-1">
                     <Button
                       type="button"
                       variant="secondary"
-                      className="min-h-7 rounded-lg px-1.5 py-0.5 text-[9px]"
+                      className="min-h-8 rounded-lg px-2 py-1 text-[10px]"
                       disabled={!canStatsPitchLog}
                       onClick={() => clearArm()}
                     >
@@ -949,7 +949,7 @@ export function SimulatorFloatingShell({
                     <Button
                       type="button"
                       variant="secondary"
-                      className="min-h-7 rounded-lg px-1.5 py-0.5 text-[9px]"
+                      className="min-h-8 rounded-lg px-2 py-1 text-[10px]"
                       disabled={!canStatsPitchLog || statsEvents.length === 0}
                       onClick={() => undoLastEvent()}
                     >
@@ -958,7 +958,7 @@ export function SimulatorFloatingShell({
                     <Button
                       type="button"
                       variant="secondary"
-                      className="min-h-7 rounded-lg px-1.5 py-0.5 text-[9px]"
+                      className="min-h-8 rounded-lg px-2 py-1 text-[10px]"
                       disabled={statsEvents.length === 0}
                       onClick={() => resetEvents()}
                     >
