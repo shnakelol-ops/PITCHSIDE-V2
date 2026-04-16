@@ -68,7 +68,7 @@ export type StatsFloatingControlsContentProps = {
 
 function reviewChipClass(active: boolean): string {
   return cn(
-    "inline-flex min-h-7 items-center justify-center rounded-md border px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide transition",
+    "inline-flex min-h-[1.5rem] items-center justify-center rounded-[6px] border px-1 py-0.5 text-[7.5px] font-bold uppercase tracking-wide transition",
     active
       ? "border-amber-300/55 bg-[rgba(98,80,46,0.72)] text-amber-50 shadow-[0_0_0_1px_rgba(245,207,120,0.18)]"
       : "border-white/15 bg-[rgba(34,38,48,0.82)] text-stone-100 hover:border-white/25 hover:bg-[rgba(56,66,92,0.82)]",
@@ -124,8 +124,8 @@ export function StatsFloatingControlsContent({
   reviewWindowEventsCount,
 }: StatsFloatingControlsContentProps) {
   return (
-    <div className="space-y-1">
-      <div className="rounded-lg border border-white/10 bg-black/20 px-1.5 py-0.5 text-[9px] text-stone-200/80">
+    <div className="space-y-0.5">
+      <div className="rounded-lg border border-white/10 bg-black/20 px-1.5 py-[3px] text-[8.5px] text-stone-200/80">
         {formatMatchPhaseLabel(matchPhase)} · {matchClockRunning ? "running" : "stopped"}
       </div>
 
@@ -133,7 +133,7 @@ export function StatsFloatingControlsContent({
         <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/86">
           Review
         </p>
-        <div className="grid grid-cols-3 gap-0.5">
+        <div className="grid grid-cols-3 gap-px">
           {reviewChips.map(({ mode, label }) => (
             <button
               key={mode}
@@ -152,7 +152,7 @@ export function StatsFloatingControlsContent({
           <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/86">
             Spatial review
           </p>
-          <div className="flex max-h-24 flex-wrap gap-0.5 overflow-y-auto">
+          <div className="flex max-h-24 flex-wrap gap-px overflow-y-auto">
             {pitchViewFilterChips.map(({ id, label }) => (
               <button
                 key={id}
@@ -176,13 +176,13 @@ export function StatsFloatingControlsContent({
         <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/86">
           Field
         </p>
-        <div className="grid grid-cols-2 gap-0.5">
+        <div className="grid grid-cols-2 gap-px">
           {fieldKinds.map((k) => (
             <Button
               key={k}
               type="button"
               variant="secondary"
-              className="pointer-events-auto min-h-7 rounded-lg px-1.5 py-0.5 text-[9px]"
+              className="pointer-events-auto min-h-[1.6rem] rounded-lg px-1 py-0.5 text-[8.5px]"
               aria-pressed={statsArm === k}
               onClick={() => onArmKind(k)}
             >
@@ -193,13 +193,13 @@ export function StatsFloatingControlsContent({
         <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/86">
           Score
         </p>
-        <div className="grid grid-cols-3 gap-0.5">
+        <div className="grid grid-cols-3 gap-px">
           {scoreKinds.map((k) => (
             <Button
               key={k}
               type="button"
               variant="secondary"
-              className="pointer-events-auto min-h-7 rounded-lg px-1.5 py-0.5 text-[9px]"
+              className="pointer-events-auto min-h-[1.6rem] rounded-lg px-1 py-0.5 text-[8.5px]"
               aria-pressed={statsArm === k}
               onClick={() => onArmKind(k)}
             >
@@ -220,34 +220,34 @@ export function StatsFloatingControlsContent({
         <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/86">
           Players ({players.length}/15)
         </p>
-        <div className="flex gap-0.5 overflow-x-auto pb-0.5">
+        <div className="flex gap-px overflow-x-auto pb-0.5">
           {players.map((p) => (
             <div
               key={p.id}
-              className="shrink-0 rounded-md border border-white/15 bg-white/5 px-1.5 py-0.5 text-[9px] text-stone-100/90"
+              className="shrink-0 rounded-md border border-white/15 bg-white/5 px-1 py-0.5 text-[8.5px] text-stone-100/90"
             >
               <span className="mr-1 font-bold text-stone-200/80">#{p.number}</span>
               {p.name}
             </div>
           ))}
         </div>
-        <div className="flex gap-0.5">
+        <div className="flex gap-px">
           <input
             value={playerNumberDraft}
             onChange={(e) => onPlayerNumberDraftChange(e.target.value)}
             placeholder="#"
-            className="min-w-0 w-12 rounded border border-white/15 bg-black/30 px-1.5 py-0.5 text-[9px] text-stone-100 outline-none focus:border-white/30"
+            className="min-w-0 w-11 rounded border border-white/15 bg-black/30 px-1 py-0.5 text-[8.5px] text-stone-100 outline-none focus:border-white/30"
           />
           <input
             value={playerNameDraft}
             onChange={(e) => onPlayerNameDraftChange(e.target.value)}
             placeholder="Player name"
-            className="min-w-0 flex-1 rounded border border-white/15 bg-black/30 px-1.5 py-0.5 text-[9px] text-stone-100 outline-none focus:border-white/30"
+            className="min-w-0 flex-1 rounded border border-white/15 bg-black/30 px-1 py-0.5 text-[8.5px] text-stone-100 outline-none focus:border-white/30"
           />
           <Button
             type="button"
             variant="secondary"
-            className="min-h-7 rounded-lg px-1.5 py-0.5 text-[9px]"
+            className="min-h-[1.6rem] rounded-lg px-1 py-0.5 text-[8.5px]"
             disabled={players.length >= 15}
             onClick={onAddStatsPlayer}
           >
@@ -272,11 +272,11 @@ export function StatsFloatingControlsContent({
         onPlay={onPlayVoiceNote}
       />
 
-      <div className="grid grid-cols-3 gap-0.5">
+      <div className="grid grid-cols-3 gap-px">
         <Button
           type="button"
           variant="secondary"
-          className="min-h-7 rounded-lg px-1.5 py-0.5 text-[9px]"
+          className="min-h-[1.6rem] rounded-lg px-1 py-0.5 text-[8.5px]"
           disabled={!canStatsPitchLog}
           onClick={onClearArm}
         >
@@ -285,7 +285,7 @@ export function StatsFloatingControlsContent({
         <Button
           type="button"
           variant="secondary"
-          className="min-h-7 rounded-lg px-1.5 py-0.5 text-[9px]"
+          className="min-h-[1.6rem] rounded-lg px-1 py-0.5 text-[8.5px]"
           disabled={!canStatsPitchLog || totalEventsCount === 0}
           onClick={onUndoLastEvent}
         >
@@ -294,7 +294,7 @@ export function StatsFloatingControlsContent({
         <Button
           type="button"
           variant="secondary"
-          className="min-h-7 rounded-lg px-1.5 py-0.5 text-[9px]"
+          className="min-h-[1.6rem] rounded-lg px-1 py-0.5 text-[8.5px]"
           disabled={totalEventsCount === 0}
           onClick={onResetEvents}
         >
@@ -302,7 +302,7 @@ export function StatsFloatingControlsContent({
         </Button>
       </div>
 
-      <p className="text-[9px] tabular-nums text-stone-300/65">
+      <p className="text-[8.5px] tabular-nums text-stone-300/65">
         Logged: {reviewWindowEventsCount}
       </p>
       {statsPersistError ? (
