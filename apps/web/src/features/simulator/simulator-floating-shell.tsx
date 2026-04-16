@@ -678,19 +678,19 @@ export function SimulatorFloatingShell({
             <SlidersHorizontal className="size-5" />
           </button>
           <div
-            className={`simulator-utility-panel mt-1.5 origin-top-right overflow-y-auto rounded-[16px] p-2 transition duration-150 ${
+            className={`simulator-utility-panel mt-1.5 origin-top-right overflow-y-auto overscroll-contain rounded-[14px] p-1.5 transition duration-150 ${
               utilityOpen
                 ? "pointer-events-auto scale-100 opacity-100"
                 : "pointer-events-none scale-[0.96] opacity-0"
             }`}
             style={{
               width:
-                "min(17rem, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 0.7rem))",
+                "min(14.5rem, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 1rem))",
               maxHeight:
-                "calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 4.25rem)",
+                "min(60dvh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 5.5rem))",
             }}
           >
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="space-y-1">
                 <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/86">
                   Mode
@@ -787,7 +787,7 @@ export function SimulatorFloatingShell({
                   ) : null}
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[9px] text-stone-200/80">
                     {formatMatchPhaseLabel(matchPhase)} ·{" "}
                     {matchClockRunning ? "running" : "stopped"}
