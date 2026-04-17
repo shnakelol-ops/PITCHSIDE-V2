@@ -1,4 +1,4 @@
-import { Circle, Container } from "pixi.js";
+import { Circle, Container, Graphics } from "pixi.js";
 
 import { boardNormToWorld } from "@src/lib/pitch-coordinates";
 import type { MicroAthlete } from "@src/features/simulator/model/micro-athlete";
@@ -10,6 +10,8 @@ import {
   createJerseyTokenRenderer,
   resolveJerseyNumberLabel,
   resolveJerseyTokenPalette,
+  type JerseyTokenPalette,
+  type JerseyTokenRenderer,
 } from "@src/features/simulator/pixi/jersey-token-renderer";
 
 const R = MICRO_ATHLETE_RADIUS_WORLD;
@@ -19,6 +21,81 @@ const SCALE_SELECTED = 1.055;
 const SCALE_DRAGGING = 1.075;
 const SCALE_ACTIVE = 1.015;
 const SCALE_LERP = 0.24;
+
+/**
+ * Minimal, bulletproof fallback marker used when the premium jersey-token
+ * renderer throws during create or sync (e.g. a Pixi v8 Text/TextStyle
+ * incompatibility inside the Vercel production bundle). We draw a team-coloured
+ * circle with a selection ring — no Text, no gradients, no cached textures —
+ * so a jersey-token failure never blanks the whole pitch. Selection + drag
+ * keep working because the returned container satisfies the same contract.
+ */
+function buildFallbackToken(): JerseyTokenRenderer {
+  const container = new Container();
+  container.sortableChildren = true;
+
+  const body = new Graphics();
+  body.zIndex = 2;
+  container.addChild(body);
+
+  const ring = new Graphics();
+  ring.zIndex = 3;
+  ring.visible = false;
+  container.addChild(ring);
+
+  const badgeAnchor = new Container();
+  badgeAnchor.zIndex = 5;
+  container.addChild(badgeAnchor);
+
+  let lastPrimary = Number.NaN;
+  let lastOutline = Number.NaN;
+  let lastState = -1;
+
+  return {
+    container,
+    badgeAnchor,
+    sync: (opts) => {
+      const palette: JerseyTokenPalette = opts.palette;
+      if (
+        palette.primaryColor !== lastPrimary ||
+        palette.outlineColor !== lastOutline
+      ) {
+        lastPrimary = palette.primaryColor;
+        lastOutline = palette.outlineColor;
+        body
+          .clear()
+          .circle(0, 0, R)
+          .fill({ color: palette.primaryColor, alpha: 1 })
+          .stroke({
+            width: 0.2,
+            color: palette.outlineColor,
+            alpha: 0.6,
+          });
+      }
+      const nextState = opts.dragging ? 2 : opts.selected ? 1 : 0;
+      if (nextState !== lastState) {
+        lastState = nextState;
+        ring.clear();
+        ring.visible = nextState > 0;
+        if (nextState > 0) {
+          ring.circle(0, 0, R * 1.28).stroke({
+            width: nextState === 2 ? 0.24 : 0.2,
+            color: palette.glowColor,
+            alpha: nextState === 2 ? 0.5 : 0.36,
+          });
+        }
+      }
+      return false;
+    },
+    dispose: () => {
+      try {
+        container.destroy({ children: true });
+      } catch {
+        /* best-effort */
+      }
+    },
+  };
+}
 
 export type MicroAthleteView = {
   container: Container;
@@ -37,7 +114,18 @@ export function createMicroAthleteView(): MicroAthleteView {
   container.eventMode = "static";
   container.cursor = "pointer";
 
-  const token = createJerseyTokenRenderer(R);
+  let token: JerseyTokenRenderer;
+  let tokenDegraded = false;
+  try {
+    token = createJerseyTokenRenderer(R);
+  } catch (err) {
+    console.warn(
+      "[simulator] jersey-token renderer create failed; using circle fallback",
+      err,
+    );
+    token = buildFallbackToken();
+    tokenDegraded = true;
+  }
   container.addChild(token.container);
 
   const hitRadius = Math.max(MICRO_ATHLETE_HIT_RADIUS_WORLD, R * 2);
@@ -86,15 +174,47 @@ export function createMicroAthleteView(): MicroAthleteView {
       numberLabelCache = resolveJerseyNumberLabel(athlete);
     }
 
-    const tokenNeedsFrame = token.sync({
-      headingRad: athlete.headingRad,
-      numberLabel: numberLabelCache,
-      palette: paletteCache,
-      selected,
-      dragging,
-      active,
-      nowMs,
-    });
+    let tokenNeedsFrame = false;
+    try {
+      tokenNeedsFrame = token.sync({
+        headingRad: athlete.headingRad,
+        numberLabel: numberLabelCache,
+        palette: paletteCache,
+        selected,
+        dragging,
+        active,
+        nowMs,
+      });
+    } catch (err) {
+      if (!tokenDegraded) {
+        console.warn(
+          "[simulator] jersey-token sync failed; swapping to circle fallback",
+          err,
+        );
+        try {
+          container.removeChild(token.container);
+          token.dispose();
+        } catch {
+          /* best-effort cleanup of the broken token */
+        }
+        token = buildFallbackToken();
+        tokenDegraded = true;
+        container.addChild(token.container);
+        try {
+          tokenNeedsFrame = token.sync({
+            headingRad: athlete.headingRad,
+            numberLabel: numberLabelCache,
+            palette: paletteCache,
+            selected,
+            dragging,
+            active,
+            nowMs,
+          });
+        } catch {
+          /* fallback is deliberately trivial; ignore if it still fails */
+        }
+      }
+    }
 
     const baseTarget = dragging
       ? SCALE_DRAGGING

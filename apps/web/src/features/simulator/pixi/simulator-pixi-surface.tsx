@@ -118,6 +118,16 @@ export const SimulatorPixiSurface = forwardRef<
   const [statsOverlayEpoch, setStatsOverlayEpoch] = useState(0);
   /** Bumps on host resize so marker min-size tracks letterbox scale. */
   const [resizeGen, setResizeGen] = useState(0);
+  /**
+   * Errors thrown inside the async Pixi mount IIFE (dynamic pixi import,
+   * Application.init, jersey-token renderer setup, athlete layer mount, …) are
+   * swallowed by the detached promise and never reach React's route-level
+   * `error.tsx` boundary — which is why /simulator previously rendered blank
+   * instead of the retry card. We capture any such failure into state and
+   * re-throw on the next render so the boundary fires visibly.
+   */
+  const [mountError, setMountError] = useState<Error | null>(null);
+  if (mountError) throw mountError;
 
   surfaceModeRef.current = surfaceMode;
   statsArmRef.current = statsArm;
@@ -209,12 +219,15 @@ export const SimulatorPixiSurface = forwardRef<
     let ro: ResizeObserver | null = null;
     let unsubPaths: (() => void) | null = null;
     let redrawPaths: (() => void) | null = null;
+    let pixiAppForCleanup: PixiApp | null = null;
 
     void (async () => {
+      try {
       const { Application, Container, Graphics } = await import("pixi.js");
       if (cancelled || !hostRef.current) return;
 
       const app = new Application();
+      pixiAppForCleanup = app;
       await app.init({
         width: host.clientWidth || 640,
         height: host.clientHeight || 400,
@@ -376,6 +389,26 @@ export const SimulatorPixiSurface = forwardRef<
         setResizeGen((n) => n + 1);
       });
       ro.observe(host);
+      } catch (err) {
+        console.error("[simulator] Pixi surface mount failed", err);
+        const doomed = pixiAppForCleanup;
+        pixiAppForCleanup = null;
+        appRef.current = null;
+        worldRef.current = null;
+        pitchHolderRef.current = null;
+        if (doomed) {
+          try {
+            doomed.destroy(true, { children: true, texture: true });
+          } catch {
+            /* best-effort */
+          }
+        }
+        if (!cancelled) {
+          setMountError(
+            err instanceof Error ? err : new Error(String(err)),
+          );
+        }
+      }
     })();
 
     return () => {
