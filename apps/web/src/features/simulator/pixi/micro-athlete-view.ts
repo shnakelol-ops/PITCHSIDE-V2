@@ -4,15 +4,14 @@ import { boardNormToWorld } from "@src/lib/pitch-coordinates";
 import type { MicroAthlete } from "@src/features/simulator/model/micro-athlete";
 import {
   MICRO_ATHLETE_HIT_RADIUS_WORLD,
-  MICRO_ATHLETE_RADIUS_WORLD,
 } from "@src/features/simulator/model/micro-athlete";
+import { JerseyToken } from "@src/features/simulator/pixi/JerseyToken";
 
-const R = MICRO_ATHLETE_RADIUS_WORLD;
-const HALO_RADIUS = R * 1.34;
-const AURA_RADIUS = R * 1.08;
-const FIN_BASE_X = R * 0.56;
-const FIN_TIP_X = R * 1.72;
-const FIN_HALF_Y = R * 0.34;
+const BODY_SCALE = 0.108;
+const AURA_RADIUS = 3.08;
+const FIN_BASE_X = 1.2;
+const FIN_TIP_X = 4.2;
+const FIN_HALF_Y = 0.88;
 
 const SCALE_IDLE = 1;
 const SCALE_SELECTED = 1.065;
@@ -24,10 +23,6 @@ type TeamPalette = {
   auraColor: number;
   finColor: number;
   finStroke: number;
-  bodyFill: number;
-  bodyShade: number;
-  headFill: number;
-  outline: number;
 };
 
 function teamPalette(team: MicroAthlete["team"]): TeamPalette {
@@ -37,10 +32,6 @@ function teamPalette(team: MicroAthlete["team"]): TeamPalette {
       auraColor: 0x6ee7b7,
       finColor: 0x34d399,
       finStroke: 0xd1fae5,
-      bodyFill: 0xe2e8f0,
-      bodyShade: 0x94a3b8,
-      headFill: 0xf8fafc,
-      outline: 0x0f172a,
     };
   }
   return {
@@ -48,50 +39,7 @@ function teamPalette(team: MicroAthlete["team"]): TeamPalette {
     auraColor: 0xfb923c,
     finColor: 0xfb923c,
     finStroke: 0xffedd5,
-    bodyFill: 0xffedd5,
-    bodyShade: 0xfca5a5,
-    headFill: 0xfffbeb,
-    outline: 0x7c2d12,
   };
-}
-
-/**
- * Simple upright human-like silhouette with slight forward lean (+x).
- */
-function drawSilhouette(g: Graphics, palette: TeamPalette): void {
-  g.clear();
-  g.moveTo(-0.3 * R, 0.82 * R);
-  g.lineTo(-0.2 * R, 0.22 * R);
-  g.quadraticCurveTo(-0.12 * R, -0.16 * R, 0.18 * R, -0.36 * R);
-  g.quadraticCurveTo(0.45 * R, -0.12 * R, 0.5 * R, 0.24 * R);
-  g.lineTo(0.36 * R, 0.86 * R);
-  g.lineTo(0.1 * R, 0.92 * R);
-  g.lineTo(-0.08 * R, 0.9 * R);
-  g.closePath();
-  g.fill({ color: palette.bodyFill, alpha: 0.96 });
-  g.stroke({
-    width: 0.18,
-    color: palette.outline,
-    alpha: 0.45,
-    join: "round",
-    cap: "round",
-  });
-
-  g
-    .circle(0.22 * R, -0.56 * R, 0.24 * R)
-    .fill({ color: palette.headFill, alpha: 0.98 })
-    .stroke({ width: 0.12, color: palette.outline, alpha: 0.38 });
-
-  g
-    .ellipse(0.18 * R, 0.26 * R, 0.32 * R, 0.52 * R)
-    .fill({ color: palette.bodyShade, alpha: 0.22 });
-}
-
-function drawHalo(g: Graphics, palette: TeamPalette): void {
-  g.clear();
-  g.circle(0, 0, HALO_RADIUS).fill({ color: palette.teamColor, alpha: 0.3 });
-  g.circle(0, 0, HALO_RADIUS * 0.7).fill({ color: palette.teamColor, alpha: 0.2 });
-  g.circle(0, 0, HALO_RADIUS * 0.46).fill({ color: 0xffffff, alpha: 0.08 });
 }
 
 function drawAura(g: Graphics, palette: TeamPalette, selected: boolean, dragging: boolean): void {
@@ -142,8 +90,8 @@ export type MicroAthleteView = {
 };
 
 /**
- * Premium 2.5D micro-athlete token.
- * Layers: halo, aura ring, directional fin, upright silhouette.
+ * Premium jersey token view.
+ * Layers: jersey token, aura ring, directional fin.
  */
 export function createMicroAthleteView(): MicroAthleteView {
   const container = new Container();
@@ -151,31 +99,22 @@ export function createMicroAthleteView(): MicroAthleteView {
   container.eventMode = "static";
   container.cursor = "pointer";
 
-  const halo = new Graphics();
-  halo.zIndex = 0;
-  halo.cacheAsBitmap = true;
+  const jersey = new JerseyToken("athlete", "Player", 0x22d3a7, "solid");
+  jersey.scale.set(BODY_SCALE);
 
   const aura = new Graphics();
   aura.zIndex = 1;
-  aura.cacheAsBitmap = true;
 
   const directionalFinRoot = new Container();
   directionalFinRoot.zIndex = 2;
-  directionalFinRoot.cacheAsBitmap = false;
   const directionalFin = new Graphics();
-  directionalFin.cacheAsBitmap = false;
   directionalFinRoot.addChild(directionalFin);
-
-  const silhouette = new Graphics();
-  silhouette.zIndex = 3;
-  silhouette.cacheAsBitmap = false;
-
-  container.addChild(halo);
+  jersey.zIndex = 3;
+  container.addChild(jersey);
   container.addChild(aura);
   container.addChild(directionalFinRoot);
-  container.addChild(silhouette);
 
-  const hitRadius = Math.max(MICRO_ATHLETE_HIT_RADIUS_WORLD, HALO_RADIUS * 2);
+  const hitRadius = Math.max(MICRO_ATHLETE_HIT_RADIUS_WORLD, AURA_RADIUS * 1.55);
   container.hitArea = new Circle(0, 0, hitRadius);
 
   let palette = teamPalette("home");
@@ -183,18 +122,30 @@ export function createMicroAthleteView(): MicroAthleteView {
   let lastSelected = false;
   let lastDragging = false;
 
-  const redrawStaticLayers = (team: MicroAthlete["team"]) => {
+  const labelFromId = (id: string) => {
+    const numeric = id.match(/\d+/)?.[0];
+    return numeric ? `P${numeric}` : id.slice(0, 3).toUpperCase();
+  };
+
+  const redrawStaticLayers = (athlete: MicroAthlete) => {
+    const team = athlete.team;
     palette = teamPalette(team);
-    drawHalo(halo, palette);
+    jersey.setIdentity(athlete.id, labelFromId(athlete.id));
+    jersey.setTeamStyle(palette.teamColor, team === "away" ? "slash" : "solid");
     drawDirectionalFin(directionalFin, palette);
-    drawSilhouette(silhouette, palette);
   };
 
   const redrawAuraLayer = (selected: boolean, dragging: boolean) => {
     drawAura(aura, palette, selected, dragging);
   };
 
-  redrawStaticLayers("home");
+  redrawStaticLayers({
+    id: "athlete",
+    nx: 0,
+    ny: 0,
+    headingRad: 0,
+    team: "home",
+  });
   redrawAuraLayer(false, false);
 
   const sync = (
@@ -208,10 +159,13 @@ export function createMicroAthleteView(): MicroAthleteView {
 
     if (lastTeam !== athlete.team) {
       lastTeam = athlete.team;
-      redrawStaticLayers(athlete.team);
+      redrawStaticLayers(athlete);
       redrawAuraLayer(selected, dragging);
       lastSelected = selected;
       lastDragging = dragging;
+    }
+    if (jersey.id !== athlete.id) {
+      redrawStaticLayers(athlete);
     }
 
     if (lastSelected !== selected || lastDragging !== dragging) {

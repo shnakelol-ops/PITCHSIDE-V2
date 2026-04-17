@@ -201,6 +201,23 @@ export const SimulatorPixiSurface = forwardRef<
     pitchDisposeRef.current = dispose;
   };
 
+  const safeDrawStatsEvents = (
+    statsDots: import("pixi.js").Graphics,
+    events: readonly StatsLoggedEvent[],
+    options?: Parameters<typeof drawStatsEventsGraphics>[2],
+  ) => {
+    try {
+      drawStatsEventsGraphics(
+        statsDots,
+        Array.isArray(events) ? events : [],
+        options,
+      );
+    } catch (err) {
+      console.error("[simulator-pixi] stats draw failed", err);
+      statsDots.clear();
+    }
+  };
+
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
@@ -260,6 +277,7 @@ export const SimulatorPixiSurface = forwardRef<
       world.addChild(pathsLayer);
       world.addChild(shadowGhostLayer);
       world.addChild(athletesLayer);
+      attachPitch(sportRef.current);
 
       const statsLayer = new Container();
       statsLayer.sortableChildren = true;
@@ -282,7 +300,7 @@ export const SimulatorPixiSurface = forwardRef<
       world.addChild(statsLayer);
       statsLayer.visible = surfaceModeRef.current === "STATS";
       statsPixiRef.current = { statsLayer, statsHit, statsDots };
-      drawStatsEventsGraphics(statsDots, statsLoggedEventsRef.current, {
+      safeDrawStatsEvents(statsDots, statsLoggedEventsRef.current, {
         reviewMode: statsReviewModeRef.current,
         worldToScreenScale: worldScaleRef.current,
       });
@@ -315,8 +333,6 @@ export const SimulatorPixiSurface = forwardRef<
       });
 
       setStatsOverlayEpoch((n) => n + 1);
-
-      attachPitch(sportRef.current);
       layout();
 
       redrawPaths = () => {
@@ -424,7 +440,7 @@ export const SimulatorPixiSurface = forwardRef<
     statsLayer.visible = surfaceMode === "STATS";
     const w = hostRef.current?.clientWidth ?? 640;
     const density = w < 480 ? "compact" : "comfortable";
-    drawStatsEventsGraphics(statsDots, statsLoggedEvents, {
+    safeDrawStatsEvents(statsDots, statsLoggedEvents, {
       reviewMode: statsReviewMode,
       density,
       worldToScreenScale: worldScaleRef.current,
