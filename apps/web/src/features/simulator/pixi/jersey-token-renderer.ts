@@ -279,7 +279,6 @@ export function createJerseyTokenRenderer(radiusWorld: number): JerseyTokenRende
     fontSize: radiusWorld * 1.05,
     align: "center",
     letterSpacing: 0.2,
-    strokeThickness: 0.6,
   });
   const numberText = new Text({
     text: "?",
@@ -314,7 +313,10 @@ export function createJerseyTokenRenderer(radiusWorld: number): JerseyTokenRende
     drawJerseyStaticBody(jersey, radiusWorld, palette);
     numberText.text = numberLabel;
     numberStyle.fill = palette.numberColor;
-    numberStyle.stroke = palette.outlineColor;
+    numberStyle.stroke = {
+      color: palette.outlineColor,
+      width: 0.6,
+    };
   };
 
   const sync = (opts: JerseyTokenSyncOptions): boolean => {
