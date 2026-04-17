@@ -6,7 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type ReactNode,
 } from "react";
 
@@ -105,13 +104,6 @@ const laneCurvesDataUrl = `url("data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="384" viewBox="0 0 512 384" preserveAspectRatio="none"><ellipse cx="256" cy="198" rx="232" ry="158" fill="none" stroke="#3a3028" stroke-width="0.9" opacity="0.045"/><ellipse cx="256" cy="200" rx="210" ry="142" fill="none" stroke="#3a3028" stroke-width="0.85" opacity="0.034"/><ellipse cx="256" cy="202" rx="188" ry="126" fill="none" stroke="#3a3028" stroke-width="0.8" opacity="0.026"/><ellipse cx="256" cy="204" rx="166" ry="110" fill="none" stroke="#3a3028" stroke-width="0.75" opacity="0.02"/></svg>',
 )}")`;
 
-/** Muted terracotta / clay (no athletics orange). */
-const CLAY = {
-  deep: "#6e5a52",
-  mid: "#7d6860",
-  light: "#8c756c",
-};
-
 /** Chalk / cream line at pitch boundary — soft, not stark white. */
 const CHALK_LINE = "rgba(252, 248, 240, 0.52)";
 
@@ -125,39 +117,15 @@ const C = {
  * Not used on the pitch aperture / apron.
  */
 const GLASS_SIDEBAR = {
-  bg: "rgba(18, 20, 24, 0.58)",
-  border: "rgba(255, 252, 248, 0.085)",
-  title: "rgba(228, 226, 220, 0.72)",
+  bg: "rgba(14, 17, 22, 0.72)",
+  border: "rgba(148, 185, 230, 0.09)",
+  title: "rgba(228, 232, 240, 0.72)",
   shadow:
-    "0 4px 24px -4px rgba(0, 0, 0, 0.35), 0 12px 40px -16px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.06)",
-};
-
-/** Thin stadium apron: clay band + lane whispers — Pixi / layout unchanged. */
-const stadiumApronStyle: CSSProperties = {
-  backgroundColor: CLAY.mid,
-  backgroundImage: [
-    `linear-gradient(180deg, rgba(159,175,122,0.26) 0%, transparent 11%, transparent 89%, rgba(132,142,108,0.18) 100%)`,
-    `linear-gradient(168deg, ${CLAY.light} 0%, ${CLAY.mid} 44%, ${CLAY.deep} 100%)`,
-    `radial-gradient(ellipse 98% 72% at 50% 32%, rgba(255,252,248,0.07), transparent 55%)`,
-    `radial-gradient(ellipse 92% 58% at 50% 118%, rgba(42, 34, 30, 0.1), transparent 50%)`,
-  ].join(", "),
-  boxShadow:
-    "inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(38, 30, 26, 0.07)",
-};
-
-/** Uneven field: soft diagonals + gentle vertical drift + light radials (no flat panel fill). */
-const grassFieldStyle: CSSProperties = {
-  backgroundColor: GRASS.fresh,
-  backgroundImage: [
-    `linear-gradient(180deg, rgba(255,255,255,0.045) 0%, transparent 38%, rgba(55, 62, 40, 0.035) 100%)`,
-    `linear-gradient(101deg, ${GRASS.worn} 0%, transparent 26%, ${GRASS.dry} 50%, transparent 70%, ${GRASS.worn} 94%)`,
-    `radial-gradient(ellipse 95% 60% at 72% 18%, rgba(175,167,133,0.22), transparent 54%)`,
-    `radial-gradient(ellipse 80% 50% at 12% 85%, rgba(100, 108, 72, 0.1), transparent 56%)`,
-  ].join(", "),
+    "inset 0 1px 0 rgba(255,255,255,0.04), 0 16px 40px -16px rgba(0, 0, 0, 0.55), 0 4px 18px -10px rgba(0, 0, 0, 0.35)",
 };
 
 const btnBase =
-  "min-h-10 w-full justify-center rounded-[11px] px-3 py-2.5 text-[12px] font-medium leading-tight tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_8px_-2px_rgba(0,0,0,0.35)] transition-[transform,box-shadow,background-color,border-color,color] duration-200 sm:min-h-9 sm:py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(18,20,24,0.9)] active:translate-y-px active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.35)]";
+  "min-h-10 w-full justify-center rounded-[11px] px-3 py-2.5 text-[12px] font-medium leading-tight tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_8px_-2px_rgba(0,0,0,0.35)] transition-[transform,box-shadow,background-color,border-color,color] duration-200 sm:min-h-9 sm:py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(90,167,255,0.38)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F12] active:translate-y-px active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.35)]";
 
 const btnIdle =
   "!border !border-white/[0.07] !bg-[rgba(32,34,40,0.88)] !text-[rgba(245,243,238,0.94)] hover:!border-white/[0.1] hover:!bg-[rgba(38,40,48,0.92)] hover:!text-white hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_3px_12px_-4px_rgba(0,0,0,0.4)]";
@@ -205,7 +173,7 @@ function ToolRail({
     >
       <div className="flex items-baseline gap-2 border-b border-white/[0.055] pb-2.5">
         <span
-          className="mt-0.5 size-1 shrink-0 rounded-full bg-[rgba(180,200,188,0.25)] ring-1 ring-white/[0.07]"
+          className="mt-0.5 size-1 shrink-0 rounded-full bg-[rgba(90,167,255,0.38)] shadow-[0_0_6px_rgba(90,167,255,0.35)] ring-1 ring-white/[0.06]"
           aria-hidden
         />
         <div
@@ -648,34 +616,49 @@ export function SimulatorBoardShell({
 
   return (
     <div
-      className="relative flex h-[100dvh] min-h-0 flex-col overflow-hidden text-stone-800"
-      style={grassFieldStyle}
+      className="relative flex h-[100dvh] min-h-0 flex-col overflow-hidden text-slate-200"
+      style={{
+        backgroundColor: "#0B0F12",
+        backgroundImage: [
+          "radial-gradient(ellipse 95% 55% at 50% -8%, rgba(90, 167, 255, 0.055), transparent 62%)",
+          "radial-gradient(ellipse 70% 55% at 50% 110%, rgba(6, 8, 11, 0.75), transparent 58%)",
+        ].join(", "),
+      }}
     >
-      {/* Minimal grain only (~2.8%) — enough to kill “flat UI”, not noisy. */}
+      {/* Subtle vignette only — no grain on shell; pitch frame keeps its own texture. */}
       <div
-        className="pointer-events-none absolute inset-0 z-0 opacity-[0.028] mix-blend-multiply"
+        className="pointer-events-none absolute inset-0 z-0 opacity-60"
         style={{
-          backgroundImage: grassNoiseDataUrl,
-          backgroundSize: "240px 240px",
+          backgroundImage:
+            "radial-gradient(ellipse 120% 90% at 50% 50%, transparent 55%, rgba(0,0,0,0.25) 100%)",
         }}
         aria-hidden
       />
-      <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5">
-        <div className="min-w-0 space-y-0.5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-stone-800/65">
-            Pitchside
-          </p>
-          <h1 className="truncate text-base font-semibold tracking-tight text-stone-900/95 sm:text-[17px]">
-            Match simulator
-          </h1>
-          <p className="hidden text-[11px] text-stone-800/60 sm:block">
-            Field view — training strip in natural grass.
-          </p>
+      <header className="relative z-10 flex shrink-0 items-center justify-between gap-4 border-b border-white/[0.045] bg-white/[0.015] px-4 py-2.5 backdrop-blur-sm sm:px-7 sm:py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-pitchside-500 to-pitchside-700 text-[11px] font-bold leading-none text-white shadow-[0_4px_14px_-4px_rgba(5,150,105,0.55)] ring-1 ring-inset ring-white/15"
+            aria-hidden
+          >
+            P
+          </span>
+          <div className="min-w-0 space-y-0.5">
+            <p className="text-[9.5px] font-semibold uppercase tracking-[0.26em] text-slate-400/80">
+              Pitchside
+            </p>
+            <h1 className="truncate text-[13px] font-semibold tracking-tight text-white/95 sm:text-sm">
+              Match simulator
+            </h1>
+          </div>
         </div>
+        <span className="hidden items-center gap-1.5 rounded-full border border-white/[0.07] bg-white/[0.03] px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-[0.22em] text-slate-300/80 sm:inline-flex">
+          <span className="size-1.5 rounded-full bg-[rgba(90,167,255,0.75)] shadow-[0_0_8px_rgba(90,167,255,0.7)]" aria-hidden />
+          Coaching desk
+        </span>
       </header>
 
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14">
-        <aside className="order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
+      <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-5 lg:flex-row lg:items-center lg:justify-center lg:gap-5 lg:px-6 lg:py-4 xl:gap-6 xl:px-8">
+        <aside className="order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[12rem] lg:flex-col lg:justify-center lg:gap-4">
           <ToolRail title="Transport" className="min-w-0 flex-1 lg:flex-none">
             {surfaceMode === "SIMULATOR" ? (
               <div
@@ -813,9 +796,9 @@ export function SimulatorBoardShell({
               <div
                 className="relative z-10 overflow-hidden rounded-[1.05rem] p-1 sm:p-1.5"
                 style={{
-                  ...stadiumApronStyle,
-                  backgroundColor: "#ff0000",
-                  backgroundImage: "none",
+                  backgroundColor: "transparent",
+                  boxShadow:
+                    "inset 0 1px 0 rgba(255,255,255,0.04), inset 0 -1px 0 rgba(0,0,0,0.18)",
                 }}
               >
                 <div
@@ -879,7 +862,7 @@ export function SimulatorBoardShell({
               </div>
             </div>
           </div>
-          <p className="mx-auto mt-4 max-w-md px-3 text-center text-[10px] font-medium uppercase leading-relaxed tracking-[0.14em] text-stone-800/55 sm:mt-5 sm:text-[11px] sm:tracking-[0.16em]">
+          <p className="mx-auto mt-4 max-w-md px-3 text-center text-[10px] font-medium uppercase leading-relaxed tracking-[0.14em] text-slate-400/65 sm:mt-5 sm:text-[11px] sm:tracking-[0.16em]">
             {surfaceMode === "STATS"
               ? canStatsPitchLog
                 ? "Pick event type · tap the pitch to log · same Pixi canvas as simulator"
@@ -888,7 +871,7 @@ export function SimulatorBoardShell({
           </p>
         </div>
 
-        <aside className="order-3 flex shrink-0 flex-row flex-wrap gap-3.5 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
+        <aside className="order-3 flex shrink-0 flex-row flex-wrap gap-3.5 lg:w-[12rem] lg:flex-col lg:justify-center lg:gap-4">
           <ToolRail title="Mode" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
             <div className="flex flex-col gap-2" role="group" aria-label="Canvas mode">
               <Button
