@@ -252,18 +252,15 @@ export function createJerseyTokenRenderer(radiusWorld: number): JerseyTokenRende
 
   const shadowIdle = new Graphics();
   shadowIdle.zIndex = 0;
-  shadowIdle.cacheAsTexture(true);
   drawShadowVariant(shadowIdle, radiusWorld, "idle");
 
   const shadowSelected = new Graphics();
   shadowSelected.zIndex = 0;
-  shadowSelected.cacheAsTexture(true);
   drawShadowVariant(shadowSelected, radiusWorld, "selected");
   shadowSelected.visible = false;
 
   const shadowDragging = new Graphics();
   shadowDragging.zIndex = 0;
-  shadowDragging.cacheAsTexture(true);
   drawShadowVariant(shadowDragging, radiusWorld, "dragging");
   shadowDragging.visible = false;
 
@@ -286,7 +283,6 @@ export function createJerseyTokenRenderer(radiusWorld: number): JerseyTokenRende
 
   const jersey = new Graphics();
   jersey.zIndex = 3;
-  jersey.cacheAsTexture(true);
 
   const numberStyle = new TextStyle({
     fontFamily:
