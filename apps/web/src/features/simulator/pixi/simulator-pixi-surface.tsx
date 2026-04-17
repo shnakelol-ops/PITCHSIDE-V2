@@ -113,6 +113,15 @@ export const SimulatorPixiSurface = forwardRef<
     statsHit: import("pixi.js").Graphics | null;
     statsDots: import("pixi.js").Graphics | null;
   }>({ statsLayer: null, statsHit: null, statsDots: null });
+  /**
+   * Simulator-only visual layers. Hidden in STATS mode so micro-athletes,
+   * movement paths, and shadow ghosts don't leak onto the stats pitch.
+   */
+  const simLayersRef = useRef<{
+    athletesLayer: PixiContainer | null;
+    pathsLayer: PixiContainer | null;
+    shadowGhostLayer: PixiContainer | null;
+  }>({ athletesLayer: null, pathsLayer: null, shadowGhostLayer: null });
 
   /** Bumps after Pixi stats overlay is mounted so sync effect can run. */
   const [statsOverlayEpoch, setStatsOverlayEpoch] = useState(0);
@@ -261,6 +270,13 @@ export const SimulatorPixiSurface = forwardRef<
       world.addChild(shadowGhostLayer);
       world.addChild(athletesLayer);
 
+      // Hide simulator-only visuals when mounted in STATS mode.
+      const initialSimVisible = surfaceModeRef.current !== "STATS";
+      athletesLayer.visible = initialSimVisible;
+      pathsLayer.visible = initialSimVisible;
+      shadowGhostLayer.visible = initialSimVisible;
+      simLayersRef.current = { athletesLayer, pathsLayer, shadowGhostLayer };
+
       const statsLayer = new Container();
       statsLayer.sortableChildren = true;
       const statsHit = new Graphics();
@@ -397,6 +413,11 @@ export const SimulatorPixiSurface = forwardRef<
         statsHit: null,
         statsDots: null,
       };
+      simLayersRef.current = {
+        athletesLayer: null,
+        pathsLayer: null,
+        shadowGhostLayer: null,
+      };
       pitchHolderRef.current = null;
       const app = appRef.current;
       appRef.current = null;
@@ -422,6 +443,15 @@ export const SimulatorPixiSurface = forwardRef<
       Boolean(onStatsPitchTap);
     statsHit.eventMode = canLog ? "static" : "none";
     statsLayer.visible = surfaceMode === "STATS";
+
+    // Keep simulator-only visuals hidden while in STATS mode so they don't
+    // leak onto the stats pitch (no micro-athletes, no movement paths, no
+    // shadow ghosts).
+    const simVisible = surfaceMode !== "STATS";
+    const sim = simLayersRef.current;
+    if (sim.athletesLayer) sim.athletesLayer.visible = simVisible;
+    if (sim.pathsLayer) sim.pathsLayer.visible = simVisible;
+    if (sim.shadowGhostLayer) sim.shadowGhostLayer.visible = simVisible;
     const w = hostRef.current?.clientWidth ?? 640;
     const density = w < 480 ? "compact" : "comfortable";
     drawStatsEventsGraphics(statsDots, statsLoggedEvents, {
