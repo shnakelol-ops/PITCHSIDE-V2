@@ -437,6 +437,8 @@ export function mountAthletesPixi(
             ny: a.ny,
             headingRad: a.headingRad,
             team: a.team,
+            jerseyNumber: a.jerseyNumber,
+            jerseyStyle: a.jerseyStyle,
           }),
       ),
     applyKinematic,
