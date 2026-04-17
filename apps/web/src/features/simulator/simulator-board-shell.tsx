@@ -17,7 +17,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import type { PitchSport } from "@/config/pitchConfig";
-import { ChevronDown, SlidersHorizontal } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import {
   downloadPitchCanvasPng,
   shareOrDownloadPitchPng,
@@ -301,6 +301,9 @@ export function SimulatorBoardShell({
     null,
   );
   const [clearLogConfirmOpen, setClearLogConfirmOpen] = useState(false);
+  const [modeBubbleOpen, setModeBubbleOpen] = useState(false);
+  const [pitchBubbleOpen, setPitchBubbleOpen] = useState(false);
+  const [reviewBubbleOpen, setReviewBubbleOpen] = useState(false);
   const persistErrorClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -665,10 +668,402 @@ export function SimulatorBoardShell({
             </h1>
           </div>
         </div>
-        <span className="hidden items-center gap-1.5 rounded-full border border-white/[0.07] bg-white/[0.03] px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-[0.22em] text-slate-300/80 sm:inline-flex">
-          <span className="size-1.5 rounded-full bg-[rgba(90,167,255,0.75)] shadow-[0_0_8px_rgba(90,167,255,0.7)]" aria-hidden />
-          Coaching desk
-        </span>
+        <div className="flex items-center gap-2">
+          <Popover open={modeBubbleOpen} onOpenChange={setModeBubbleOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="Change mode"
+                className={cn(
+                  "group inline-flex items-center gap-2 rounded-full border px-2.5 py-1 transition-colors",
+                  "border-white/[0.07] bg-white/[0.03] text-slate-200/90 hover:border-white/[0.16] hover:bg-white/[0.06]",
+                  "data-[state=open]:border-[rgba(90,167,255,0.4)] data-[state=open]:bg-[rgba(90,167,255,0.08)]",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(90,167,255,0.4)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F12]",
+                )}
+              >
+                <span className="text-[8.5px] font-semibold uppercase leading-none tracking-[0.22em] text-slate-400/80">
+                  Mode
+                </span>
+                <span className="text-[11px] font-semibold leading-none tracking-tight">
+                  {surfaceMode === "STATS" ? "Stats" : "Simulator"}
+                </span>
+                <ChevronDown className="h-3 w-3 text-slate-400/70" strokeWidth={2} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="bottom"
+              align="end"
+              sideOffset={8}
+              collisionPadding={12}
+              className="w-44 border-white/[0.08] bg-[rgba(14,17,22,0.96)] p-1 text-slate-100 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[10px]"
+            >
+              <div className="flex flex-col gap-0.5">
+                {(
+                  [
+                    { id: "SIMULATOR", label: "Simulator" },
+                    { id: "STATS", label: "Stats" },
+                  ] as { id: SimulatorSurfaceMode; label: string }[]
+                ).map((opt) => {
+                  const active = surfaceMode === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-[8px] px-2.5 py-2 text-left text-[11px] font-medium transition-colors",
+                        active
+                          ? "bg-[rgba(90,167,255,0.12)] text-[rgba(188,214,246,0.98)]"
+                          : "text-slate-200/90 hover:bg-white/[0.06]",
+                      )}
+                      onClick={() => {
+                        setMode(opt.id);
+                        setModeBubbleOpen(false);
+                      }}
+                    >
+                      <span>{opt.label}</span>
+                      {active ? (
+                        <span
+                          className="size-1.5 rounded-full bg-[rgba(90,167,255,0.85)] shadow-[0_0_6px_rgba(90,167,255,0.5)]"
+                          aria-hidden
+                        />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Popover open={pitchBubbleOpen} onOpenChange={setPitchBubbleOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="Change pitch sport"
+                className={cn(
+                  "group inline-flex items-center gap-2 rounded-full border px-2.5 py-1 transition-colors",
+                  "border-white/[0.07] bg-white/[0.03] text-slate-200/90 hover:border-white/[0.16] hover:bg-white/[0.06]",
+                  "data-[state=open]:border-[rgba(90,167,255,0.4)] data-[state=open]:bg-[rgba(90,167,255,0.08)]",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(90,167,255,0.4)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F12]",
+                )}
+              >
+                <span className="text-[8.5px] font-semibold uppercase leading-none tracking-[0.22em] text-slate-400/80">
+                  Pitch
+                </span>
+                <span className="text-[11px] font-semibold leading-none tracking-tight">
+                  {SPORT_OPTIONS.find((o) => o.id === sport)?.label ?? "Soccer"}
+                </span>
+                <ChevronDown className="h-3 w-3 text-slate-400/70" strokeWidth={2} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="bottom"
+              align="end"
+              sideOffset={8}
+              collisionPadding={12}
+              className="w-40 border-white/[0.08] bg-[rgba(14,17,22,0.96)] p-1 text-slate-100 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[10px]"
+            >
+              <div className="flex flex-col gap-0.5">
+                {SPORT_OPTIONS.map((opt) => {
+                  const active = sport === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-[8px] px-2.5 py-2 text-left text-[11px] font-medium transition-colors",
+                        active
+                          ? "bg-[rgba(90,167,255,0.12)] text-[rgba(188,214,246,0.98)]"
+                          : "text-slate-200/90 hover:bg-white/[0.06]",
+                      )}
+                      onClick={() => {
+                        setSport(opt.id);
+                        setPitchBubbleOpen(false);
+                      }}
+                    >
+                      <span>{opt.label}</span>
+                      {active ? (
+                        <span
+                          className="size-1.5 rounded-full bg-[rgba(90,167,255,0.85)] shadow-[0_0_6px_rgba(90,167,255,0.5)]"
+                          aria-hidden
+                        />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
+          {surfaceMode === "STATS" ? (
+            <Popover open={reviewBubbleOpen} onOpenChange={setReviewBubbleOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Open review tools"
+                  className={cn(
+                    "group inline-flex items-center gap-2 rounded-full border px-2.5 py-1 transition-colors",
+                    "border-white/[0.07] bg-white/[0.03] text-slate-200/90 hover:border-white/[0.16] hover:bg-white/[0.06]",
+                    "data-[state=open]:border-[rgba(90,167,255,0.4)] data-[state=open]:bg-[rgba(90,167,255,0.08)]",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(90,167,255,0.4)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F12]",
+                  )}
+                >
+                  <span className="text-[8.5px] font-semibold uppercase leading-none tracking-[0.22em] text-slate-400/80">
+                    Review
+                  </span>
+                  <span className="text-[11px] font-semibold leading-none tracking-tight">
+                    {reviewMode === "live" ? "Live" : reviewMode === "halftime" ? "HT" : "FT"}
+                  </span>
+                  {canStatsPitchLog ? (
+                    <span
+                      className="size-1.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]"
+                      aria-hidden
+                      title="Logging live"
+                    />
+                  ) : null}
+                  <ChevronDown className="h-3 w-3 text-slate-400/70" strokeWidth={2} />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                side="bottom"
+                align="end"
+                sideOffset={8}
+                collisionPadding={12}
+                className="w-[320px] max-w-[92vw] overflow-hidden border-white/[0.08] bg-[rgba(14,17,22,0.96)] p-0 text-slate-100 shadow-[0_24px_60px_-12px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[10px]"
+              >
+                <div className="relative flex max-h-[78vh] flex-col">
+                  <div
+                    className="pointer-events-none absolute inset-x-0 top-0 h-px"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, transparent 0%, rgba(148,185,230,0.22) 50%, transparent 100%)",
+                    }}
+                    aria-hidden
+                  />
+                  <header className="flex items-center justify-between gap-2 border-b border-white/[0.06] px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-3 w-[2px] shrink-0 rounded-full bg-gradient-to-b from-[rgba(90,167,255,0.55)] to-[rgba(90,167,255,0.12)]"
+                        aria-hidden
+                      />
+                      <span
+                        className="text-[9.5px] font-semibold uppercase leading-none tracking-[0.26em] text-[rgba(228,232,240,0.82)]"
+                        style={{ fontFeatureSettings: "\"ss01\" 1" }}
+                      >
+                        Review tools
+                      </span>
+                    </div>
+                    <span className="rounded-full border border-white/[0.06] bg-white/[0.03] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-emerald-200/85">
+                      {matchPhase.replace(/_/g, " ")} · {matchClockRunning ? "running" : "stopped"}
+                    </span>
+                  </header>
+                  <div
+                    className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 py-3"
+                    role="group"
+                    aria-label="Stats review tools"
+                  >
+                    <div>
+                      <p className="mb-1.5 text-[8.5px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
+                        Review
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {STATS_REVIEW_CHIPS.map(({ mode, label }) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            className={reviewChipClass(reviewMode === mode)}
+                            onClick={() => {
+                              setReviewMode(mode);
+                              setReviewBubbleOpen(false);
+                            }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {statsPersistError ? (
+                      <p
+                        role="status"
+                        className="rounded-[8px] border border-red-400/28 bg-red-950/35 px-2 py-1.5 text-[9px] font-medium leading-snug text-red-100/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
+                      >
+                        Save failed: {statsPersistError}
+                      </p>
+                    ) : null}
+                    {!isStatsLive ? (
+                      <div>
+                        <p className="mb-1.5 text-[8.5px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
+                          Pitch marker filter
+                        </p>
+                        <div
+                          className="flex max-h-28 flex-wrap gap-1 overflow-y-auto pr-0.5"
+                          role="group"
+                          aria-label="Pitch marker view"
+                        >
+                          {PITCH_VIEW_FILTER_CHIPS.map(({ id, label }) => (
+                            <button
+                              key={id}
+                              type="button"
+                              className={reviewChipClass(pitchMarkerViewFilter === id)}
+                              onClick={() => {
+                                setPitchMarkerViewFilter(id);
+                                setReviewBubbleOpen(false);
+                              }}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    <div>
+                      <div className="mb-1.5 flex items-center justify-between gap-2">
+                        <p className="text-[8.5px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
+                          Players
+                        </p>
+                        <span className="text-[8.5px] font-medium uppercase tracking-[0.16em] text-slate-400/65">
+                          {statsPlayers.length}/15
+                        </span>
+                      </div>
+                      <div className="flex gap-1.5 overflow-x-auto pb-1">
+                        {statsPlayers.map((p) => (
+                          <span
+                            key={p.id}
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] py-1 pl-1 pr-2.5 text-[9px] font-semibold text-slate-100/90"
+                            title={p.name}
+                          >
+                            <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[rgba(90,167,255,0.18)] px-1 text-[8px] font-bold tabular-nums text-[rgba(180,210,245,0.96)]">
+                              {p.number}
+                            </span>
+                            <span className="truncate">{p.name}</span>
+                          </span>
+                        ))}
+                      </div>
+                      <div className="mt-1.5 flex flex-col gap-1.5">
+                        <input
+                          type="text"
+                          value={playerNameDraft}
+                          onChange={(e) => setPlayerNameDraft(e.target.value)}
+                          placeholder="Player name"
+                          className="h-8 rounded-[8px] border border-white/[0.08] bg-black/30 px-2.5 text-[10px] text-slate-100 transition-colors placeholder:text-slate-400/50 focus:border-[rgba(90,167,255,0.4)] focus:outline-none focus:ring-2 focus:ring-[rgba(90,167,255,0.2)] focus:ring-offset-0"
+                        />
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            value={playerNumberDraft}
+                            onChange={(e) => setPlayerNumberDraft(e.target.value)}
+                            placeholder="#"
+                            className="h-8 w-14 rounded-[8px] border border-white/[0.08] bg-black/30 px-2.5 text-center font-mono text-[10px] tabular-nums text-slate-100 transition-colors placeholder:text-slate-400/50 focus:border-[rgba(90,167,255,0.4)] focus:outline-none focus:ring-2 focus:ring-[rgba(90,167,255,0.2)] focus:ring-offset-0"
+                          />
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className={cn("min-h-8 flex-1 py-1.5 text-[9px]", btnBase, btnIdle)}
+                            disabled={statsPlayers.length >= 15}
+                            onClick={() => {
+                              onAddStatsPlayer();
+                              setReviewBubbleOpen(false);
+                            }}
+                          >
+                            Add player
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="mb-1.5 text-[8.5px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
+                        Log actions
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={!canStatsPitchLog}
+                          className={cn("min-h-8 flex-1 py-1.5 text-[9px]", btnBase, btnIdle)}
+                          onClick={() => {
+                            clearArm();
+                            setReviewBubbleOpen(false);
+                          }}
+                        >
+                          Clear arm
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={!canStatsPitchLog || statsEvents.length === 0}
+                          className={cn("min-h-8 flex-1 py-1.5 text-[9px]", btnBase, btnIdle)}
+                          onClick={() => {
+                            undoLastEvent();
+                            setReviewBubbleOpen(false);
+                          }}
+                        >
+                          Undo last
+                        </Button>
+                        {clearLogConfirmOpen ? (
+                          <div className="w-full rounded-[10px] border border-amber-400/22 bg-amber-950/30 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                            <p className="mb-1.5 text-[10px] font-medium text-amber-100/92">
+                              Clear all events?
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                className={cn(
+                                  "min-h-8 flex-1 py-1.5 text-[9px]",
+                                  btnBase,
+                                  btnIdle,
+                                )}
+                                onClick={() => {
+                                  setClearLogConfirmOpen(false);
+                                  setReviewBubbleOpen(false);
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                className={cn(
+                                  "min-h-8 flex-1 py-1.5 text-[9px]",
+                                  btnBase,
+                                  btnRecordOn,
+                                )}
+                                onClick={() => {
+                                  resetEvents();
+                                  setClearLogConfirmOpen(false);
+                                  setReviewBubbleOpen(false);
+                                }}
+                              >
+                                Confirm
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className={cn(
+                              "min-h-8 w-full py-1.5 text-[9px]",
+                              btnBase,
+                              btnIdle,
+                            )}
+                            disabled={statsEvents.length === 0}
+                            onClick={() => setClearLogConfirmOpen(true)}
+                          >
+                            Clear log
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 border-t border-white/[0.05] pt-2">
+                      <p className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.06] bg-black/25 px-2.5 py-0.5 text-[9px] font-medium tabular-nums tracking-[0.04em] text-[rgba(228,232,240,0.65)]">
+                        <span className="size-1 rounded-full bg-[rgba(90,167,255,0.5)] shadow-[0_0_4px_rgba(90,167,255,0.4)]" aria-hidden />
+                        Logged: {statsEventsForReviewWindow.length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          ) : null}
+        </div>
       </header>
 
       <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-5 lg:flex-row lg:items-center lg:justify-center lg:gap-5 lg:px-6 lg:py-4 xl:gap-6 xl:px-8">
@@ -886,398 +1281,84 @@ export function SimulatorBoardShell({
         </div>
 
         <aside className="order-3 flex shrink-0 flex-row flex-wrap gap-3.5 lg:w-[12rem] lg:flex-col lg:justify-center lg:gap-4">
-          <ToolRail title="Mode" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
-            <div className="flex flex-col gap-2" role="group" aria-label="Canvas mode">
-              <Button
-                type="button"
-                variant="secondary"
-                className={cn(
-                  btnBase,
-                  surfaceMode === "SIMULATOR" ? btnSportOn : btnIdle,
-                )}
-                aria-pressed={surfaceMode === "SIMULATOR"}
-                onClick={() => setMode("SIMULATOR")}
-              >
-                Simulator
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className={cn(
-                  btnBase,
-                  surfaceMode === "STATS" ? btnSportOn : btnIdle,
-                )}
-                aria-pressed={surfaceMode === "STATS"}
-                onClick={() => setMode("STATS")}
-              >
-                Stats
-              </Button>
-            </div>
-          </ToolRail>
           {surfaceMode === "STATS" ? (
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Open stats tools"
-                  className={cn(
-                    "group relative flex w-full items-center gap-2 rounded-[12px] border px-2.5 py-2 text-left backdrop-blur-[6px] transition-colors duration-150",
-                    "hover:border-white/[0.14]",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(90,167,255,0.4)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F12]",
-                    "data-[state=open]:border-[rgba(90,167,255,0.38)]",
+            <>
+              <ToolRail title="Scorer" className="min-w-0 flex-1 lg:flex-none">
+                <StatsScorerStrip
+                  players={statsPlayers}
+                  pendingLabel={pendingScoreLabel}
+                  activeScorerId={activeScorerId}
+                  onSetActiveScorer={setActiveScorer}
+                />
+              </ToolRail>
+              <ToolRail title="Voice" className="min-w-0 flex-1 lg:flex-none">
+                <StatsVoiceStrip
+                  allowRecording={canStatsPitchLog}
+                  isRecording={recorder.isRecording}
+                  recordError={voiceError}
+                  onStartRecord={() => void onStartVoice()}
+                  onStopRecord={() => void onStopVoice()}
+                  pendingVoiceId={pendingVoiceId}
+                  canAttachToLastEvent={Boolean(
+                    lastStatsEvent && pendingVoiceId,
                   )}
-                  style={{
-                    backgroundColor: GLASS_SIDEBAR.bg,
-                    borderColor: GLASS_SIDEBAR.border,
-                    boxShadow: GLASS_SIDEBAR.shadow,
-                  }}
-                >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[rgba(90,167,255,0.12)] text-[rgba(160,200,240,0.95)] ring-1 ring-[rgba(90,167,255,0.15)]">
-                    <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2.25} />
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="text-[8.5px] font-semibold uppercase leading-none tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
-                      Stats
-                    </span>
-                    <span className="truncate text-[11.5px] font-semibold leading-none text-white/90">
-                      Tools
-                    </span>
-                  </span>
-                  {canStatsPitchLog ? (
-                    <span
-                      className="size-1.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]"
-                      aria-hidden
-                      title="Logging live"
-                    />
-                  ) : null}
-                  <ChevronDown
-                    className="h-3.5 w-3.5 shrink-0 text-slate-400/70"
-                    strokeWidth={2}
-                  />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent
-                side="left"
-                align="start"
-                sideOffset={12}
-                collisionPadding={12}
-                className="w-[320px] max-w-[92vw] overflow-hidden border-white/[0.08] bg-[rgba(14,17,22,0.96)] p-0 text-slate-100 shadow-[0_24px_60px_-12px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[10px]"
-              >
-                <div className="relative flex max-h-[78vh] flex-col">
-                  <div
-                    className="pointer-events-none absolute inset-x-0 top-0 h-px"
-                    style={{
-                      background:
-                        "linear-gradient(90deg, transparent 0%, rgba(148,185,230,0.22) 50%, transparent 100%)",
-                    }}
-                    aria-hidden
-                  />
-                  <header className="flex items-center justify-between gap-2 border-b border-white/[0.06] px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="h-3 w-[2px] shrink-0 rounded-full bg-gradient-to-b from-[rgba(90,167,255,0.55)] to-[rgba(90,167,255,0.12)]"
-                        aria-hidden
-                      />
-                      <span
-                        className="text-[9.5px] font-semibold uppercase leading-none tracking-[0.26em] text-[rgba(228,232,240,0.82)]"
-                        style={{ fontFeatureSettings: "\"ss01\" 1" }}
-                      >
-                        Stats tools
-                      </span>
-                    </div>
-                    <span className="rounded-full border border-white/[0.06] bg-white/[0.03] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-emerald-200/85">
-                      {matchPhase.replace(/_/g, " ")} · {matchClockRunning ? "running" : "stopped"}
-                    </span>
-                  </header>
-                  <div
-                    className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 py-3"
-                    role="group"
-                    aria-label="Stats logging tools"
-                  >
-                    <div>
-                      <p className="mb-1.5 text-[8.5px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
-                        Review
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {STATS_REVIEW_CHIPS.map(({ mode, label }) => (
-                          <button
-                            key={mode}
-                            type="button"
-                            className={reviewChipClass(reviewMode === mode)}
-                            onClick={() => setReviewMode(mode)}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {statsPersistError ? (
-                      <p
-                        role="status"
-                        className="rounded-[8px] border border-red-400/28 bg-red-950/35 px-2 py-1.5 text-[9px] font-medium leading-snug text-red-100/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
-                      >
-                        Save failed: {statsPersistError}
-                      </p>
-                    ) : null}
-                    {!isStatsLive ? (
-                      <div>
-                        <p className="mb-1.5 text-[8.5px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
-                          Pitch marker filter
-                        </p>
-                        <div
-                          className="flex max-h-28 flex-wrap gap-1 overflow-y-auto pr-0.5"
-                          role="group"
-                          aria-label="Pitch marker view"
-                        >
-                          {PITCH_VIEW_FILTER_CHIPS.map(({ id, label }) => (
-                            <button
-                              key={id}
-                              type="button"
-                              className={reviewChipClass(pitchMarkerViewFilter === id)}
-                              onClick={() => setPitchMarkerViewFilter(id)}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    <div>
-                      <p className="mb-1.5 text-[8.5px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
-                        Scorer
-                      </p>
-                      <StatsScorerStrip
-                        players={statsPlayers}
-                        pendingLabel={pendingScoreLabel}
-                        activeScorerId={activeScorerId}
-                        onSetActiveScorer={setActiveScorer}
-                      />
-                    </div>
-                    <div>
-                      <p className="mb-1.5 text-[8.5px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
-                        Voice notes
-                      </p>
-                      <StatsVoiceStrip
-                        allowRecording={canStatsPitchLog}
-                        isRecording={recorder.isRecording}
-                        recordError={voiceError}
-                        onStartRecord={() => void onStartVoice()}
-                        onStopRecord={() => void onStopVoice()}
-                        pendingVoiceId={pendingVoiceId}
-                        canAttachToLastEvent={Boolean(
-                          lastStatsEvent && pendingVoiceId,
-                        )}
-                        onAttachToLastEvent={onAttachVoiceToLastEvent}
-                        onAttachAsMoment={onAttachVoiceAsMoment}
-                        onDiscardPending={onDiscardPendingVoice}
-                        voiceMomentIds={voiceMomentIds}
-                        eventsWithVoice={eventsWithVoice}
-                        onPlay={playVoiceNote}
-                      />
-                    </div>
-                    <div>
-                      <div className="mb-1.5 flex items-center justify-between gap-2">
-                        <p className="text-[8.5px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
-                          Players
-                        </p>
-                        <span className="text-[8.5px] font-medium uppercase tracking-[0.16em] text-slate-400/65">
-                          {statsPlayers.length}/15
-                        </span>
-                      </div>
-                      <div className="flex gap-1.5 overflow-x-auto pb-1">
-                        {statsPlayers.map((p) => (
-                          <span
-                            key={p.id}
-                            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] py-1 pl-1 pr-2.5 text-[9px] font-semibold text-slate-100/90"
-                            title={p.name}
-                          >
-                            <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[rgba(90,167,255,0.18)] px-1 text-[8px] font-bold tabular-nums text-[rgba(180,210,245,0.96)]">
-                              {p.number}
-                            </span>
-                            <span className="truncate">{p.name}</span>
-                          </span>
-                        ))}
-                      </div>
-                      <div className="mt-1.5 flex flex-col gap-1.5">
-                        <input
-                          type="text"
-                          value={playerNameDraft}
-                          onChange={(e) => setPlayerNameDraft(e.target.value)}
-                          placeholder="Player name"
-                          className="h-8 rounded-[8px] border border-white/[0.08] bg-black/30 px-2.5 text-[10px] text-slate-100 transition-colors placeholder:text-slate-400/50 focus:border-[rgba(90,167,255,0.4)] focus:outline-none focus:ring-2 focus:ring-[rgba(90,167,255,0.2)] focus:ring-offset-0"
-                        />
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="text"
-                            value={playerNumberDraft}
-                            onChange={(e) => setPlayerNumberDraft(e.target.value)}
-                            placeholder="#"
-                            className="h-8 w-14 rounded-[8px] border border-white/[0.08] bg-black/30 px-2.5 text-center font-mono text-[10px] tabular-nums text-slate-100 transition-colors placeholder:text-slate-400/50 focus:border-[rgba(90,167,255,0.4)] focus:outline-none focus:ring-2 focus:ring-[rgba(90,167,255,0.2)] focus:ring-offset-0"
-                          />
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            className={cn("min-h-8 flex-1 py-1.5 text-[9px]", btnBase, btnIdle)}
-                            disabled={statsPlayers.length >= 15}
-                            onClick={onAddStatsPlayer}
-                          >
-                            Add player
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="mb-1.5 text-[8.5px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
-                        Log actions
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          disabled={!canStatsPitchLog}
-                          className={cn("min-h-8 flex-1 py-1.5 text-[9px]", btnBase, btnIdle)}
-                          onClick={() => clearArm()}
-                        >
-                          Clear arm
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          disabled={!canStatsPitchLog || statsEvents.length === 0}
-                          className={cn("min-h-8 flex-1 py-1.5 text-[9px]", btnBase, btnIdle)}
-                          onClick={() => undoLastEvent()}
-                        >
-                          Undo last
-                        </Button>
-                        {clearLogConfirmOpen ? (
-                          <div className="w-full rounded-[10px] border border-amber-400/22 bg-amber-950/30 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                            <p className="mb-1.5 text-[10px] font-medium text-amber-100/92">
-                              Clear all events?
-                            </p>
-                            <div className="flex flex-wrap gap-1">
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                className={cn(
-                                  "min-h-8 flex-1 py-1.5 text-[9px]",
-                                  btnBase,
-                                  btnIdle,
-                                )}
-                                onClick={() => setClearLogConfirmOpen(false)}
-                              >
-                                Cancel
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                className={cn(
-                                  "min-h-8 flex-1 py-1.5 text-[9px]",
-                                  btnBase,
-                                  btnRecordOn,
-                                )}
-                                onClick={() => {
-                                  resetEvents();
-                                  setClearLogConfirmOpen(false);
-                                }}
-                              >
-                                Confirm
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            className={cn(
-                              "min-h-8 w-full py-1.5 text-[9px]",
-                              btnBase,
-                              btnIdle,
-                            )}
-                            disabled={statsEvents.length === 0}
-                            onClick={() => setClearLogConfirmOpen(true)}
-                          >
-                            Clear log
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 border-t border-white/[0.05] pt-2">
-                      <p className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.06] bg-black/25 px-2.5 py-0.5 text-[9px] font-medium tabular-nums tracking-[0.04em] text-[rgba(228,232,240,0.65)]">
-                        <span className="size-1 rounded-full bg-[rgba(90,167,255,0.5)] shadow-[0_0_4px_rgba(90,167,255,0.4)]" aria-hidden />
-                        Logged: {statsEventsForReviewWindow.length}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          ) : null}
-          <ToolRail title="Pitch" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
-            <div className="flex flex-col gap-2" role="group" aria-label="Pitch sport">
-              {SPORT_OPTIONS.map((opt) => (
+                  onAttachToLastEvent={onAttachVoiceToLastEvent}
+                  onAttachAsMoment={onAttachVoiceAsMoment}
+                  onDiscardPending={onDiscardPendingVoice}
+                  voiceMomentIds={voiceMomentIds}
+                  eventsWithVoice={eventsWithVoice}
+                  onPlay={playVoiceNote}
+                />
+              </ToolRail>
+            </>
+          ) : (
+            <ToolRail title="Capture" className="min-w-0 flex-1 lg:flex-none">
+              <div className="flex flex-col gap-2" role="group" aria-label="Path capture">
                 <Button
-                  key={opt.id}
                   type="button"
                   variant="secondary"
-                  className={cn(
-                    btnBase,
-                    sport === opt.id ? btnSportOn : btnIdle,
-                  )}
-                  onClick={() => setSport(opt.id)}
+                  className={cn(btnBase, pathRecording ? btnRecordOn : btnIdle)}
+                  aria-pressed={pathRecording}
+                  onClick={() => setMainRecording(!pathRecording)}
                 >
-                  {opt.label}
+                  {pathRecording ? "Recording path…" : "Record path"}
                 </Button>
-              ))}
-            </div>
-          </ToolRail>
-          <ToolRail title="Capture" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
-            <div className="flex flex-col gap-2" role="group" aria-label="Path capture">
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={surfaceMode === "STATS"}
-                className={cn(btnBase, pathRecording ? btnRecordOn : btnIdle)}
-                aria-pressed={pathRecording}
-                onClick={() => setMainRecording(!pathRecording)}
-              >
-                {pathRecording ? "Recording path…" : "Record path"}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={surfaceMode === "STATS"}
-                className={cn(btnBase, shadowRecording ? btnShadowOn : btnIdle)}
-                aria-pressed={shadowRecording}
-                onClick={() => setShadowLineRecording(!shadowRecording)}
-              >
-                {shadowRecording ? "Shadow line…" : "Shadow line"}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className={cn(btnBase, btnIdle)}
-                onClick={onExportPitchPng}
-              >
-                Export pitch PNG
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className={cn(btnBase, btnIdle)}
-                onClick={onSharePitchPng}
-              >
-                Share pitch
-              </Button>
-              {pitchExportError ? (
-                <p
-                  role="status"
-                  className="rounded-[8px] border border-amber-400/22 bg-amber-950/30 px-2 py-1.5 text-[9px] font-medium leading-snug text-amber-100/95"
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className={cn(btnBase, shadowRecording ? btnShadowOn : btnIdle)}
+                  aria-pressed={shadowRecording}
+                  onClick={() => setShadowLineRecording(!shadowRecording)}
                 >
-                  {pitchExportError}
-                </p>
-              ) : null}
-            </div>
-          </ToolRail>
+                  {shadowRecording ? "Shadow line…" : "Shadow line"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className={cn(btnBase, btnIdle)}
+                  onClick={onExportPitchPng}
+                >
+                  Export pitch PNG
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className={cn(btnBase, btnIdle)}
+                  onClick={onSharePitchPng}
+                >
+                  Share pitch
+                </Button>
+                {pitchExportError ? (
+                  <p
+                    role="status"
+                    className="rounded-[8px] border border-amber-400/22 bg-amber-950/30 px-2 py-1.5 text-[9px] font-medium leading-snug text-amber-100/95"
+                  >
+                    {pitchExportError}
+                  </p>
+                ) : null}
+              </div>
+            </ToolRail>
+          )}
         </aside>
       </main>
       {surfaceMode === "STATS" ? (
