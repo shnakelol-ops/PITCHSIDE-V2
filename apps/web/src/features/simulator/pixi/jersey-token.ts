@@ -9,12 +9,6 @@ import {
 
 export type JerseyStyle = "solid" | "slash";
 
-export type JerseyTokenOptions = {
-  playerName: string;
-  teamColor: ColorSource;
-  jerseyStyle?: JerseyStyle;
-};
-
 /**
  * Interactive jersey token with glow + stylized shirt + name tag.
  */
@@ -25,11 +19,11 @@ export class JerseyToken extends Container {
   readonly nameTag: Text;
   private jerseyStyle: JerseyStyle;
 
-  constructor({
-    playerName,
-    teamColor,
-    jerseyStyle = "solid",
-  }: JerseyTokenOptions) {
+  constructor(
+    playerName: string,
+    teamColor: ColorSource,
+    jerseyStyle: JerseyStyle = "solid",
+  ) {
     super();
 
     this.playerName = playerName;
