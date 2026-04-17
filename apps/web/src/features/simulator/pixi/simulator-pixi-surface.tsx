@@ -96,6 +96,7 @@ export const SimulatorPixiSurface = forwardRef<
   const appRef = useRef<PixiApp | null>(null);
   const worldRef = useRef<PixiContainer | null>(null);
   const pitchHolderRef = useRef<PixiContainer | null>(null);
+  const athletesLayerRef = useRef<PixiContainer | null>(null);
   const pitchDisposeRef = useRef<(() => void) | null>(null);
   const athletesDisposeRef = useRef<(() => void) | null>(null);
   const sportRef = useRef<PitchSport>(sport);
@@ -256,6 +257,8 @@ export const SimulatorPixiSurface = forwardRef<
       const shadowGhostGraphics = new Graphics();
       shadowGhostLayer.addChild(shadowGhostGraphics);
       const athletesLayer = new Container();
+      athletesLayer.visible = surfaceModeRef.current === "SIMULATOR";
+      athletesLayerRef.current = athletesLayer;
       world.addChild(pitchHolder);
       world.addChild(pathsLayer);
       world.addChild(shadowGhostLayer);
@@ -392,6 +395,7 @@ export const SimulatorPixiSurface = forwardRef<
       athletesDisposeRef.current?.();
       athletesDisposeRef.current = null;
       releaseAthleteInputRef.current = null;
+      athletesLayerRef.current = null;
       statsPixiRef.current = {
         statsLayer: null,
         statsHit: null,
@@ -411,6 +415,16 @@ export const SimulatorPixiSurface = forwardRef<
       }
     };
   }, [pathStore]);
+
+  useEffect(() => {
+    const athletesLayer = athletesLayerRef.current;
+    if (!athletesLayer) return;
+    const showSimulatorAthletes = surfaceMode === "SIMULATOR";
+    athletesLayer.visible = showSimulatorAthletes;
+    if (!showSimulatorAthletes) {
+      releaseAthleteInputRef.current?.();
+    }
+  }, [surfaceMode]);
 
   useEffect(() => {
     const { statsHit, statsDots, statsLayer } = statsPixiRef.current;
