@@ -11,7 +11,13 @@ import {
 
 import { normalizeMatchPeriod } from "@/components/match/MatchMode";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import type { PitchSport } from "@/config/pitchConfig";
+import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import {
   downloadPitchCanvasPng,
   shareOrDownloadPitchPng,
@@ -909,265 +915,302 @@ export function SimulatorBoardShell({
             </div>
           </ToolRail>
           {surfaceMode === "STATS" ? (
-            <ToolRail title="Stats V1" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
-              <div
-                className="mt-1 flex max-h-[min(70vh,28rem)] flex-col gap-2 overflow-y-auto pr-0.5"
-                role="group"
-                aria-label="Stats logging"
-              >
-                <div className="flex flex-wrap gap-1">
-                  {STATS_REVIEW_CHIPS.map(({ mode, label }) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      className={reviewChipClass(reviewMode === mode)}
-                      onClick={() => setReviewMode(mode)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <div className="rounded-[10px] border border-white/[0.06] bg-black/25 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                  <p className="text-[8px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
-                    Match state
-                  </p>
-                  <p className="mt-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-200/90">
-                    {matchPhase.replace(/_/g, " ")} · {matchClockRunning ? "running" : "stopped"}
-                  </p>
-                </div>
-                {statsPersistError ? (
-                  <p
-                    role="status"
-                    className="rounded-[8px] border border-red-400/28 bg-red-950/35 px-2 py-1.5 text-[9px] font-medium leading-snug text-red-100/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
-                  >
-                    Save failed: {statsPersistError}
-                  </p>
-                ) : null}
-                {!isStatsLive ? (
-                  <div
-                    className="flex max-h-28 flex-wrap gap-1 overflow-y-auto pr-0.5"
-                    role="group"
-                    aria-label="Pitch marker view"
-                  >
-                    {PITCH_VIEW_FILTER_CHIPS.map(({ id, label }) => (
-                      <button
-                        key={id}
-                        type="button"
-                        className={reviewChipClass(pitchMarkerViewFilter === id)}
-                        onClick={() => setPitchMarkerViewFilter(id)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-                <div
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Open stats tools"
                   className={cn(
-                    "flex flex-col gap-1.5",
-                    !canStatsPitchLog && "pointer-events-none opacity-40",
+                    "group relative flex w-full items-center gap-2 rounded-[12px] border px-2.5 py-2 text-left backdrop-blur-[6px] transition-colors duration-150",
+                    "hover:border-white/[0.14]",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(90,167,255,0.4)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F12]",
+                    "data-[state=open]:border-[rgba(90,167,255,0.38)]",
                   )}
+                  style={{
+                    backgroundColor: GLASS_SIDEBAR.bg,
+                    borderColor: GLASS_SIDEBAR.border,
+                    boxShadow: GLASS_SIDEBAR.shadow,
+                  }}
                 >
-                  <p className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.6)]">
-                    <span className="size-1 rounded-full bg-[rgba(90,167,255,0.45)] shadow-[0_0_4px_rgba(90,167,255,0.4)]" aria-hidden />
-                    Field
-                  </p>
-                  <div className="flex flex-col gap-1">
-                    {STATS_V1_FIELD_KINDS.map((k) => {
-                      const on = statsArm === k;
-                      return (
-                        <Button
-                          key={k}
-                          type="button"
-                          variant="secondary"
-                          className={cn(
-                            "min-h-8 py-1.5 text-[10px]",
-                            btnBase,
-                            on ? btnRecordOn : btnIdle,
-                          )}
-                          aria-pressed={on}
-                          onClick={() => armKind(k)}
-                        >
-                          {kindUiLabel(k)}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                  <p className="flex items-center gap-1.5 pt-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.6)]">
-                    <span className="size-1 rounded-full bg-[rgba(90,167,255,0.45)] shadow-[0_0_4px_rgba(90,167,255,0.4)]" aria-hidden />
-                    Score
-                  </p>
-                  <div className="flex flex-col gap-1">
-                    {STATS_V1_SCORE_KINDS.map((k) => {
-                      const on = statsArm === k;
-                      return (
-                        <Button
-                          key={k}
-                          type="button"
-                          variant="secondary"
-                          className={cn(
-                            "min-h-8 py-1.5 text-[10px]",
-                            btnBase,
-                            on ? btnRecordOn : btnIdle,
-                          )}
-                          aria-pressed={on}
-                          onClick={() => armKind(k)}
-                        >
-                          {kindUiLabel(k)}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                  <div className="flex flex-wrap gap-1 pt-0.5">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={!canStatsPitchLog}
-                      className={cn("min-h-8 flex-1 py-1.5 text-[9px]", btnBase, btnIdle)}
-                      onClick={() => clearArm()}
-                    >
-                      Clear arm
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={!canStatsPitchLog || statsEvents.length === 0}
-                      className={cn("min-h-8 flex-1 py-1.5 text-[9px]", btnBase, btnIdle)}
-                      onClick={() => undoLastEvent()}
-                    >
-                      Undo last
-                    </Button>
-                    {clearLogConfirmOpen ? (
-                      <div className="w-full rounded-[10px] border border-amber-400/22 bg-amber-950/30 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                        <p className="mb-1.5 text-[10px] font-medium text-amber-100/92">
-                          Clear all events?
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[rgba(90,167,255,0.12)] text-[rgba(160,200,240,0.95)] ring-1 ring-[rgba(90,167,255,0.15)]">
+                    <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2.25} />
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="text-[8.5px] font-semibold uppercase leading-none tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
+                      Stats
+                    </span>
+                    <span className="truncate text-[11.5px] font-semibold leading-none text-white/90">
+                      Tools
+                    </span>
+                  </span>
+                  {canStatsPitchLog ? (
+                    <span
+                      className="size-1.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]"
+                      aria-hidden
+                      title="Logging live"
+                    />
+                  ) : null}
+                  <ChevronDown
+                    className="h-3.5 w-3.5 shrink-0 text-slate-400/70"
+                    strokeWidth={2}
+                  />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                side="left"
+                align="start"
+                sideOffset={12}
+                collisionPadding={12}
+                className="w-[320px] max-w-[92vw] overflow-hidden border-white/[0.08] bg-[rgba(14,17,22,0.96)] p-0 text-slate-100 shadow-[0_24px_60px_-12px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[10px]"
+              >
+                <div className="relative flex max-h-[78vh] flex-col">
+                  <div
+                    className="pointer-events-none absolute inset-x-0 top-0 h-px"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, transparent 0%, rgba(148,185,230,0.22) 50%, transparent 100%)",
+                    }}
+                    aria-hidden
+                  />
+                  <header className="flex items-center justify-between gap-2 border-b border-white/[0.06] px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-3 w-[2px] shrink-0 rounded-full bg-gradient-to-b from-[rgba(90,167,255,0.55)] to-[rgba(90,167,255,0.12)]"
+                        aria-hidden
+                      />
+                      <span
+                        className="text-[9.5px] font-semibold uppercase leading-none tracking-[0.26em] text-[rgba(228,232,240,0.82)]"
+                        style={{ fontFeatureSettings: "\"ss01\" 1" }}
+                      >
+                        Stats tools
+                      </span>
+                    </div>
+                    <span className="rounded-full border border-white/[0.06] bg-white/[0.03] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-emerald-200/85">
+                      {matchPhase.replace(/_/g, " ")} · {matchClockRunning ? "running" : "stopped"}
+                    </span>
+                  </header>
+                  <div
+                    className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 py-3"
+                    role="group"
+                    aria-label="Stats logging tools"
+                  >
+                    <div>
+                      <p className="mb-1.5 text-[8.5px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
+                        Review
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {STATS_REVIEW_CHIPS.map(({ mode, label }) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            className={reviewChipClass(reviewMode === mode)}
+                            onClick={() => setReviewMode(mode)}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {statsPersistError ? (
+                      <p
+                        role="status"
+                        className="rounded-[8px] border border-red-400/28 bg-red-950/35 px-2 py-1.5 text-[9px] font-medium leading-snug text-red-100/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
+                      >
+                        Save failed: {statsPersistError}
+                      </p>
+                    ) : null}
+                    {!isStatsLive ? (
+                      <div>
+                        <p className="mb-1.5 text-[8.5px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
+                          Pitch marker filter
                         </p>
-                        <div className="flex flex-wrap gap-1">
+                        <div
+                          className="flex max-h-28 flex-wrap gap-1 overflow-y-auto pr-0.5"
+                          role="group"
+                          aria-label="Pitch marker view"
+                        >
+                          {PITCH_VIEW_FILTER_CHIPS.map(({ id, label }) => (
+                            <button
+                              key={id}
+                              type="button"
+                              className={reviewChipClass(pitchMarkerViewFilter === id)}
+                              onClick={() => setPitchMarkerViewFilter(id)}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    <div>
+                      <p className="mb-1.5 text-[8.5px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
+                        Scorer
+                      </p>
+                      <StatsScorerStrip
+                        players={statsPlayers}
+                        pendingLabel={pendingScoreLabel}
+                        activeScorerId={activeScorerId}
+                        onSetActiveScorer={setActiveScorer}
+                      />
+                    </div>
+                    <div>
+                      <p className="mb-1.5 text-[8.5px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
+                        Voice notes
+                      </p>
+                      <StatsVoiceStrip
+                        allowRecording={canStatsPitchLog}
+                        isRecording={recorder.isRecording}
+                        recordError={voiceError}
+                        onStartRecord={() => void onStartVoice()}
+                        onStopRecord={() => void onStopVoice()}
+                        pendingVoiceId={pendingVoiceId}
+                        canAttachToLastEvent={Boolean(
+                          lastStatsEvent && pendingVoiceId,
+                        )}
+                        onAttachToLastEvent={onAttachVoiceToLastEvent}
+                        onAttachAsMoment={onAttachVoiceAsMoment}
+                        onDiscardPending={onDiscardPendingVoice}
+                        voiceMomentIds={voiceMomentIds}
+                        eventsWithVoice={eventsWithVoice}
+                        onPlay={playVoiceNote}
+                      />
+                    </div>
+                    <div>
+                      <div className="mb-1.5 flex items-center justify-between gap-2">
+                        <p className="text-[8.5px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
+                          Players
+                        </p>
+                        <span className="text-[8.5px] font-medium uppercase tracking-[0.16em] text-slate-400/65">
+                          {statsPlayers.length}/15
+                        </span>
+                      </div>
+                      <div className="flex gap-1.5 overflow-x-auto pb-1">
+                        {statsPlayers.map((p) => (
+                          <span
+                            key={p.id}
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] py-1 pl-1 pr-2.5 text-[9px] font-semibold text-slate-100/90"
+                            title={p.name}
+                          >
+                            <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[rgba(90,167,255,0.18)] px-1 text-[8px] font-bold tabular-nums text-[rgba(180,210,245,0.96)]">
+                              {p.number}
+                            </span>
+                            <span className="truncate">{p.name}</span>
+                          </span>
+                        ))}
+                      </div>
+                      <div className="mt-1.5 flex flex-col gap-1.5">
+                        <input
+                          type="text"
+                          value={playerNameDraft}
+                          onChange={(e) => setPlayerNameDraft(e.target.value)}
+                          placeholder="Player name"
+                          className="h-8 rounded-[8px] border border-white/[0.08] bg-black/30 px-2.5 text-[10px] text-slate-100 transition-colors placeholder:text-slate-400/50 focus:border-[rgba(90,167,255,0.4)] focus:outline-none focus:ring-2 focus:ring-[rgba(90,167,255,0.2)] focus:ring-offset-0"
+                        />
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            value={playerNumberDraft}
+                            onChange={(e) => setPlayerNumberDraft(e.target.value)}
+                            placeholder="#"
+                            className="h-8 w-14 rounded-[8px] border border-white/[0.08] bg-black/30 px-2.5 text-center font-mono text-[10px] tabular-nums text-slate-100 transition-colors placeholder:text-slate-400/50 focus:border-[rgba(90,167,255,0.4)] focus:outline-none focus:ring-2 focus:ring-[rgba(90,167,255,0.2)] focus:ring-offset-0"
+                          />
                           <Button
                             type="button"
                             variant="secondary"
-                            className={cn(
-                              "min-h-8 flex-1 py-1.5 text-[9px]",
-                              btnBase,
-                              btnIdle,
-                            )}
-                            onClick={() => setClearLogConfirmOpen(false)}
+                            className={cn("min-h-8 flex-1 py-1.5 text-[9px]", btnBase, btnIdle)}
+                            disabled={statsPlayers.length >= 15}
+                            onClick={onAddStatsPlayer}
                           >
-                            Cancel
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            className={cn(
-                              "min-h-8 flex-1 py-1.5 text-[9px]",
-                              btnBase,
-                              btnRecordOn,
-                            )}
-                            onClick={() => {
-                              resetEvents();
-                              setClearLogConfirmOpen(false);
-                            }}
-                          >
-                            Confirm
+                            Add player
                           </Button>
                         </div>
                       </div>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className={cn(
-                          "min-h-8 w-full py-1.5 text-[9px]",
-                          btnBase,
-                          btnIdle,
+                    </div>
+                    <div>
+                      <p className="mb-1.5 text-[8.5px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
+                        Log actions
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={!canStatsPitchLog}
+                          className={cn("min-h-8 flex-1 py-1.5 text-[9px]", btnBase, btnIdle)}
+                          onClick={() => clearArm()}
+                        >
+                          Clear arm
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={!canStatsPitchLog || statsEvents.length === 0}
+                          className={cn("min-h-8 flex-1 py-1.5 text-[9px]", btnBase, btnIdle)}
+                          onClick={() => undoLastEvent()}
+                        >
+                          Undo last
+                        </Button>
+                        {clearLogConfirmOpen ? (
+                          <div className="w-full rounded-[10px] border border-amber-400/22 bg-amber-950/30 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                            <p className="mb-1.5 text-[10px] font-medium text-amber-100/92">
+                              Clear all events?
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                className={cn(
+                                  "min-h-8 flex-1 py-1.5 text-[9px]",
+                                  btnBase,
+                                  btnIdle,
+                                )}
+                                onClick={() => setClearLogConfirmOpen(false)}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                className={cn(
+                                  "min-h-8 flex-1 py-1.5 text-[9px]",
+                                  btnBase,
+                                  btnRecordOn,
+                                )}
+                                onClick={() => {
+                                  resetEvents();
+                                  setClearLogConfirmOpen(false);
+                                }}
+                              >
+                                Confirm
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className={cn(
+                              "min-h-8 w-full py-1.5 text-[9px]",
+                              btnBase,
+                              btnIdle,
+                            )}
+                            disabled={statsEvents.length === 0}
+                            onClick={() => setClearLogConfirmOpen(true)}
+                          >
+                            Clear log
+                          </Button>
                         )}
-                        disabled={statsEvents.length === 0}
-                        onClick={() => setClearLogConfirmOpen(true)}
-                      >
-                        Clear log
-                      </Button>
-                    )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 border-t border-white/[0.05] pt-2">
+                      <p className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.06] bg-black/25 px-2.5 py-0.5 text-[9px] font-medium tabular-nums tracking-[0.04em] text-[rgba(228,232,240,0.65)]">
+                        <span className="size-1 rounded-full bg-[rgba(90,167,255,0.5)] shadow-[0_0_4px_rgba(90,167,255,0.4)]" aria-hidden />
+                        Logged: {statsEventsForReviewWindow.length}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <StatsScorerStrip
-                  players={statsPlayers}
-                  pendingLabel={pendingScoreLabel}
-                  activeScorerId={activeScorerId}
-                  onSetActiveScorer={setActiveScorer}
-                />
-                <StatsVoiceStrip
-                  allowRecording={canStatsPitchLog}
-                  isRecording={recorder.isRecording}
-                  recordError={voiceError}
-                  onStartRecord={() => void onStartVoice()}
-                  onStopRecord={() => void onStopVoice()}
-                  pendingVoiceId={pendingVoiceId}
-                  canAttachToLastEvent={Boolean(
-                    lastStatsEvent && pendingVoiceId,
-                  )}
-                  onAttachToLastEvent={onAttachVoiceToLastEvent}
-                  onAttachAsMoment={onAttachVoiceAsMoment}
-                  onDiscardPending={onDiscardPendingVoice}
-                  voiceMomentIds={voiceMomentIds}
-                  eventsWithVoice={eventsWithVoice}
-                  onPlay={playVoiceNote}
-                />
-                <p className="inline-flex items-center gap-1.5 self-start rounded-full border border-white/[0.06] bg-black/25 px-2.5 py-0.5 text-[9px] font-medium tabular-nums tracking-[0.04em] text-[rgba(228,232,240,0.65)]">
-                  <span className="size-1 rounded-full bg-[rgba(90,167,255,0.5)] shadow-[0_0_4px_rgba(90,167,255,0.4)]" aria-hidden />
-                  Logged: {statsEventsForReviewWindow.length}
-                </p>
-              </div>
-            </ToolRail>
-          ) : null}
-          {surfaceMode === "STATS" ? (
-            <ToolRail
-              title="Players"
-              className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none"
-            >
-              <div className="flex flex-col gap-2">
-                <div className="flex gap-1.5 overflow-x-auto pb-1">
-                  {statsPlayers.map((p) => (
-                    <span
-                      key={p.id}
-                      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] py-1 pl-1 pr-2.5 text-[9px] font-semibold text-slate-100/90"
-                      title={p.name}
-                    >
-                      <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[rgba(90,167,255,0.18)] px-1 text-[8px] font-bold tabular-nums text-[rgba(180,210,245,0.96)]">
-                        {p.number}
-                      </span>
-                      <span className="truncate">{p.name}</span>
-                    </span>
-                  ))}
-                </div>
-                <p className="text-[8.5px] font-medium uppercase tracking-[0.16em] text-slate-400/65">
-                  Slide to browse players ({statsPlayers.length}/15)
-                </p>
-                <input
-                  type="text"
-                  value={playerNameDraft}
-                  onChange={(e) => setPlayerNameDraft(e.target.value)}
-                  placeholder="Player name"
-                  className="h-8 rounded-[8px] border border-white/[0.08] bg-black/30 px-2.5 text-[10px] text-slate-100 transition-colors placeholder:text-slate-400/50 focus:border-[rgba(90,167,255,0.4)] focus:outline-none focus:ring-2 focus:ring-[rgba(90,167,255,0.2)] focus:ring-offset-0"
-                />
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    value={playerNumberDraft}
-                    onChange={(e) => setPlayerNumberDraft(e.target.value)}
-                    placeholder="#"
-                    className="h-8 w-14 rounded-[8px] border border-white/[0.08] bg-black/30 px-2.5 text-center font-mono text-[10px] tabular-nums text-slate-100 transition-colors placeholder:text-slate-400/50 focus:border-[rgba(90,167,255,0.4)] focus:outline-none focus:ring-2 focus:ring-[rgba(90,167,255,0.2)] focus:ring-offset-0"
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className={cn("min-h-8 flex-1 py-1.5 text-[9px]", btnBase, btnIdle)}
-                    disabled={statsPlayers.length >= 15}
-                    onClick={onAddStatsPlayer}
-                  >
-                    Add player
-                  </Button>
-                </div>
-              </div>
-            </ToolRail>
+              </PopoverContent>
+            </Popover>
           ) : null}
           <ToolRail title="Pitch" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
             <div className="flex flex-col gap-2" role="group" aria-label="Pitch sport">
@@ -1237,6 +1280,98 @@ export function SimulatorBoardShell({
           </ToolRail>
         </aside>
       </main>
+      {surfaceMode === "STATS" ? (
+        <footer
+          className={cn(
+            "relative z-10 shrink-0 border-t border-white/[0.06] px-3 py-2 backdrop-blur-[6px] sm:px-4 lg:px-6 lg:py-2.5",
+          )}
+          style={{
+            backgroundColor: "rgba(14,17,22,0.72)",
+            boxShadow:
+              "inset 0 1px 0 rgba(255,255,255,0.03), 0 -6px 22px -12px rgba(0,0,0,0.55)",
+          }}
+          aria-label="Stats event logging bar"
+        >
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-px"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent 0%, rgba(148,185,230,0.18) 50%, transparent 100%)",
+            }}
+            aria-hidden
+          />
+          <div
+            className={cn(
+              "flex items-center gap-2.5 overflow-x-auto",
+              !canStatsPitchLog && "pointer-events-none opacity-45",
+            )}
+          >
+            <span
+              className="flex shrink-0 items-center gap-1.5 pr-1 text-[8.5px] font-semibold uppercase leading-none tracking-[0.22em] text-[rgba(228,232,240,0.55)]"
+              aria-hidden
+            >
+              <span
+                className="size-1 rounded-full bg-emerald-400/75 shadow-[0_0_4px_rgba(52,211,153,0.55)]"
+                aria-hidden
+              />
+              Score
+            </span>
+            <div className="flex shrink-0 items-center gap-1.5" role="group" aria-label="Score kinds">
+              {STATS_V1_SCORE_KINDS.map((k) => {
+                const on = statsArm === k;
+                return (
+                  <Button
+                    key={`bar-score-${k}`}
+                    type="button"
+                    variant="secondary"
+                    aria-pressed={on}
+                    onClick={() => armKind(k)}
+                    className={cn(
+                      btnBase,
+                      "min-h-9 w-auto whitespace-nowrap px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em]",
+                      on ? btnSportOn : btnIdle,
+                    )}
+                  >
+                    {kindUiLabel(k)}
+                  </Button>
+                );
+              })}
+            </div>
+            <div className="h-5 w-px shrink-0 bg-white/[0.08]" aria-hidden />
+            <span
+              className="flex shrink-0 items-center gap-1.5 pr-1 text-[8.5px] font-semibold uppercase leading-none tracking-[0.22em] text-[rgba(228,232,240,0.55)]"
+              aria-hidden
+            >
+              <span
+                className="size-1 rounded-full bg-[rgba(90,167,255,0.55)] shadow-[0_0_4px_rgba(90,167,255,0.5)]"
+                aria-hidden
+              />
+              Field
+            </span>
+            <div className="flex shrink-0 items-center gap-1.5" role="group" aria-label="Field kinds">
+              {STATS_V1_FIELD_KINDS.map((k) => {
+                const on = statsArm === k;
+                return (
+                  <Button
+                    key={`bar-field-${k}`}
+                    type="button"
+                    variant="secondary"
+                    aria-pressed={on}
+                    onClick={() => armKind(k)}
+                    className={cn(
+                      btnBase,
+                      "min-h-9 w-auto whitespace-nowrap px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em]",
+                      on ? btnRecordOn : btnIdle,
+                    )}
+                  >
+                    {kindUiLabel(k)}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        </footer>
+      ) : null}
     </div>
   );
 }
