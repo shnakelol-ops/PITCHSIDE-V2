@@ -39,3 +39,8 @@ export { createShadowRun } from "@src/features/simulator/model/shadow-run";
 export { MovementPathStore } from "@src/features/simulator/path/movement-path-store";
 export { drawMovementPathsGraphics } from "@src/features/simulator/pixi/movement-path-graphics";
 export { drawShadowRunsGraphics } from "@src/features/simulator/pixi/shadow-path-graphics";
+export type {
+  JerseyStyle,
+  JerseyTokenOptions,
+} from "@src/features/simulator/pixi/jersey-token";
+export { JerseyToken } from "@src/features/simulator/pixi/jersey-token";
