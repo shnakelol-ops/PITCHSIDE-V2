@@ -30,6 +30,7 @@ import {
   type SimulatorPixiSurfaceHandle,
   type SimulatorSurfaceMode,
 } from "@src/features/simulator/pixi/simulator-pixi-surface";
+import { StatsRecentEventsCard } from "@src/features/stats/controls/stats-recent-events-card";
 import { StatsScorerStrip } from "@src/features/stats/controls/stats-scorer-strip";
 import { StatsVoiceStrip } from "@src/features/stats/controls/stats-voice-strip";
 import { useStatsEventLog } from "@src/features/stats/hooks/use-stats-event-log";
@@ -1310,6 +1311,11 @@ export function SimulatorBoardShell({
                   onPlay={playVoiceNote}
                 />
               </ToolRail>
+              <StatsRecentEventsCard
+                events={statsEvents}
+                players={statsPlayers}
+                className="min-w-0 flex-1 lg:flex-none"
+              />
             </>
           ) : (
             <ToolRail title="Capture" className="min-w-0 flex-1 lg:flex-none">
