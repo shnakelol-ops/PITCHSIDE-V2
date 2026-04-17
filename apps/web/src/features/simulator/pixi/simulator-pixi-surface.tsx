@@ -274,7 +274,7 @@ export const SimulatorPixiSurface = forwardRef<
       if (cancelled || !hostRef.current) return;
 
       const initialSize = measureSurfaceSize(host);
-      const ratio = getPitchBoardAspectRatio(sportRef.current);
+      const ratio = Number(getPitchBoardAspectRatio(sportRef.current)) || 1;
       const initialWidth = initialSize.width > 0 ? initialSize.width : 640;
       const initialHeight =
         initialSize.height > 0
