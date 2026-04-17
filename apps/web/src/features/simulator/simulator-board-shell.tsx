@@ -125,22 +125,22 @@ const GLASS_SIDEBAR = {
 };
 
 const btnBase =
-  "min-h-10 w-full justify-center rounded-[11px] px-3 py-2.5 text-[12px] font-medium leading-tight tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_8px_-2px_rgba(0,0,0,0.35)] transition-[transform,box-shadow,background-color,border-color,color] duration-200 sm:min-h-9 sm:py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(90,167,255,0.38)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F12] active:translate-y-px active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.35)]";
+  "min-h-10 w-full justify-center rounded-[10px] px-3 py-2.5 text-[12px] font-medium leading-tight tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_1px_2px_rgba(0,0,0,0.3)] transition-[transform,box-shadow,background-color,border-color,color] duration-150 sm:min-h-9 sm:py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(90,167,255,0.4)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F12] active:translate-y-px active:shadow-[inset_0_2px_5px_rgba(0,0,0,0.32)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:!bg-[rgba(26,30,36,0.92)]";
 
 const btnIdle =
-  "!border !border-white/[0.07] !bg-[rgba(32,34,40,0.88)] !text-[rgba(245,243,238,0.94)] hover:!border-white/[0.1] hover:!bg-[rgba(38,40,48,0.92)] hover:!text-white hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_3px_12px_-4px_rgba(0,0,0,0.4)]";
+  "!border !border-white/[0.06] !bg-[rgba(26,30,36,0.92)] !text-[rgba(235,238,244,0.92)] hover:!border-white/[0.12] hover:!bg-[rgba(34,38,46,0.96)] hover:!text-white";
 
 const btnSportOn =
-  "!border !border-emerald-500/25 !bg-[rgba(28,42,36,0.92)] !text-[rgba(236,253,245,0.96)] hover:!border-emerald-400/35 hover:!bg-[rgba(32,48,40,0.95)] shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]";
+  "!border !border-emerald-400/28 !bg-[rgba(20,42,34,0.92)] !text-[rgba(209,250,229,0.96)] hover:!border-emerald-300/38 hover:!bg-[rgba(24,48,38,0.95)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_0_0_1px_rgba(16,185,129,0.08)]";
 
 const btnRecordOn =
-  "!border !border-amber-500/22 !bg-[rgba(48,38,28,0.9)] !text-[rgba(255,251,235,0.96)] hover:!border-amber-400/32 hover:!bg-[rgba(54,44,32,0.94)]";
+  "!border !border-amber-400/24 !bg-[rgba(48,36,20,0.9)] !text-[rgba(254,243,199,0.96)] hover:!border-amber-300/34 hover:!bg-[rgba(54,40,22,0.94)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]";
 
 const btnShadowOn =
-  "!border !border-slate-400/18 !bg-[rgba(36,38,44,0.9)] !text-[rgba(248,250,252,0.95)] hover:!border-slate-300/22 hover:!bg-[rgba(42,44,52,0.94)]";
+  "!border !border-slate-300/20 !bg-[rgba(36,40,48,0.9)] !text-[rgba(248,250,252,0.95)] hover:!border-slate-200/28 hover:!bg-[rgba(42,46,56,0.94)]";
 
 const btnReviewOn =
-  "!border !border-amber-500/28 !bg-[rgba(48,40,28,0.88)] !text-[rgba(255,251,235,0.96)] hover:!border-amber-400/35";
+  "!border !border-amber-400/28 !bg-[rgba(48,40,22,0.88)] !text-[rgba(254,243,199,0.96)] hover:!border-amber-300/38 hover:!bg-[rgba(54,44,24,0.92)]";
 
 function reviewChipClass(active: boolean) {
   return cn(
@@ -162,7 +162,7 @@ function ToolRail({
   return (
     <div
       className={cn(
-        "flex flex-col gap-0 rounded-[14px] border p-3.5 backdrop-blur-sm",
+        "relative flex flex-col gap-0 overflow-hidden rounded-[14px] border px-3 py-3 backdrop-blur-[6px]",
         className,
       )}
       style={{
@@ -171,13 +171,21 @@ function ToolRail({
         boxShadow: GLASS_SIDEBAR.shadow,
       }}
     >
-      <div className="flex items-baseline gap-2 border-b border-white/[0.055] pb-2.5">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-px"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(148,185,230,0.2) 50%, transparent 100%)",
+        }}
+        aria-hidden
+      />
+      <div className="flex items-center gap-2 border-b border-white/[0.05] pb-2">
         <span
-          className="mt-0.5 size-1 shrink-0 rounded-full bg-[rgba(90,167,255,0.38)] shadow-[0_0_6px_rgba(90,167,255,0.35)] ring-1 ring-white/[0.06]"
+          className="h-3 w-[2px] shrink-0 rounded-full bg-gradient-to-b from-[rgba(90,167,255,0.55)] to-[rgba(90,167,255,0.12)]"
           aria-hidden
         />
         <div
-          className="font-[system-ui,-apple-system,'Segoe_UI',sans-serif] text-[9.5px] font-semibold uppercase leading-none tracking-[0.28em] text-[rgba(228,226,220,0.78)]"
+          className="text-[9.5px] font-semibold uppercase leading-none tracking-[0.26em] text-[rgba(228,232,240,0.82)]"
           style={{ fontFeatureSettings: '"ss01" 1' }}
         >
           {title}
@@ -755,7 +763,7 @@ export function SimulatorBoardShell({
                     Full Time
                   </Button>
                 ) : null}
-                <p className="text-[8px] font-semibold tabular-nums text-emerald-100/85">
+                <p className="mt-1 rounded-[8px] border border-white/[0.06] bg-black/25 px-2 py-1 text-center font-mono text-[9px] font-semibold tabular-nums tracking-[0.08em] text-emerald-200/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
                   {matchClockDisplay}
                 </p>
               </div>
@@ -919,18 +927,18 @@ export function SimulatorBoardShell({
                     </button>
                   ))}
                 </div>
-                <div className="rounded-md border border-white/[0.08] bg-black/10 px-2 py-2">
-                  <p className="text-[8px] font-semibold uppercase tracking-wide text-[rgba(228,226,220,0.55)]">
+                <div className="rounded-[10px] border border-white/[0.06] bg-black/25 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                  <p className="text-[8px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.55)]">
                     Match state
                   </p>
-                  <p className="font-mono text-[10px] font-semibold uppercase tracking-wide text-emerald-100/90">
+                  <p className="mt-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-200/90">
                     {matchPhase.replace(/_/g, " ")} · {matchClockRunning ? "running" : "stopped"}
                   </p>
                 </div>
                 {statsPersistError ? (
                   <p
                     role="status"
-                    className="rounded-md border border-red-500/30 bg-red-950/40 px-2 py-1.5 text-[9px] font-medium leading-snug text-red-100/95"
+                    className="rounded-[8px] border border-red-400/28 bg-red-950/35 px-2 py-1.5 text-[9px] font-medium leading-snug text-red-100/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
                   >
                     Save failed: {statsPersistError}
                   </p>
@@ -959,7 +967,8 @@ export function SimulatorBoardShell({
                     !canStatsPitchLog && "pointer-events-none opacity-40",
                   )}
                 >
-                  <p className="text-[9px] font-semibold uppercase tracking-wide text-[rgba(228,226,220,0.55)]">
+                  <p className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.6)]">
+                    <span className="size-1 rounded-full bg-[rgba(90,167,255,0.45)] shadow-[0_0_4px_rgba(90,167,255,0.4)]" aria-hidden />
                     Field
                   </p>
                   <div className="flex flex-col gap-1">
@@ -983,7 +992,8 @@ export function SimulatorBoardShell({
                       );
                     })}
                   </div>
-                  <p className="text-[9px] font-semibold uppercase tracking-wide text-[rgba(228,226,220,0.55)]">
+                  <p className="flex items-center gap-1.5 pt-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-[rgba(228,232,240,0.6)]">
+                    <span className="size-1 rounded-full bg-[rgba(90,167,255,0.45)] shadow-[0_0_4px_rgba(90,167,255,0.4)]" aria-hidden />
                     Score
                   </p>
                   <div className="flex flex-col gap-1">
@@ -1027,8 +1037,8 @@ export function SimulatorBoardShell({
                       Undo last
                     </Button>
                     {clearLogConfirmOpen ? (
-                      <div className="w-full rounded-md border border-amber-500/25 bg-amber-950/35 px-2 py-2">
-                        <p className="mb-1.5 text-[10px] font-medium text-amber-100/90">
+                      <div className="w-full rounded-[10px] border border-amber-400/22 bg-amber-950/30 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                        <p className="mb-1.5 text-[10px] font-medium text-amber-100/92">
                           Clear all events?
                         </p>
                         <div className="flex flex-wrap gap-1">
@@ -1101,7 +1111,8 @@ export function SimulatorBoardShell({
                   eventsWithVoice={eventsWithVoice}
                   onPlay={playVoiceNote}
                 />
-                <p className="text-[9px] tabular-nums text-[rgba(228,226,220,0.5)]">
+                <p className="inline-flex items-center gap-1.5 self-start rounded-full border border-white/[0.06] bg-black/25 px-2.5 py-0.5 text-[9px] font-medium tabular-nums tracking-[0.04em] text-[rgba(228,232,240,0.65)]">
+                  <span className="size-1 rounded-full bg-[rgba(90,167,255,0.5)] shadow-[0_0_4px_rgba(90,167,255,0.4)]" aria-hidden />
                   Logged: {statsEventsForReviewWindow.length}
                 </p>
               </div>
@@ -1113,18 +1124,21 @@ export function SimulatorBoardShell({
               className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none"
             >
               <div className="flex flex-col gap-2">
-                <div className="flex gap-1 overflow-x-auto pb-1">
+                <div className="flex gap-1.5 overflow-x-auto pb-1">
                   {statsPlayers.map((p) => (
                     <span
                       key={p.id}
-                      className="shrink-0 rounded border border-white/20 bg-white/5 px-2 py-1 text-[9px] font-semibold text-emerald-100/90"
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] py-1 pl-1 pr-2.5 text-[9px] font-semibold text-slate-100/90"
                       title={p.name}
                     >
-                      #{p.number} {p.name}
+                      <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[rgba(90,167,255,0.18)] px-1 text-[8px] font-bold tabular-nums text-[rgba(180,210,245,0.96)]">
+                        {p.number}
+                      </span>
+                      <span className="truncate">{p.name}</span>
                     </span>
                   ))}
                 </div>
-                <p className="text-[8px] text-emerald-100/60">
+                <p className="text-[8.5px] font-medium uppercase tracking-[0.16em] text-slate-400/65">
                   Slide to browse players ({statsPlayers.length}/15)
                 </p>
                 <input
@@ -1132,15 +1146,15 @@ export function SimulatorBoardShell({
                   value={playerNameDraft}
                   onChange={(e) => setPlayerNameDraft(e.target.value)}
                   placeholder="Player name"
-                  className="h-8 rounded border border-white/15 bg-black/20 px-2 text-[10px] text-emerald-50 placeholder:text-emerald-200/40"
+                  className="h-8 rounded-[8px] border border-white/[0.08] bg-black/30 px-2.5 text-[10px] text-slate-100 transition-colors placeholder:text-slate-400/50 focus:border-[rgba(90,167,255,0.4)] focus:outline-none focus:ring-2 focus:ring-[rgba(90,167,255,0.2)] focus:ring-offset-0"
                 />
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <input
                     type="text"
                     value={playerNumberDraft}
                     onChange={(e) => setPlayerNumberDraft(e.target.value)}
                     placeholder="#"
-                    className="h-8 w-14 rounded border border-white/15 bg-black/20 px-2 text-[10px] text-emerald-50 placeholder:text-emerald-200/40"
+                    className="h-8 w-14 rounded-[8px] border border-white/[0.08] bg-black/30 px-2.5 text-center font-mono text-[10px] tabular-nums text-slate-100 transition-colors placeholder:text-slate-400/50 focus:border-[rgba(90,167,255,0.4)] focus:outline-none focus:ring-2 focus:ring-[rgba(90,167,255,0.2)] focus:ring-offset-0"
                   />
                   <Button
                     type="button"
@@ -1212,7 +1226,12 @@ export function SimulatorBoardShell({
                 Share pitch
               </Button>
               {pitchExportError ? (
-                <p className="text-[9px] text-amber-200/90">{pitchExportError}</p>
+                <p
+                  role="status"
+                  className="rounded-[8px] border border-amber-400/22 bg-amber-950/30 px-2 py-1.5 text-[9px] font-medium leading-snug text-amber-100/95"
+                >
+                  {pitchExportError}
+                </p>
               ) : null}
             </div>
           </ToolRail>
