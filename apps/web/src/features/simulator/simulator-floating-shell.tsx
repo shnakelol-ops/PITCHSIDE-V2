@@ -516,8 +516,23 @@ export function SimulatorFloatingShell({
     };
   }, [utilityOpen]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const setViewportVar = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty("--sim-vh", `${vh}px`);
+    };
+    setViewportVar();
+    window.addEventListener("resize", setViewportVar);
+    window.addEventListener("orientationchange", setViewportVar);
+    return () => {
+      window.removeEventListener("resize", setViewportVar);
+      window.removeEventListener("orientationchange", setViewportVar);
+    };
+  }, []);
+
   return (
-    <div className="simulator-direct relative h-[100svh] min-h-[100svh] overflow-hidden bg-[#0b0f0c] text-stone-100 supports-[height:100dvh]:h-[100dvh] supports-[height:100dvh]:min-h-[100dvh]">
+    <div className="simulator-direct relative h-[calc(var(--sim-vh,1vh)*100)] min-h-[calc(var(--sim-vh,1vh)*100)] overflow-hidden bg-[#0b0f0c] text-stone-100 supports-[height:100svh]:h-[100svh] supports-[height:100svh]:min-h-[100svh] supports-[height:100dvh]:h-[100dvh] supports-[height:100dvh]:min-h-[100dvh]">
       <div ref={pitchHostRef} className="absolute inset-0">
         <div className="h-full w-full min-h-0">
           <SimulatorPixiSurface

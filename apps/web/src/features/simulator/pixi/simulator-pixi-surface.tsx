@@ -74,6 +74,20 @@ type PixiApp = import("pixi.js").Application;
 type PixiContainer = import("pixi.js").Container;
 
 type SurfaceSize = { width: number; height: number };
+type WebglInitStatus = "pending" | "success-antialias" | "success-no-antialias" | "failed";
+
+type SurfaceDiagnostics = {
+  hostWidth: number;
+  hostHeight: number;
+  rendererWidth: number;
+  rendererHeight: number;
+  pixiMounted: boolean;
+  canvasInDom: boolean;
+  webglInit: WebglInitStatus;
+  fallback2d: boolean;
+  error: string | null;
+  layoutRetries: number;
+};
 
 function measureSurfaceSize(host: HTMLElement): SurfaceSize {
   const rect = host.getBoundingClientRect();
@@ -174,6 +188,20 @@ export const SimulatorPixiSurface = forwardRef<
   const [statsOverlayEpoch, setStatsOverlayEpoch] = useState(0);
   /** Bumps on host resize so marker min-size tracks letterbox scale. */
   const [resizeGen, setResizeGen] = useState(0);
+  const [diagnostics, setDiagnostics] = useState<SurfaceDiagnostics>({
+    hostWidth: 0,
+    hostHeight: 0,
+    rendererWidth: 0,
+    rendererHeight: 0,
+    pixiMounted: false,
+    canvasInDom: false,
+    webglInit: "pending",
+    fallback2d: false,
+    error: null,
+    layoutRetries: 0,
+  });
+  const diagnosticsRef = useRef(diagnostics);
+  const diagnosticsKeyRef = useRef("");
 
   surfaceModeRef.current = surfaceMode;
   statsArmRef.current = statsArm;
@@ -188,6 +216,56 @@ export const SimulatorPixiSurface = forwardRef<
   );
   const releaseAthleteInputRef = useRef<(() => void) | null>(null);
   const pathStore = useMemo(() => new MovementPathStore(), []);
+
+  const publishDiagnostics = (
+    patch: Partial<SurfaceDiagnostics>,
+    forceLog = false,
+  ) => {
+    const next: SurfaceDiagnostics = { ...diagnosticsRef.current, ...patch };
+    const key = [
+      next.hostWidth,
+      next.hostHeight,
+      next.rendererWidth,
+      next.rendererHeight,
+      next.pixiMounted ? 1 : 0,
+      next.canvasInDom ? 1 : 0,
+      next.webglInit,
+      next.fallback2d ? 1 : 0,
+      next.error ?? "",
+      next.layoutRetries,
+    ].join("|");
+    if (!forceLog && key === diagnosticsKeyRef.current) return;
+    diagnosticsKeyRef.current = key;
+    diagnosticsRef.current = next;
+    setDiagnostics(next);
+    // Visible in mobile remote DevTools and local console traces.
+    console.info("[simulator-surface-diagnostics]", next);
+  };
+
+  const syncDiagnosticsFromDom = (
+    host: HTMLElement | null,
+    app: PixiApp | null,
+    patch: Partial<SurfaceDiagnostics> = {},
+  ) => {
+    if (!host) return;
+    const s = measureSurfaceSize(host);
+    const resolution = app?.renderer.resolution ?? 1;
+    const rendererWidth =
+      app != null ? Math.round((app.renderer.width ?? 0) / resolution) : 0;
+    const rendererHeight =
+      app != null ? Math.round((app.renderer.height ?? 0) / resolution) : 0;
+    publishDiagnostics({
+      hostWidth: s.width,
+      hostHeight: s.height,
+      rendererWidth,
+      rendererHeight,
+      pixiMounted: app != null,
+      canvasInDom: host.querySelector("canvas") != null,
+      ...patch,
+    });
+  };
+
+  const showDebugHud = layoutMode === "fill";
 
   sportRef.current = sport;
   recordingModeRef.current = recordingMode;
@@ -233,7 +311,10 @@ export const SimulatorPixiSurface = forwardRef<
     if (!app || !world || !host) return false;
     const w = host.clientWidth;
     const h = host.clientHeight;
-    if (w <= 0 || h <= 0) return false;
+    if (w <= 0 || h <= 0) {
+      syncDiagnosticsFromDom(host, app, { error: "Host size is zero during layout." });
+      return false;
+    }
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     app.renderer.resolution = dpr;
     app.renderer.resize(w, h);
@@ -241,6 +322,7 @@ export const SimulatorPixiSurface = forwardRef<
     worldScaleRef.current = scale;
     world.scale.set(scale);
     world.position.set(offsetX, offsetY);
+    syncDiagnosticsFromDom(host, app, { error: null });
     return true;
   };
 
@@ -265,9 +347,17 @@ export const SimulatorPixiSurface = forwardRef<
     let cancelled = false;
     let ro: ResizeObserver | null = null;
     let retryLayoutRafId = 0;
+    let retryCount = 0;
     let fallbackCanvasEl: HTMLCanvasElement | null = null;
     let unsubPaths: (() => void) | null = null;
     let redrawPaths: (() => void) | null = null;
+
+    syncDiagnosticsFromDom(host, appRef.current, {
+      webglInit: "pending",
+      fallback2d: false,
+      error: null,
+      layoutRetries: 0,
+    });
 
     void (async () => {
       const { Application, Container, Graphics } = await import("pixi.js");
@@ -294,20 +384,47 @@ export const SimulatorPixiSurface = forwardRef<
 
       const initPixiApp = async (antialias: boolean) => {
         const next = new Application();
-        await next.init({
-          ...initOptions,
-          antialias,
-        });
+        try {
+          await next.init({
+            ...initOptions,
+            antialias,
+          });
+        } catch (err) {
+          next.destroy(true);
+          throw err;
+        }
         return next;
       };
 
       let app: PixiApp | null = null;
       try {
         app = await initPixiApp(true);
-      } catch {
+        publishDiagnostics({
+          webglInit: "success-antialias",
+          fallback2d: false,
+          error: null,
+        });
+      } catch (firstErr) {
+        const firstMessage =
+          firstErr instanceof Error ? firstErr.message : "WebGL init failed";
         try {
           app = await initPixiApp(false);
-        } catch {
+          publishDiagnostics({
+            webglInit: "success-no-antialias",
+            fallback2d: false,
+            error: firstMessage,
+          });
+        } catch (secondErr) {
+          const secondMessage =
+            secondErr instanceof Error ? secondErr.message : "WebGL fallback failed";
+          publishDiagnostics(
+            {
+              webglInit: "failed",
+              fallback2d: true,
+              error: `${firstMessage}; ${secondMessage}`,
+            },
+            true,
+          );
           if (!cancelled) {
             fallbackCanvasEl = document.createElement("canvas");
             fallbackCanvasEl.style.width = "100%";
@@ -315,10 +432,16 @@ export const SimulatorPixiSurface = forwardRef<
             fallbackCanvasEl.style.display = "block";
             drawCanvasFallbackPitch(fallbackCanvasEl, initialWidth, initialHeight);
             host.appendChild(fallbackCanvasEl);
+            syncDiagnosticsFromDom(host, null, {
+              pixiMounted: false,
+              canvasInDom: true,
+              fallback2d: true,
+            });
             ro = new ResizeObserver(() => {
               if (!fallbackCanvasEl) return;
               const s = measureSurfaceSize(host);
               drawCanvasFallbackPitch(fallbackCanvasEl, s.width, s.height);
+              syncDiagnosticsFromDom(host, null, { fallback2d: true });
             });
             ro.observe(host);
           }
@@ -338,6 +461,11 @@ export const SimulatorPixiSurface = forwardRef<
       app.canvas.style.display = "block";
       app.canvas.style.touchAction = "none";
       app.canvas.style.userSelect = "none";
+      syncDiagnosticsFromDom(host, app, {
+        pixiMounted: true,
+        canvasInDom: true,
+        fallback2d: false,
+      });
 
       const world = new Container();
       worldRef.current = world;
@@ -420,7 +548,18 @@ export const SimulatorPixiSurface = forwardRef<
 
       attachPitch(sportRef.current);
       const applyLayout = () => {
-        if (layout()) return;
+        if (layout()) {
+          syncDiagnosticsFromDom(host, appRef.current);
+          return;
+        }
+        retryCount += 1;
+        syncDiagnosticsFromDom(host, appRef.current, {
+          layoutRetries: retryCount,
+          error:
+            diagnosticsRef.current.webglInit === "failed"
+              ? diagnosticsRef.current.error
+              : "Layout waiting for non-zero host size",
+        });
         retryLayoutRafId = requestAnimationFrame(applyLayout);
       };
       applyLayout();
@@ -479,8 +618,14 @@ export const SimulatorPixiSurface = forwardRef<
 
       ro = new ResizeObserver(() => {
         if (layout()) {
+          syncDiagnosticsFromDom(host, appRef.current, { layoutRetries: retryCount });
           setResizeGen((n) => n + 1);
+          return;
         }
+        syncDiagnosticsFromDom(host, appRef.current, {
+          layoutRetries: retryCount,
+          error: "Resize observed with zero-sized host",
+        });
       });
       ro.observe(host);
     })();
@@ -524,6 +669,21 @@ export const SimulatorPixiSurface = forwardRef<
         }
         app.destroy(true, { children: true, texture: true });
       }
+      publishDiagnostics(
+        {
+          hostWidth: 0,
+          hostHeight: 0,
+          rendererWidth: 0,
+          rendererHeight: 0,
+          pixiMounted: false,
+          canvasInDom: false,
+          webglInit: "pending",
+          fallback2d: false,
+          error: null,
+          layoutRetries: 0,
+        },
+        true,
+      );
     };
   }, [pathStore]);
 
@@ -607,6 +767,22 @@ export const SimulatorPixiSurface = forwardRef<
         aria-label="Simulator pitch"
         role="img"
       />
+      <div
+        className="pointer-events-none absolute left-2 top-2 z-20 max-w-[92%] rounded-md border border-black/30 bg-black/55 px-2 py-1 font-mono text-[10px] leading-tight text-emerald-100/95 shadow-lg"
+        data-simulator-diagnostics
+        aria-live="polite"
+      >
+        <div>host: {diagnostics.hostWidth}x{diagnostics.hostHeight}</div>
+        <div>renderer: {diagnostics.rendererWidth}x{diagnostics.rendererHeight}</div>
+        <div>mounted: {diagnostics.pixiMounted ? "yes" : "no"}</div>
+        <div>canvas in DOM: {diagnostics.canvasInDom ? "yes" : "no"}</div>
+        <div>webgl: {diagnostics.webglInit}</div>
+        <div>2d fallback: {diagnostics.fallback2d ? "yes" : "no"}</div>
+        <div>layout retries: {diagnostics.layoutRetries}</div>
+        {diagnostics.error ? (
+          <div className="mt-0.5 text-amber-200/95">error: {diagnostics.error}</div>
+        ) : null}
+      </div>
     </div>
   );
 });
