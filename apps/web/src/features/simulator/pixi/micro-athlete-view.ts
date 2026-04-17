@@ -19,9 +19,6 @@ const SCALE_SELECTED = 1.055;
 const SCALE_DRAGGING = 1.075;
 const SCALE_ACTIVE = 1.015;
 const SCALE_LERP = 0.24;
-const ACTIVE_MOVE_THRESHOLD2 = 2.2e-5;
-const ACTIVE_HEADING_THRESHOLD = 0.05;
-const ACTIVE_HOLD_MS = 260;
 
 export type MicroAthleteView = {
   container: Container;
@@ -46,10 +43,13 @@ export function createMicroAthleteView(): MicroAthleteView {
   const hitRadius = Math.max(MICRO_ATHLETE_HIT_RADIUS_WORLD, R * 2);
   container.hitArea = new Circle(0, 0, hitRadius);
 
-  let lastNx: number | null = null;
-  let lastNy: number | null = null;
-  let lastHeading = 0;
-  let activeUntilMs = 0;
+  let paletteCache: ReturnType<typeof resolveJerseyTokenPalette> | null = null;
+  let palettePrimary = Number.NaN;
+  let paletteSecondary = Number.NaN;
+  let paletteAccent = Number.NaN;
+  let paletteNumber = Number.NaN;
+  let numberLabelCache = "";
+  let numberKey: number | string | undefined = undefined;
 
   const sync = (
     athlete: MicroAthlete,
@@ -60,28 +60,36 @@ export function createMicroAthleteView(): MicroAthleteView {
     const { x, y } = boardNormToWorld(athlete.nx, athlete.ny);
     container.position.set(x, y);
 
-    if (lastNx != null && lastNy != null) {
-      const dx = athlete.nx - lastNx;
-      const dy = athlete.ny - lastNy;
-      const dHeading = Math.abs(athlete.headingRad - lastHeading);
-      if (
-        dx * dx + dy * dy > ACTIVE_MOVE_THRESHOLD2 ||
-        dHeading > ACTIVE_HEADING_THRESHOLD
-      ) {
-        activeUntilMs = nowMs + ACTIVE_HOLD_MS;
-      }
-    }
-    lastNx = athlete.nx;
-    lastNy = athlete.ny;
-    lastHeading = athlete.headingRad;
+    const active = false;
 
-    const movingActive = nowMs < activeUntilMs;
-    const active = movingActive && !dragging;
+    const style = athlete.jerseyStyle;
+    const stylePrimary = style?.primaryColor;
+    const styleSecondary = style?.secondaryColor;
+    const styleAccent = style?.accentColor;
+    const styleNumber = style?.numberColor;
+    if (
+      paletteCache == null ||
+      stylePrimary !== palettePrimary ||
+      styleSecondary !== paletteSecondary ||
+      styleAccent !== paletteAccent ||
+      styleNumber !== paletteNumber
+    ) {
+      palettePrimary = stylePrimary ?? Number.NaN;
+      paletteSecondary = styleSecondary ?? Number.NaN;
+      paletteAccent = styleAccent ?? Number.NaN;
+      paletteNumber = styleNumber ?? Number.NaN;
+      paletteCache = resolveJerseyTokenPalette(athlete);
+    }
+
+    if (athlete.jerseyNumber !== numberKey) {
+      numberKey = athlete.jerseyNumber;
+      numberLabelCache = resolveJerseyNumberLabel(athlete);
+    }
 
     const tokenNeedsFrame = token.sync({
       headingRad: athlete.headingRad,
-      numberLabel: resolveJerseyNumberLabel(athlete),
-      palette: resolveJerseyTokenPalette(athlete),
+      numberLabel: numberLabelCache,
+      palette: paletteCache,
       selected,
       dragging,
       active,

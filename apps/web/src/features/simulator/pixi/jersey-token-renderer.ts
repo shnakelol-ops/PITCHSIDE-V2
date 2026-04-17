@@ -18,7 +18,7 @@ type JerseyTokenSyncOptions = {
   selected: boolean;
   dragging: boolean;
   active: boolean;
-  nowMs: number;
+  nowMs?: number;
 };
 
 const FALLBACK_HOME = {
@@ -193,13 +193,14 @@ function drawJerseyStaticBody(
     .fill({ color: palette.secondaryColor, alpha: 0.44 });
 }
 
-function drawStateShadow(
+function drawShadowVariant(
   g: Graphics,
   r: number,
-  selected: boolean,
-  dragging: boolean,
+  variant: "idle" | "selected" | "dragging",
 ): void {
   g.clear();
+  const dragging = variant === "dragging";
+  const selected = variant === "selected";
   const liftY = dragging ? 0.18 : selected ? 0.08 : 0;
   const width = dragging ? r * 1.48 : selected ? r * 1.4 : r * 1.32;
   const height = dragging ? r * 0.5 : selected ? r * 0.46 : r * 0.42;
@@ -210,24 +211,18 @@ function drawStateShadow(
   });
 }
 
-function drawStateRing(
+function drawRingVariant(
   g: Graphics,
   r: number,
   palette: JerseyTokenPalette,
-  selected: boolean,
-  dragging: boolean,
-  active: boolean,
-  pulse: number,
+  variant: "active" | "selected" | "dragging",
 ): void {
   g.clear();
-  if (!selected && !dragging && !active) return;
-
+  const dragging = variant === "dragging";
+  const selected = variant === "selected";
   const ringRadius = r * 1.28;
-  const activeAlpha = active ? 0.17 + pulse * 0.16 : 0;
-  const selectedAlpha = selected ? 0.36 : 0;
-  const draggingAlpha = dragging ? 0.5 : 0;
-  const alpha = Math.max(activeAlpha, selectedAlpha, draggingAlpha);
   const width = dragging ? 0.24 : selected ? 0.2 : 0.16;
+  const alpha = dragging ? 0.5 : selected ? 0.36 : 0.22;
 
   g.circle(0, 0, ringRadius).stroke({
     width,
@@ -255,13 +250,34 @@ export function createJerseyTokenRenderer(radiusWorld: number): JerseyTokenRende
   const container = new Container();
   container.sortableChildren = true;
 
-  const shadow = new Graphics();
-  shadow.zIndex = 0;
-  shadow.cacheAsBitmap = true;
+  const shadowIdle = new Graphics();
+  shadowIdle.zIndex = 0;
+  shadowIdle.cacheAsTexture(true);
+  drawShadowVariant(shadowIdle, radiusWorld, "idle");
 
-  const stateRing = new Graphics();
-  stateRing.zIndex = 1;
-  stateRing.cacheAsBitmap = false;
+  const shadowSelected = new Graphics();
+  shadowSelected.zIndex = 0;
+  shadowSelected.cacheAsTexture(true);
+  drawShadowVariant(shadowSelected, radiusWorld, "selected");
+  shadowSelected.visible = false;
+
+  const shadowDragging = new Graphics();
+  shadowDragging.zIndex = 0;
+  shadowDragging.cacheAsTexture(true);
+  drawShadowVariant(shadowDragging, radiusWorld, "dragging");
+  shadowDragging.visible = false;
+
+  const ringActive = new Graphics();
+  ringActive.zIndex = 1;
+  ringActive.visible = false;
+
+  const ringSelected = new Graphics();
+  ringSelected.zIndex = 1;
+  ringSelected.visible = false;
+
+  const ringDragging = new Graphics();
+  ringDragging.zIndex = 1;
+  ringDragging.visible = false;
 
   const directionRoot = new Container();
   directionRoot.zIndex = 2;
@@ -270,7 +286,7 @@ export function createJerseyTokenRenderer(radiusWorld: number): JerseyTokenRende
 
   const jersey = new Graphics();
   jersey.zIndex = 3;
-  jersey.cacheAsBitmap = true;
+  jersey.cacheAsTexture(true);
 
   const numberStyle = new TextStyle({
     fontFamily:
@@ -294,79 +310,81 @@ export function createJerseyTokenRenderer(radiusWorld: number): JerseyTokenRende
   badgeAnchor.zIndex = 5;
   badgeAnchor.position.set(radiusWorld * 0.92, -radiusWorld * 0.98);
 
-  container.addChild(shadow);
-  container.addChild(stateRing);
+  container.addChild(shadowIdle);
+  container.addChild(shadowSelected);
+  container.addChild(shadowDragging);
+  container.addChild(ringActive);
+  container.addChild(ringSelected);
+  container.addChild(ringDragging);
   container.addChild(directionRoot);
   container.addChild(jersey);
   container.addChild(numberText);
   container.addChild(badgeAnchor);
 
-  let paletteKey = "";
-  let labelKey = "";
-  let lastSelected = false;
-  let lastDragging = false;
-  let lastActive = false;
-  let lastPulseBucket = -1;
+  let lastPrimary = Number.NaN;
+  let lastSecondary = Number.NaN;
+  let lastAccent = Number.NaN;
+  let lastNumberColor = Number.NaN;
+  let lastOutline = Number.NaN;
+  let lastGlow = Number.NaN;
+  let lastLabel = "";
+  let lastHeadingRad = Number.NaN;
+  let drawState = 0;
 
   const redrawStatic = (palette: JerseyTokenPalette, numberLabel: string) => {
     drawDirectionalPointer(direction, radiusWorld, palette);
     drawJerseyStaticBody(jersey, radiusWorld, palette);
     numberText.text = numberLabel;
-    numberStyle.fill = palette.numberColor;
-    numberStyle.stroke = {
+    numberText.style.fill = palette.numberColor;
+    numberText.style.stroke = {
       color: palette.outlineColor,
       width: 0.6,
     };
   };
 
   const sync = (opts: JerseyTokenSyncOptions): boolean => {
-    directionRoot.rotation = opts.headingRad;
-
-    const nextPaletteKey = [
-      opts.palette.primaryColor,
-      opts.palette.secondaryColor,
-      opts.palette.accentColor,
-      opts.palette.numberColor,
-      opts.palette.outlineColor,
-      opts.palette.glowColor,
-    ].join("|");
-
-    if (nextPaletteKey !== paletteKey || opts.numberLabel !== labelKey) {
-      paletteKey = nextPaletteKey;
-      labelKey = opts.numberLabel;
-      redrawStatic(opts.palette, opts.numberLabel);
-      lastSelected = !opts.selected;
-      lastDragging = !opts.dragging;
-      lastActive = !opts.active;
-      lastPulseBucket = -1;
+    if (opts.headingRad !== lastHeadingRad) {
+      directionRoot.rotation = opts.headingRad;
+      lastHeadingRad = opts.headingRad;
     }
 
-    const pulse = opts.active ? (Math.sin(opts.nowMs * 0.012) + 1) * 0.5 : 0;
-    const pulseBucket = opts.active ? Math.round(pulse * 12) : 0;
-    const statesChanged =
-      lastSelected !== opts.selected ||
-      lastDragging !== opts.dragging ||
-      lastActive !== opts.active ||
-      pulseBucket !== lastPulseBucket;
+    const paletteChanged =
+      opts.palette.primaryColor !== lastPrimary ||
+      opts.palette.secondaryColor !== lastSecondary ||
+      opts.palette.accentColor !== lastAccent ||
+      opts.palette.numberColor !== lastNumberColor ||
+      opts.palette.outlineColor !== lastOutline ||
+      opts.palette.glowColor !== lastGlow;
+    if (paletteChanged || opts.numberLabel !== lastLabel) {
+      lastPrimary = opts.palette.primaryColor;
+      lastSecondary = opts.palette.secondaryColor;
+      lastAccent = opts.palette.accentColor;
+      lastNumberColor = opts.palette.numberColor;
+      lastOutline = opts.palette.outlineColor;
+      lastGlow = opts.palette.glowColor;
+      lastLabel = opts.numberLabel;
+      redrawStatic(opts.palette, opts.numberLabel);
+      drawRingVariant(ringActive, radiusWorld, opts.palette, "active");
+      drawRingVariant(ringSelected, radiusWorld, opts.palette, "selected");
+      drawRingVariant(ringDragging, radiusWorld, opts.palette, "dragging");
+    }
+
+    const nextState = opts.dragging ? 2 : opts.selected ? 1 : opts.active ? 3 : 0;
+    const statesChanged = nextState !== drawState;
 
     if (statesChanged) {
-      lastSelected = opts.selected;
-      lastDragging = opts.dragging;
-      lastActive = opts.active;
-      lastPulseBucket = pulseBucket;
-      drawStateShadow(shadow, radiusWorld, opts.selected, opts.dragging);
-      drawStateRing(
-        stateRing,
-        radiusWorld,
-        opts.palette,
-        opts.selected,
-        opts.dragging,
-        opts.active,
-        pulse,
-      );
+      drawState = nextState;
+      const selected = opts.selected && !opts.dragging;
+      const active = opts.active && !opts.selected && !opts.dragging;
+      shadowIdle.visible = !selected && !opts.dragging;
+      shadowSelected.visible = selected;
+      shadowDragging.visible = opts.dragging;
+      ringActive.visible = active;
+      ringSelected.visible = selected;
+      ringDragging.visible = opts.dragging;
     }
 
-    return opts.active;
+    return false;
   };
 
   return {
