@@ -648,7 +648,7 @@ export function SimulatorBoardShell({
 
   return (
     <div
-      className="relative flex h-[100dvh] min-h-0 flex-col overflow-hidden text-stone-800"
+      className="relative flex min-h-[100dvh] flex-col overflow-x-hidden overflow-y-auto text-stone-800 lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden"
       style={grassFieldStyle}
     >
       {/* Minimal grain only (~2.8%) — enough to kill “flat UI”, not noisy. */}
@@ -674,9 +674,9 @@ export function SimulatorBoardShell({
         </div>
       </header>
 
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14">
-        <aside className="order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
-          <ToolRail title="Transport" className="min-w-0 flex-1 lg:flex-none">
+      <main className="relative z-10 flex w-full min-h-0 flex-1 flex-col gap-4 overflow-x-hidden p-4 sm:gap-5 sm:p-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14">
+        <aside className="order-2 flex w-full shrink-0 flex-col gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
+          <ToolRail title="Transport" className="min-w-0 w-full lg:flex-none">
             {surfaceMode === "SIMULATOR" ? (
               <div
                 className="grid grid-cols-3 gap-2 lg:grid-cols-1"
@@ -780,7 +780,7 @@ export function SimulatorBoardShell({
           </ToolRail>
         </aside>
 
-        <div className="order-1 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center lg:order-2 lg:max-w-[min(96vw,74rem)]">
+        <div className="order-1 flex w-full min-w-0 flex-col items-center justify-start lg:order-2 lg:min-h-0 lg:flex-1 lg:justify-center lg:max-w-[min(96vw,74rem)]">
           <div className="relative w-full max-w-full px-1 sm:px-2">
             {/* Soft lift behind pitch — no hard frame ring */}
             <div
@@ -886,8 +886,8 @@ export function SimulatorBoardShell({
           </p>
         </div>
 
-        <aside className="order-3 flex shrink-0 flex-row flex-wrap gap-3.5 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
-          <ToolRail title="Mode" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
+        <aside className="order-3 flex w-full shrink-0 flex-col gap-3.5 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
+          <ToolRail title="Mode" className="min-w-0 w-full lg:flex-none">
             <div className="flex flex-col gap-2" role="group" aria-label="Canvas mode">
               <Button
                 type="button"
@@ -916,9 +916,9 @@ export function SimulatorBoardShell({
             </div>
           </ToolRail>
           {surfaceMode === "STATS" ? (
-            <ToolRail title="Stats V1" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
+            <ToolRail title="Stats V1" className="min-w-0 w-full lg:flex-none">
               <div
-                className="mt-1 flex max-h-[min(70vh,28rem)] flex-col gap-2 overflow-y-auto pr-0.5"
+                className="mt-1 flex flex-col gap-2 pr-0.5 lg:max-h-[min(70vh,28rem)] lg:overflow-y-auto"
                 role="group"
                 aria-label="Stats logging"
               >
@@ -952,7 +952,7 @@ export function SimulatorBoardShell({
                 ) : null}
                 {!isStatsLive ? (
                   <div
-                    className="flex max-h-28 flex-wrap gap-1 overflow-y-auto pr-0.5"
+                    className="flex flex-wrap gap-1 pr-0.5 lg:max-h-28 lg:overflow-y-auto"
                     role="group"
                     aria-label="Pitch marker view"
                   >
@@ -1125,7 +1125,7 @@ export function SimulatorBoardShell({
           {surfaceMode === "STATS" ? (
             <ToolRail
               title="Players"
-              className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none"
+              className="min-w-0 w-full lg:flex-none"
             >
               <div className="flex flex-col gap-2">
                 <div className="flex gap-1 overflow-x-auto pb-1">
@@ -1170,7 +1170,7 @@ export function SimulatorBoardShell({
               </div>
             </ToolRail>
           ) : null}
-          <ToolRail title="Pitch" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
+          <ToolRail title="Pitch" className="min-w-0 w-full lg:flex-none">
             <div className="flex flex-col gap-2" role="group" aria-label="Pitch sport">
               {SPORT_OPTIONS.map((opt) => (
                 <Button
@@ -1188,7 +1188,7 @@ export function SimulatorBoardShell({
               ))}
             </div>
           </ToolRail>
-          <ToolRail title="Capture" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
+          <ToolRail title="Capture" className="min-w-0 w-full lg:flex-none">
             <div className="flex flex-col gap-2" role="group" aria-label="Path capture">
               <Button
                 type="button"
