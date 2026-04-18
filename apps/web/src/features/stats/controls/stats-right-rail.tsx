@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { StatsRecentEventsCard } from "@src/features/stats/controls/stats-recent-events-card";
 import { StatsScorerStrip } from "@src/features/stats/controls/stats-scorer-strip";
 import { StatsVoiceStrip } from "@src/features/stats/controls/stats-voice-strip";
+import { StatsVoiceReviewCard } from "@src/features/stats/controls/stats-voice-review-card";
+import type { StatsVoiceMoment } from "@src/features/stats/hooks/use-stats-event-log";
 import type { StatsLoggedEvent } from "@src/features/stats/model/stats-logged-event";
 import {
   STATS_V1_EVENT_KINDS,
@@ -122,7 +124,7 @@ export type StatsRightRailProps = {
   pendingVoiceId: string | null;
   canAttachVoiceToLastEvent: boolean;
   canRecordVoice: boolean;
-  voiceMomentIds: readonly string[];
+  voiceMoments: readonly StatsVoiceMoment[];
   eventsWithVoice: readonly StatsLoggedEvent[];
   onStartVoice: () => void;
   onStopVoice: () => void;
@@ -166,7 +168,7 @@ export function StatsRightRail({
   pendingVoiceId,
   canAttachVoiceToLastEvent,
   canRecordVoice,
-  voiceMomentIds,
+  voiceMoments,
   eventsWithVoice,
   onStartVoice,
   onStopVoice,
@@ -214,7 +216,7 @@ export function StatsRightRail({
           onAttachToLastEvent={onAttachVoiceToLastEvent}
           onAttachAsMoment={onAttachVoiceAsMoment}
           onDiscardPending={onDiscardPendingVoice}
-          voiceMomentIds={voiceMomentIds}
+          voiceMoments={voiceMoments}
           eventsWithVoice={eventsWithVoice}
           onPlay={onPlayVoice}
         />
@@ -222,6 +224,16 @@ export function StatsRightRail({
 
       {/* 3. Recent Events */}
       <StatsRecentEventsCard events={statsEvents} players={players} />
+
+      {/* 3b. Voice Clips — review-only (HT / FT). Compact, secondary. */}
+      {!isLive ? (
+        <StatsVoiceReviewCard
+          reviewMode={reviewMode}
+          voiceMoments={voiceMoments}
+          eventsWithVoice={eventsWithVoice}
+          onPlay={onPlayVoice}
+        />
+      ) : null}
 
       {/* 4. Review Tools (secondary, collapsible) */}
       <RailSection

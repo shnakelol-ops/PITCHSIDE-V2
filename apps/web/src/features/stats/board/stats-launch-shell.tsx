@@ -15,7 +15,10 @@ import {
   SimulatorPixiSurface,
   type SimulatorPixiSurfaceHandle,
 } from "@src/features/simulator/pixi/simulator-pixi-surface";
-import type { StatsArmSelection } from "@src/features/stats/hooks/use-stats-event-log";
+import type {
+  StatsArmSelection,
+  StatsVoiceMoment,
+} from "@src/features/stats/hooks/use-stats-event-log";
 import type { SimulatorMatchPhase } from "@src/features/stats/hooks/use-simulator-match-clock";
 import type { StatsLoggedEvent } from "@src/features/stats/model/stats-logged-event";
 import type {
@@ -83,7 +86,7 @@ export type StatsLaunchShellProps = {
   voiceError: string | null;
   pendingVoiceId: string | null;
   canAttachVoiceToLastEvent: boolean;
-  voiceMomentIds: readonly string[];
+  voiceMoments: readonly StatsVoiceMoment[];
   eventsWithVoice: readonly StatsLoggedEvent[];
   onStartVoice: () => void;
   onStopVoice: () => void;
@@ -176,7 +179,7 @@ export function StatsLaunchShell(props: StatsLaunchShellProps) {
     voiceError,
     pendingVoiceId,
     canAttachVoiceToLastEvent,
-    voiceMomentIds,
+    voiceMoments,
     eventsWithVoice,
     onStartVoice,
     onStopVoice,
@@ -226,7 +229,7 @@ export function StatsLaunchShell(props: StatsLaunchShellProps) {
       pendingVoiceId={pendingVoiceId}
       canAttachVoiceToLastEvent={canAttachVoiceToLastEvent}
       canRecordVoice={matchPhase !== "full_time"}
-      voiceMomentIds={voiceMomentIds}
+      voiceMoments={voiceMoments}
       eventsWithVoice={eventsWithVoice}
       onStartVoice={onStartVoice}
       onStopVoice={onStopVoice}

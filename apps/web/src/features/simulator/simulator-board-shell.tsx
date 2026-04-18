@@ -323,7 +323,7 @@ export function SimulatorBoardShell({
     arm: statsArm,
     activeScorerId,
     reviewMode,
-    voiceMomentIds,
+    voiceMoments,
     armKind,
     clearArm,
     logTap,
@@ -336,6 +336,7 @@ export function SimulatorBoardShell({
     playVoiceNote,
     attachVoiceNoteToEvent,
     addVoiceMoment,
+    removeVoiceMoment,
   } = useStatsEventLog({
     onStatsEventLogged,
     resolvePeriodPhase: resolveCurrentPeriodPhase,
@@ -505,6 +506,7 @@ export function SimulatorBoardShell({
   const onStopVoice = useCallback(async () => {
     setCaptureError(null);
     const blob = await recorder.stopRecording();
+    // Only create a moment for a real, non-empty recording.
     if (!blob || blob.size === 0) {
       setCaptureError("Nothing captured");
       return;
@@ -515,8 +517,10 @@ export function SimulatorBoardShell({
         ? c.randomUUID()
         : `vn-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     storeVoiceBlob(id, blob);
+    // Lightweight moment: time-stamp the valid clip so HT/FT review can surface it.
+    addVoiceMoment(id, Date.now(), resolveCurrentPeriodPhase());
     setPendingVoiceId(id);
-  }, [recorder, storeVoiceBlob]);
+  }, [addVoiceMoment, recorder, resolveCurrentPeriodPhase, storeVoiceBlob]);
 
   const onAttachVoiceToLastEvent = useCallback(() => {
     if (!pendingVoiceId || !lastStatsEvent) return;
@@ -525,16 +529,21 @@ export function SimulatorBoardShell({
   }, [attachVoiceNoteToEvent, lastStatsEvent, pendingVoiceId]);
 
   const onAttachVoiceAsMoment = useCallback(() => {
+    // Clip was already auto-added as a moment on stop; this button now simply
+    // clears the "pending" highlight without creating a duplicate.
     if (!pendingVoiceId) return;
-    addVoiceMoment(pendingVoiceId);
     setPendingVoiceId(null);
-  }, [addVoiceMoment, pendingVoiceId]);
+  }, [pendingVoiceId]);
 
   const onDiscardPendingVoice = useCallback(() => {
-    if (pendingVoiceId) removeVoiceBlob(pendingVoiceId);
+    if (pendingVoiceId) {
+      // Drop means fully discard: remove both the blob and the auto-created moment.
+      removeVoiceBlob(pendingVoiceId);
+      removeVoiceMoment(pendingVoiceId);
+    }
     setPendingVoiceId(null);
     setCaptureError(null);
-  }, [pendingVoiceId, removeVoiceBlob]);
+  }, [pendingVoiceId, removeVoiceBlob, removeVoiceMoment]);
 
   const setMainRecording = (on: boolean) => {
     setPathRecording(on);
@@ -612,7 +621,7 @@ export function SimulatorBoardShell({
         voiceError={voiceError}
         pendingVoiceId={pendingVoiceId}
         canAttachVoiceToLastEvent={Boolean(lastStatsEvent && pendingVoiceId)}
-        voiceMomentIds={voiceMomentIds}
+        voiceMoments={voiceMoments}
         eventsWithVoice={eventsWithVoice}
         onStartVoice={() => void onStartVoice()}
         onStopVoice={() => void onStopVoice()}

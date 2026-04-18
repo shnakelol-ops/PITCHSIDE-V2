@@ -23,14 +23,24 @@ const ACTIVE_SCORER_STORAGE_KEY = "pitchside.stats.activeScorerId";
 
 export type StatsArmSelection = StatsV1EventKind | null;
 
+/**
+ * Lightweight voice-moment record — NOT an event. Used only to time-stamp clips
+ * captured outside an event attachment so HT/FT review can surface them in order.
+ */
+export type StatsVoiceMoment = {
+  id: string;
+  timestampMs: number;
+  periodPhase: StatsPeriodPhase;
+};
+
 type State = {
   events: StatsLoggedEvent[];
   arm: StatsArmSelection;
   /** Persists until changed; applied to every score tap (null = no player). */
   activeScorerId: string | null;
   reviewMode: StatsReviewMode;
-  /** Voice clips with no linked event (moment-only). */
-  voiceMomentIds: string[];
+  /** Voice clips with no linked event (moment-only) — newest last. */
+  voiceMoments: StatsVoiceMoment[];
 };
 
 type Action =
@@ -48,7 +58,13 @@ type Action =
   | { type: "assignScorer"; eventId: string; playerId: string | null }
   | { type: "setReviewMode"; mode: StatsReviewMode }
   | { type: "attachVoiceNoteToEvent"; eventId: string; voiceNoteId: string }
-  | { type: "addVoiceMoment"; voiceNoteId: string };
+  | {
+      type: "addVoiceMoment";
+      voiceNoteId: string;
+      timestampMs: number;
+      periodPhase: StatsPeriodPhase;
+    }
+  | { type: "removeVoiceMoment"; voiceNoteId: string };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -64,7 +80,7 @@ function reducer(state: State, action: Action): State {
         events: [],
         activeScorerId: null,
         reviewMode: "live",
-        voiceMomentIds: [],
+        voiceMoments: [],
       };
     case "assignScorer":
       return {
@@ -81,10 +97,28 @@ function reducer(state: State, action: Action): State {
         ),
       };
     case "addVoiceMoment": {
-      if (state.voiceMomentIds.includes(action.voiceNoteId)) return state;
+      if (state.voiceMoments.some((m) => m.id === action.voiceNoteId)) {
+        return state;
+      }
+      const moment: StatsVoiceMoment = {
+        id: action.voiceNoteId,
+        timestampMs: action.timestampMs,
+        periodPhase: action.periodPhase,
+      };
       return {
         ...state,
-        voiceMomentIds: [...state.voiceMomentIds, action.voiceNoteId],
+        voiceMoments: [...state.voiceMoments, moment],
+      };
+    }
+    case "removeVoiceMoment": {
+      if (!state.voiceMoments.some((m) => m.id === action.voiceNoteId)) {
+        return state;
+      }
+      return {
+        ...state,
+        voiceMoments: state.voiceMoments.filter(
+          (m) => m.id !== action.voiceNoteId,
+        ),
       };
     }
     case "restoreActiveScorer":
@@ -124,7 +158,7 @@ const initialState: State = {
   arm: null,
   activeScorerId: null,
   reviewMode: "live",
-  voiceMomentIds: [],
+  voiceMoments: [],
 };
 
 function readStoredActiveScorerId(): string | null {
@@ -284,8 +318,20 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
     dispatch({ type: "attachVoiceNoteToEvent", eventId, voiceNoteId });
   }, []);
 
-  const addVoiceMoment = useCallback((voiceNoteId: string) => {
-    dispatch({ type: "addVoiceMoment", voiceNoteId });
+  const addVoiceMoment = useCallback(
+    (voiceNoteId: string, timestampMs: number, periodPhase: StatsPeriodPhase) => {
+      dispatch({
+        type: "addVoiceMoment",
+        voiceNoteId,
+        timestampMs,
+        periodPhase,
+      });
+    },
+    [],
+  );
+
+  const removeVoiceMoment = useCallback((voiceNoteId: string) => {
+    dispatch({ type: "removeVoiceMoment", voiceNoteId });
   }, []);
 
   return {
@@ -293,7 +339,7 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
     arm: state.arm,
     activeScorerId: state.activeScorerId,
     reviewMode: state.reviewMode,
-    voiceMomentIds: state.voiceMomentIds,
+    voiceMoments: state.voiceMoments,
     armKind,
     clearArm,
     logTap,
@@ -307,5 +353,6 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
     playVoiceNote,
     attachVoiceNoteToEvent,
     addVoiceMoment,
+    removeVoiceMoment,
   };
 }

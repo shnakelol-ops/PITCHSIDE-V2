@@ -2,11 +2,20 @@
 
 import { useEffect, useState } from "react";
 
+import type { StatsVoiceMoment } from "@src/features/stats/hooks/use-stats-event-log";
 import type { StatsLoggedEvent } from "@src/features/stats/model/stats-logged-event";
 import { cn } from "@pitchside/utils";
 
 function eventShortLabel(e: StatsLoggedEvent): string {
   return e.kind.replace(/_/g, " ").toLowerCase().slice(0, 12);
+}
+
+/** Simple wall-clock HH:MM — consistent across live + review. */
+function formatHmm(ms: number): string {
+  const d = new Date(ms);
+  const h = String(d.getHours()).padStart(2, "0");
+  const m = String(d.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
 }
 
 export type StatsVoiceStripProps = {
@@ -21,7 +30,7 @@ export type StatsVoiceStripProps = {
   onAttachToLastEvent: () => void;
   onAttachAsMoment: () => void;
   onDiscardPending: () => void;
-  voiceMomentIds: readonly string[];
+  voiceMoments: readonly StatsVoiceMoment[];
   eventsWithVoice: readonly StatsLoggedEvent[];
   onPlay: (voiceNoteId: string) => void;
 };
@@ -40,7 +49,7 @@ export function StatsVoiceStrip({
   onAttachToLastEvent,
   onAttachAsMoment,
   onDiscardPending,
-  voiceMomentIds,
+  voiceMoments,
   eventsWithVoice,
   onPlay,
 }: StatsVoiceStripProps) {
@@ -156,20 +165,23 @@ export function StatsVoiceStrip({
         </>
       ) : (
         <div className="flex flex-col gap-1.5">
-          {voiceMomentIds.length > 0 ? (
+          {voiceMoments.length > 0 ? (
             <div className="flex flex-wrap items-center gap-1">
               <span className="text-[8px] font-semibold uppercase text-emerald-100/50">
                 Moments
               </span>
-              {voiceMomentIds.map((id) => (
+              {voiceMoments.map((m) => (
                 <button
-                  key={id}
+                  key={m.id}
                   type="button"
-                  className="rounded border border-violet-400/35 bg-violet-500/10 px-2 py-0.5 text-[8px] font-semibold text-violet-100/90 hover:bg-violet-500/20"
-                  title={id}
-                  onClick={() => onPlay(id)}
+                  className="inline-flex items-center gap-1 rounded border border-violet-400/35 bg-violet-500/10 px-2 py-0.5 text-[9px] font-semibold text-violet-100/95 hover:bg-violet-500/20"
+                  title={m.id}
+                  onClick={() => onPlay(m.id)}
                 >
-                  ▶ {id.slice(0, 6)}
+                  <span aria-hidden>▶</span>
+                  <span className="font-mono tabular-nums">
+                    {formatHmm(m.timestampMs)}
+                  </span>
                 </button>
               ))}
             </div>
@@ -183,18 +195,22 @@ export function StatsVoiceStrip({
                 <button
                   key={e.id}
                   type="button"
-                  className="max-w-[7rem] truncate rounded border border-sky-400/35 bg-sky-500/10 px-2 py-0.5 text-[8px] font-semibold text-sky-100/90 hover:bg-sky-500/20"
+                  className="inline-flex max-w-[9rem] items-center gap-1 truncate rounded border border-sky-400/35 bg-sky-500/10 px-2 py-0.5 text-[9px] font-semibold text-sky-100/95 hover:bg-sky-500/20"
                   title={e.id}
                   onClick={() => e.voiceNoteId && onPlay(e.voiceNoteId)}
                 >
-                  ▶ {eventShortLabel(e)}
+                  <span aria-hidden>▶</span>
+                  <span className="truncate">{eventShortLabel(e)}</span>
+                  <span className="font-mono tabular-nums text-sky-100/70">
+                    {formatHmm(e.timestampMs)}
+                  </span>
                 </button>
               ))}
             </div>
           ) : null}
-          {voiceMomentIds.length === 0 && eventsWithVoice.length === 0 ? (
-            <p className="text-[8px] text-emerald-100/55">
-              No voice notes yet. Record in Live, then play back here.
+          {voiceMoments.length === 0 && eventsWithVoice.length === 0 ? (
+            <p className="text-[9px] leading-snug text-emerald-100/55">
+              No voice notes yet. Record a clip to build up review material.
             </p>
           ) : null}
         </div>
