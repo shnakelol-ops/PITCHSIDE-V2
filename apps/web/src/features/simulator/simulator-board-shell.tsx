@@ -814,8 +814,6 @@ export function SimulatorBoardShell({
                 className="relative z-10 overflow-hidden rounded-[1.05rem] p-1 sm:p-1.5"
                 style={{
                   ...stadiumApronStyle,
-                  backgroundColor: "#ff0000",
-                  backgroundImage: "none",
                 }}
               >
                 <div
@@ -873,7 +871,7 @@ export function SimulatorBoardShell({
                     }
                     statsReviewMode={reviewMode}
                     statsPitchInteractive={canStatsPitchLog}
-                    className="max-h-[min(68dvh,calc(100dvw-2.5rem))] w-full !rounded-lg !border-0 !bg-transparent !shadow-none !ring-0 sm:max-h-[min(72dvh,80vw)] lg:max-h-[min(78dvh,58rem)]"
+                    className="w-full !rounded-lg !border-0 !bg-transparent !shadow-none !ring-0 md:max-h-[min(72dvh,80vw)] lg:max-h-[min(78dvh,58rem)]"
                   />
                 </div>
               </div>
