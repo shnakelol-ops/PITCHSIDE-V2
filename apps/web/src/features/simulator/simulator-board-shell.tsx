@@ -711,12 +711,7 @@ export function SimulatorBoardShell({
         }}
         aria-hidden
       />
-      <header
-        className={cn(
-          "relative z-10 flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5",
-          surfaceMode === "STATS" && "hidden md:flex",
-        )}
-      >
+      <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5 md:flex">
         <div className="min-w-0 space-y-0.5">
           <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-stone-800/65">
             Pitchside
@@ -730,12 +725,7 @@ export function SimulatorBoardShell({
         </div>
       </header>
 
-      <main
-        className={cn(
-          "relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 md:flex lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14",
-          surfaceMode === "STATS" && "hidden md:flex",
-        )}
-      >
+      <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 md:flex lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14">
         <aside
           className={cn(
             "order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4",
