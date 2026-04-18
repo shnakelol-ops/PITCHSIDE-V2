@@ -259,7 +259,7 @@ export function StatsVoiceStrip({
               role="alert"
               className="text-[9px] leading-snug text-rose-200/90"
             >
-              Playback failed — unsupported format or empty clip
+              {playbackError.reason}
             </p>
           ) : null}
         </div>

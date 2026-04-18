@@ -233,7 +233,7 @@ export function StatsVoiceReviewCard({
                         {r.eventLabel ?? "Moment"}
                         {failed ? (
                           <span className="ml-1 font-normal text-rose-200/80">
-                            · Playback failed
+                            · {playbackError?.reason}
                           </span>
                         ) : null}
                       </span>

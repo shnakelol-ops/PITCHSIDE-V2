@@ -334,6 +334,7 @@ export function SimulatorBoardShell({
     setReviewMode,
     storeVoiceBlob,
     removeVoiceBlob,
+    hasVoiceBlob,
     playVoiceNote,
     attachVoiceNoteToEvent,
     addVoiceMoment,
@@ -513,12 +514,29 @@ export function SimulatorBoardShell({
   }, [pendingScore]);
   const lastStatsEvent =
     statsEvents.length > 0 ? statsEvents[statsEvents.length - 1] : undefined;
+  // Only events whose voice clip has a non-empty blob reach the UI.
+  // Blob mutations are always paired with a state dispatch elsewhere in this
+  // hook, so `voiceMoments` / `statsEvents` changes trigger re-memoisation
+  // and the filter always sees a fresh snapshot.
   const eventsWithVoice = useMemo(
     () =>
       statsEvents
-        .filter((e) => e.voiceNoteId != null && e.voiceNoteId.length > 0)
+        .filter(
+          (e) =>
+            e.voiceNoteId != null &&
+            e.voiceNoteId.length > 0 &&
+            hasVoiceBlob(e.voiceNoteId),
+        )
         .slice(-6),
-    [statsEvents],
+    [statsEvents, hasVoiceBlob],
+  );
+
+  // Same integrity filter for free moments — orphan moments (blob removed but
+  // moment row kept) must never reach the UI. Depending on both `voiceMoments`
+  // and `pendingVoiceId` re-runs this when the pending clip is dropped.
+  const voiceMomentsForUI = useMemo(
+    () => voiceMoments.filter((m) => hasVoiceBlob(m.id)),
+    [voiceMoments, pendingVoiceId, hasVoiceBlob],
   );
   const voiceError = recorder.error ?? captureError;
 
@@ -531,17 +549,23 @@ export function SimulatorBoardShell({
   const onStartVoice = useCallback(async () => {
     setCaptureError(null);
     if (pendingVoiceId) {
+      // Paired removal — a blob is never gone without the matching moment
+      // also gone. Prevents orphan play buttons that resolve to no blob.
       removeVoiceBlob(pendingVoiceId);
+      removeVoiceMoment(pendingVoiceId);
       setPendingVoiceId(null);
     }
     await recorder.startRecording();
-  }, [pendingVoiceId, recorder, removeVoiceBlob]);
+  }, [pendingVoiceId, recorder, removeVoiceBlob, removeVoiceMoment]);
 
   const onStopVoice = useCallback(async () => {
     setCaptureError(null);
     const blob = await recorder.stopRecording();
-    // Only create a moment for a real, non-empty recording.
+    // Atomic creation: VALIDATE → ID → STORE BLOB → DISPATCH MOMENT.
+    // A voiceId is never minted until the blob is real and non-empty, so
+    // the UI can never observe a moment without its blob already present.
     if (!blob || blob.size === 0) {
+      console.error("VOICE STOP: invalid blob, no clip created");
       setCaptureError("Nothing captured");
       return;
     }
@@ -551,6 +575,7 @@ export function SimulatorBoardShell({
         ? c.randomUUID()
         : `vn-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     storeVoiceBlob(id, blob);
+    console.log("VOICE STORED", id, blob.size);
     // Lightweight moment: time-stamp the valid clip so HT/FT review can surface it.
     addVoiceMoment(id, Date.now(), resolveCurrentPeriodPhase());
     setPendingVoiceId(id);
@@ -656,7 +681,7 @@ export function SimulatorBoardShell({
         voiceError={voiceError}
         pendingVoiceId={pendingVoiceId}
         canAttachVoiceToLastEvent={Boolean(lastStatsEvent && pendingVoiceId)}
-        voiceMoments={voiceMoments}
+        voiceMoments={voiceMomentsForUI}
         eventsWithVoice={eventsWithVoice}
         voicePlaybackError={voicePlaybackError}
         onStartVoice={() => void onStartVoice()}

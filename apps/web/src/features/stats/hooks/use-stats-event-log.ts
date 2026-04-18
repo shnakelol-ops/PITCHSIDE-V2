@@ -270,6 +270,18 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
     voiceBlobsRef.current.delete(id);
   }, []);
 
+  /**
+   * True iff a non-empty blob is currently registered for this id.
+   * Used by the shell to filter UI lists so no voice clip is ever rendered
+   * without a playable source behind it. Reading a Ref here is intentional:
+   * every blob mutation is paired with a state dispatch, so the filter always
+   * runs against a fresh snapshot at render time.
+   */
+  const hasVoiceBlob = useCallback((id: string): boolean => {
+    const b = voiceBlobsRef.current.get(id);
+    return Boolean(b && b.size > 0);
+  }, []);
+
   const reportPlaybackError = useCallback((id: string, reason: string) => {
     setVoicePlaybackError({ id, reason });
     if (voicePlaybackErrorTimerRef.current) {
@@ -294,29 +306,34 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
       // MUST stay synchronous within the caller's click handler for browser
       // autoplay policy to treat this as a user-initiated gesture.
       console.log("PLAY PIPE hook", id);
+      console.log("PLAY REQUEST", id);
 
       const blob = voiceBlobsRef.current.get(id);
-      console.log("BLOB", blob);
+      console.log("LOOKUP RESULT", blob);
 
       // ── Pre-play validation ──
-      // Surface the single unified UI reason on any form of failure so the
-      // coach sees "Playback failed — unsupported format or empty clip"
-      // consistently rather than a variable internal string.
-      const FAIL_REASON = "unsupported format or empty clip";
+      // Distinct reasons:
+      //  - missing / empty blob → data-integrity failure (the recording never
+      //    produced a playable source for this id). UI message:
+      //    "Clip not available — recording failed".
+      //  - missing MIME / play() failure → format/playback failure. UI message:
+      //    "Playback failed — unsupported format or empty clip".
+      const DATA_FAIL = "Clip not available — recording failed";
+      const FORMAT_FAIL = "Playback failed — unsupported format or empty clip";
 
       if (!blob) {
-        console.warn("PLAY FAILED", id, "no blob");
-        reportPlaybackError(id, FAIL_REASON);
+        console.error("INVALID CLIP", id, "no blob");
+        reportPlaybackError(id, DATA_FAIL);
         return;
       }
       if (blob.size === 0) {
-        console.warn("PLAY FAILED", id, "empty blob");
-        reportPlaybackError(id, FAIL_REASON);
+        console.error("INVALID CLIP", id, "empty blob");
+        reportPlaybackError(id, DATA_FAIL);
         return;
       }
       if (!blob.type) {
         console.warn("PLAY FAILED", id, "no MIME type");
-        reportPlaybackError(id, FAIL_REASON);
+        reportPlaybackError(id, FORMAT_FAIL);
         return;
       }
 
@@ -374,7 +391,7 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
         // Only surface if playback never actually started; otherwise an
         // engine-level transient error shouldn't overwrite a working clip.
         if (audio.paused && audio.currentTime === 0) {
-          reportPlaybackError(id, FAIL_REASON);
+          reportPlaybackError(id, FORMAT_FAIL);
         }
       };
 
@@ -389,7 +406,7 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
         const reason =
           name === "NotAllowedError"
             ? "Autoplay blocked — tap again"
-            : FAIL_REASON;
+            : FORMAT_FAIL;
         reportPlaybackError(id, reason);
         cleanup();
       });
@@ -497,6 +514,7 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
     setReviewMode,
     storeVoiceBlob,
     removeVoiceBlob,
+    hasVoiceBlob,
     playVoiceNote,
     clearPlaybackError,
     attachVoiceNoteToEvent,
