@@ -12,6 +12,15 @@ import {
 
 import { normalizeMatchPeriod } from "@/components/match/MatchMode";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import type { PitchSport } from "@/config/pitchConfig";
 import {
   downloadPitchCanvasPng,
@@ -58,6 +67,11 @@ const STATS_REVIEW_CHIPS: { mode: StatsReviewMode; label: string }[] = [
   { mode: "live", label: "Live" },
   { mode: "halftime", label: "Review · HT" },
   { mode: "full_time", label: "Review · FT" },
+];
+const MOBILE_STATS_REVIEW_CHIPS: { mode: StatsReviewMode; label: string }[] = [
+  { mode: "live", label: "Live" },
+  { mode: "halftime", label: "HT" },
+  { mode: "full_time", label: "FT" },
 ];
 
 /** Visual-only pitch dot filter (review); does not change stored events. */
@@ -173,6 +187,8 @@ const btnShadowOn =
 
 const btnReviewOn =
   "!border !border-amber-500/28 !bg-[rgba(48,40,28,0.88)] !text-[rgba(255,251,235,0.96)] hover:!border-amber-400/35";
+const mobileActionBtnClass =
+  "min-h-9 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-2 py-1 text-[10px] text-stone-100 hover:border-white/25 hover:bg-[rgba(56,66,92,0.82)]";
 
 function reviewChipClass(active: boolean) {
   return cn(
@@ -225,6 +241,10 @@ function ToolRail({
  */
 function kindUiLabel(kind: string): string {
   return kind.replace(/_/g, " ").toLowerCase();
+}
+
+function formatMatchPhaseLabel(phase: string): string {
+  return phase.replace(/_/g, " ");
 }
 
 function matchMorphLabel(phase: SimulatorMatchPhase): string {
@@ -319,6 +339,7 @@ export function SimulatorBoardShell({
     null,
   );
   const [clearLogConfirmOpen, setClearLogConfirmOpen] = useState(false);
+  const [mobileStatsDrawerOpen, setMobileStatsDrawerOpen] = useState(false);
   const persistErrorClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -335,6 +356,12 @@ export function SimulatorBoardShell({
   useEffect(() => {
     if (surfaceMode !== "STATS") {
       setClearLogConfirmOpen(false);
+    }
+  }, [surfaceMode]);
+
+  useEffect(() => {
+    if (surfaceMode !== "STATS") {
+      setMobileStatsDrawerOpen(false);
     }
   }, [surfaceMode]);
 
@@ -537,6 +564,14 @@ export function SimulatorBoardShell({
     if (!pendingScore) return null;
     return `Tag ${kindUiLabel(pendingScore.kind)}`;
   }, [pendingScore]);
+  const activeScorerPlayer = useMemo(
+    () => statsPlayers.find((p) => p.id === activeScorerId) ?? null,
+    [activeScorerId, statsPlayers],
+  );
+  const recentStatsEvents = useMemo(
+    () => [...statsEvents].slice(-5).reverse(),
+    [statsEvents],
+  );
   const lastStatsEvent =
     statsEvents.length > 0 ? statsEvents[statsEvents.length - 1] : undefined;
   const eventsWithVoice = useMemo(
@@ -675,7 +710,12 @@ export function SimulatorBoardShell({
       </header>
 
       <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14">
-        <aside className="order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
+        <aside
+          className={cn(
+            "order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4",
+            surfaceMode === "STATS" && "hidden md:flex",
+          )}
+        >
           <ToolRail title="Transport" className="min-w-0 flex-1 lg:flex-none">
             {surfaceMode === "SIMULATOR" ? (
               <div
@@ -888,7 +928,398 @@ export function SimulatorBoardShell({
           </p>
         </div>
 
-        <aside className="order-3 flex shrink-0 flex-row flex-wrap gap-3.5 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
+        {surfaceMode === "STATS" ? (
+          <>
+            <div className="pointer-events-none absolute left-2 right-2 top-1 z-20 md:hidden">
+              <div className="pointer-events-auto rounded-xl border border-white/10 bg-[rgba(16,24,41,0.78)] px-3 py-2 backdrop-blur-md">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-300/90">
+                    {formatMatchPhaseLabel(matchPhase)}
+                  </p>
+                  <p className="text-[11px] font-semibold tabular-nums text-stone-100">
+                    {matchClockDisplay}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pointer-events-none absolute bottom-[max(0.9rem,env(safe-area-inset-bottom))] right-[max(0.65rem,env(safe-area-inset-right))] z-20 md:hidden">
+              <Drawer open={mobileStatsDrawerOpen} onOpenChange={setMobileStatsDrawerOpen}>
+                <DrawerTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="pointer-events-auto min-h-10 rounded-full border border-white/20 bg-[rgba(32,44,69,0.92)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-100 shadow-[0_12px_28px_-20px_rgba(0,0,0,0.9)]"
+                  >
+                    Controls
+                  </Button>
+                </DrawerTrigger>
+                <DrawerContent className="md:hidden">
+                  <DrawerHeader>
+                    <DrawerTitle>Stats controls</DrawerTitle>
+                    <DrawerDescription>
+                      Match workflow controls for phone view.
+                    </DrawerDescription>
+                  </DrawerHeader>
+                  <div className="max-h-[calc(82dvh-4.25rem)] space-y-2.5 overflow-y-auto px-3 pb-[max(0.9rem,env(safe-area-inset-bottom))] pt-3">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle>Match control</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2.5">
+                        <div className="rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-[10px] text-stone-200/80">
+                          {formatMatchPhaseLabel(matchPhase)} ·{" "}
+                          {matchClockRunning ? "running" : "stopped"}
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className={mobileActionBtnClass}
+                            disabled={matchPhase !== "pre_match"}
+                            onClick={onStartMatch}
+                          >
+                            Start
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className={mobileActionBtnClass}
+                            disabled={
+                              !matchClockRunning ||
+                              (matchPhase !== "first_half" && matchPhase !== "second_half")
+                            }
+                            onClick={onStopMatchClock}
+                          >
+                            Pause
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className={mobileActionBtnClass}
+                            disabled={
+                              matchClockRunning ||
+                              (matchPhase !== "first_half" && matchPhase !== "second_half")
+                            }
+                            onClick={onResumeMatchClock}
+                          >
+                            Resume
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className={mobileActionBtnClass}
+                            disabled={matchPhase !== "first_half"}
+                            onClick={onHalfTime}
+                          >
+                            HT
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className={mobileActionBtnClass}
+                            disabled={matchPhase !== "halftime"}
+                            onClick={onStartSecondHalf}
+                          >
+                            2H
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className={mobileActionBtnClass}
+                            disabled={matchPhase !== "second_half"}
+                            onClick={onFullTime}
+                          >
+                            FT
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle>Mode / review</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2.5">
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {MOBILE_STATS_REVIEW_CHIPS.map(({ mode, label }) => (
+                            <Button
+                              key={mode}
+                              type="button"
+                              variant="secondary"
+                              className={cn(
+                                mobileActionBtnClass,
+                                reviewMode === mode &&
+                                  "border-amber-300/55 bg-[rgba(98,80,46,0.72)] text-amber-50",
+                              )}
+                              aria-pressed={reviewMode === mode}
+                              onClick={() => setReviewMode(mode)}
+                            >
+                              {label}
+                            </Button>
+                          ))}
+                        </div>
+                        {!isStatsLive ? (
+                          <div className="space-y-1.5">
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-stone-300/85">
+                              Spatial filter
+                            </p>
+                            <div className="flex max-h-24 flex-wrap gap-1 overflow-y-auto pr-0.5">
+                              {PITCH_VIEW_FILTER_CHIPS.map(({ id, label }) => (
+                                <Button
+                                  key={id}
+                                  type="button"
+                                  variant="secondary"
+                                  className={cn(
+                                    "min-h-8 rounded-md px-2 py-1 text-[9px]",
+                                    pitchMarkerViewFilter === id &&
+                                      "border-amber-300/55 bg-[rgba(98,80,46,0.72)] text-amber-50",
+                                  )}
+                                  aria-pressed={pitchMarkerViewFilter === id}
+                                  onClick={() => setPitchMarkerViewFilter(id)}
+                                >
+                                  {label}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle>Scorer</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2.5">
+                        <p className="text-[10px] text-stone-200/80">
+                          Active scorer:{" "}
+                          <span className="font-semibold text-stone-100">
+                            {activeScorerPlayer
+                              ? `#${activeScorerPlayer.number} ${activeScorerPlayer.name}`
+                              : "No player"}
+                          </span>
+                        </p>
+                        {pendingScoreLabel ? (
+                          <p className="rounded-md border border-amber-300/40 bg-amber-500/15 px-2 py-1 text-[9px] font-semibold text-amber-100/95">
+                            {pendingScoreLabel}
+                          </p>
+                        ) : null}
+                        <div className="grid max-h-36 grid-cols-2 gap-1.5 overflow-y-auto pr-0.5">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className={cn(
+                              mobileActionBtnClass,
+                              activeScorerId == null &&
+                                "border-emerald-300/60 bg-emerald-600/25 text-emerald-50",
+                            )}
+                            aria-pressed={activeScorerId == null}
+                            onClick={() => setActiveScorer(null)}
+                          >
+                            No player
+                          </Button>
+                          {statsPlayers.map((p) => (
+                            <Button
+                              key={p.id}
+                              type="button"
+                              variant="secondary"
+                              className={cn(
+                                mobileActionBtnClass,
+                                activeScorerId === p.id &&
+                                  "border-emerald-300/60 bg-emerald-600/25 text-emerald-50",
+                              )}
+                              aria-pressed={activeScorerId === p.id}
+                              onClick={() => setActiveScorer(p.id)}
+                            >
+                              #{p.number} {p.name}
+                            </Button>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle>Voice</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <StatsVoiceStrip
+                          allowRecording={canStatsPitchLog}
+                          isRecording={recorder.isRecording}
+                          recordError={voiceError}
+                          onStartRecord={() => void onStartVoice()}
+                          onStopRecord={() => void onStopVoice()}
+                          pendingVoiceId={pendingVoiceId}
+                          canAttachToLastEvent={Boolean(lastStatsEvent && pendingVoiceId)}
+                          onAttachToLastEvent={onAttachVoiceToLastEvent}
+                          onAttachAsMoment={onAttachVoiceAsMoment}
+                          onDiscardPending={onDiscardPendingVoice}
+                          voiceMomentIds={voiceMomentIds}
+                          eventsWithVoice={eventsWithVoice}
+                          onPlay={playVoiceNote}
+                        />
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle>Recent events</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {recentStatsEvents.length === 0 ? (
+                          <p className="text-[10px] text-stone-300/75">No events logged yet.</p>
+                        ) : (
+                          <ul className="space-y-1.5">
+                            {recentStatsEvents.map((event) => {
+                              const scorer =
+                                event.playerId != null
+                                  ? statsPlayers.find((p) => p.id === event.playerId) ?? null
+                                  : null;
+                              return (
+                                <li
+                                  key={event.id}
+                                  className="rounded-md border border-white/10 bg-black/20 px-2 py-1.5 text-[9px] text-stone-200/85"
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="font-semibold text-stone-100/95">
+                                      {kindUiLabel(event.kind)}
+                                    </span>
+                                    <span className="uppercase text-stone-300/70">
+                                      {event.periodPhase.replace(/_/g, " ")}
+                                    </span>
+                                  </div>
+                                  {scorer ? (
+                                    <p className="mt-0.5 text-[8.5px] text-stone-300/80">
+                                      #{scorer.number} {scorer.name}
+                                    </p>
+                                  ) : null}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                        <p className="text-[9px] tabular-nums text-stone-300/65">
+                          Logged: {statsEventsForReviewWindow.length}
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle>Quick actions</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2.5">
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className={mobileActionBtnClass}
+                            disabled={!canStatsPitchLog}
+                            onClick={() => clearArm()}
+                          >
+                            Clear
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className={mobileActionBtnClass}
+                            disabled={!canStatsPitchLog || statsEvents.length === 0}
+                            onClick={() => undoLastEvent()}
+                          >
+                            Undo
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className={mobileActionBtnClass}
+                            disabled={statsEvents.length === 0}
+                            onClick={() => resetEvents()}
+                          >
+                            Reset
+                          </Button>
+                        </div>
+                        {statsPersistError ? (
+                          <p className="rounded border border-red-500/35 bg-red-950/40 px-2 py-1 text-[9px] text-red-100/95">
+                            Save failed: {statsPersistError}
+                          </p>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle>More / context</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2.5">
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-stone-300/85">
+                            Surface
+                          </p>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className={mobileActionBtnClass}
+                              aria-pressed={false}
+                              onClick={() => setMode("SIMULATOR")}
+                            >
+                              Sim
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className={cn(
+                                mobileActionBtnClass,
+                                "border-emerald-300/60 bg-emerald-600/25 text-emerald-50",
+                              )}
+                              aria-pressed
+                              onClick={() => setMode("STATS")}
+                            >
+                              Stats
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-stone-300/85">
+                            Pitch
+                          </p>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {SPORT_OPTIONS.map((opt) => (
+                              <Button
+                                key={opt.id}
+                                type="button"
+                                variant="secondary"
+                                className={cn(
+                                  mobileActionBtnClass,
+                                  sport === opt.id &&
+                                    "border-emerald-300/60 bg-emerald-600/25 text-emerald-50",
+                                )}
+                                aria-pressed={sport === opt.id}
+                                onClick={() => setSport(opt.id)}
+                              >
+                                {opt.label}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </DrawerContent>
+              </Drawer>
+            </div>
+          </>
+        ) : null}
+
+        <aside
+          className={cn(
+            "order-3 flex shrink-0 flex-row flex-wrap gap-3.5 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4",
+            surfaceMode === "STATS" && "hidden md:flex",
+          )}
+        >
           <ToolRail title="Mode" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
             <div className="flex flex-col gap-2" role="group" aria-label="Canvas mode">
               <Button
