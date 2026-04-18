@@ -699,7 +699,7 @@ export function SimulatorBoardShell({
 
   return (
     <div
-      className="relative flex h-full min-h-0 flex-col overflow-hidden text-stone-800"
+      className="relative flex h-[100dvh] min-h-0 flex-col overflow-hidden text-stone-800"
       style={grassFieldStyle}
     >
       {/* Minimal grain only (~2.8%) — enough to kill “flat UI”, not noisy. */}
@@ -725,7 +725,12 @@ export function SimulatorBoardShell({
         </div>
       </header>
 
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 md:flex lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14">
+      <main
+        className={cn(
+          "relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 md:flex lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14",
+          surfaceMode === "STATS" && "gap-0 p-0 sm:gap-0 sm:p-0 md:gap-5 md:p-6",
+        )}
+      >
         <aside
           className={cn(
             "order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4",
@@ -836,7 +841,14 @@ export function SimulatorBoardShell({
           </ToolRail>
         </aside>
 
-        <div className="order-1 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center lg:order-2 lg:max-w-[min(96vw,74rem)]">
+        <div
+          className={cn(
+            "order-1 flex min-h-0 min-w-0 flex-1 flex-col lg:order-2 lg:max-w-[min(96vw,74rem)]",
+            surfaceMode === "STATS"
+              ? "items-stretch justify-start md:items-center md:justify-center"
+              : "items-center justify-center",
+          )}
+        >
           <div className="relative w-full max-w-full px-1 sm:px-2">
             {/* Soft lift behind pitch — no hard frame ring */}
             <div
@@ -947,7 +959,7 @@ export function SimulatorBoardShell({
         {surfaceMode === "STATS" ? (
           <>
             <div className="pointer-events-none absolute inset-0 z-20 flex min-h-0 flex-col overflow-hidden md:hidden">
-              <div className="min-h-0 flex-1">
+              <div className="relative flex-1 min-h-0 w-full overflow-hidden">
                 <SimulatorPixiSurface
                   ref={surfaceRef}
                   sport={sport}
@@ -959,7 +971,7 @@ export function SimulatorBoardShell({
                   onStatsPitchTap={onStatsPitchTapGuarded}
                   statsReviewMode={reviewMode}
                   statsPitchInteractive={canStatsPitchLog}
-                  className="h-full w-full !rounded-none !border-0 !bg-transparent !shadow-none !ring-0"
+                  className="h-full w-full !mx-0 !max-w-none !rounded-none !border-0 !bg-transparent !shadow-none !ring-0"
                 />
               </div>
 
