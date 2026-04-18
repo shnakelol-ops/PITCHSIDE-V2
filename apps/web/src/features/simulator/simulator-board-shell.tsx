@@ -692,7 +692,7 @@ export function SimulatorBoardShell({
     (kind: StatsV1EventKind) => {
       if (!canStatsPitchLog) return;
       armKind(kind);
-      logTap({ nx: 0.5, ny: 0.5, atMs: Date.now() });
+      logTap({ nx: 0.5, ny: 0.5, atMs: Date.now(), stageX: 0, stageY: 0 });
     },
     [armKind, canStatsPitchLog, logTap],
   );
