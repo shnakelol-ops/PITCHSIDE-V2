@@ -946,8 +946,8 @@ export function SimulatorBoardShell({
 
         {surfaceMode === "STATS" ? (
           <>
-            <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden md:hidden">
-              <div className="absolute inset-0">
+            <div className="pointer-events-none absolute inset-0 z-20 flex min-h-0 flex-col overflow-hidden md:hidden">
+              <div className="min-h-0 flex-1">
                 <SimulatorPixiSurface
                   ref={surfaceRef}
                   sport={sport}
@@ -959,7 +959,7 @@ export function SimulatorBoardShell({
                   onStatsPitchTap={onStatsPitchTapGuarded}
                   statsReviewMode={reviewMode}
                   statsPitchInteractive={canStatsPitchLog}
-                  className="h-[calc(100svh-5.25rem-env(safe-area-inset-bottom))] w-full !rounded-none !border-0 !bg-transparent !shadow-none !ring-0"
+                  className="h-full w-full !rounded-none !border-0 !bg-transparent !shadow-none !ring-0"
                 />
               </div>
 
@@ -1144,7 +1144,7 @@ export function SimulatorBoardShell({
                 </Drawer>
               </aside>
 
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-2 pb-[max(0.45rem,env(safe-area-inset-bottom))]">
+              <div className="pointer-events-none z-30 flex-shrink-0 px-2 pb-[max(0.45rem,env(safe-area-inset-bottom))]">
                 <div className="simulator-mobile-event-bar pointer-events-auto flex gap-1.5 overflow-x-auto rounded-xl border border-white/20 bg-[rgba(19,27,44,0.88)] px-2 py-2 backdrop-blur-md">
                   {MOBILE_PRIMARY_EVENT_KINDS.map((kind) => (
                     <Button
