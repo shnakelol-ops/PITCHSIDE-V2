@@ -225,7 +225,7 @@ export function StatsLaunchShell(props: StatsLaunchShellProps) {
       voiceError={voiceError}
       pendingVoiceId={pendingVoiceId}
       canAttachVoiceToLastEvent={canAttachVoiceToLastEvent}
-      canRecordVoice={canStatsPitchLog}
+      canRecordVoice={matchPhase !== "full_time"}
       voiceMomentIds={voiceMomentIds}
       eventsWithVoice={eventsWithVoice}
       onStartVoice={onStartVoice}

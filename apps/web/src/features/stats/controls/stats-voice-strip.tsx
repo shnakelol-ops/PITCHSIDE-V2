@@ -112,7 +112,7 @@ export function StatsVoiceStrip({
               )
             ) : (
               <span className="text-[8px] text-emerald-100/45">
-                Recording locked outside live match phase
+                Match over — recording locked
               </span>
             )}
           </div>

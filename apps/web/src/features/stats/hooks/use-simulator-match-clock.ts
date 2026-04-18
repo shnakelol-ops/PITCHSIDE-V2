@@ -59,12 +59,21 @@ export function useSimulatorMatchClock(active: boolean) {
       lastTickRef.current = null;
       return;
     }
+    // Anchor on first tick, then advance the anchor by whole seconds consumed
+    // so sub-second remainder carries across 250 ms ticks and the counter
+    // actually increments once per real-world second.
+    if (lastTickRef.current == null) {
+      lastTickRef.current = Date.now();
+    }
     const id = window.setInterval(() => {
       const now = Date.now();
       const prev = lastTickRef.current ?? now;
-      const deltaSec = Math.max(0, Math.floor((now - prev) / 1000));
-      lastTickRef.current = now;
+      const deltaMs = now - prev;
+      const deltaSec = Math.max(0, Math.floor(deltaMs / 1000));
       if (deltaSec <= 0) return;
+      // Advance the anchor by exactly the whole seconds we consumed, keeping the
+      // remainder for the next tick. Do NOT set `lastTickRef.current = now`.
+      lastTickRef.current = prev + deltaSec * 1000;
       if (phase === "first_half") {
         setFirstHalfSec((t) => t + deltaSec);
       } else {
