@@ -8,7 +8,10 @@ import { StatsRecentEventsCard } from "@src/features/stats/controls/stats-recent
 import { StatsScorerStrip } from "@src/features/stats/controls/stats-scorer-strip";
 import { StatsVoiceStrip } from "@src/features/stats/controls/stats-voice-strip";
 import { StatsVoiceReviewCard } from "@src/features/stats/controls/stats-voice-review-card";
-import type { StatsVoiceMoment } from "@src/features/stats/hooks/use-stats-event-log";
+import type {
+  StatsVoiceMoment,
+  StatsVoicePlaybackError,
+} from "@src/features/stats/hooks/use-stats-event-log";
 import type { StatsLoggedEvent } from "@src/features/stats/model/stats-logged-event";
 import {
   STATS_V1_EVENT_KINDS,
@@ -126,6 +129,7 @@ export type StatsRightRailProps = {
   canRecordVoice: boolean;
   voiceMoments: readonly StatsVoiceMoment[];
   eventsWithVoice: readonly StatsLoggedEvent[];
+  voicePlaybackError: StatsVoicePlaybackError | null;
   onStartVoice: () => void;
   onStopVoice: () => void;
   onAttachVoiceToLastEvent: () => void;
@@ -170,6 +174,7 @@ export function StatsRightRail({
   canRecordVoice,
   voiceMoments,
   eventsWithVoice,
+  voicePlaybackError,
   onStartVoice,
   onStopVoice,
   onAttachVoiceToLastEvent,
@@ -218,6 +223,7 @@ export function StatsRightRail({
           onDiscardPending={onDiscardPendingVoice}
           voiceMoments={voiceMoments}
           eventsWithVoice={eventsWithVoice}
+          playbackError={voicePlaybackError}
           onPlay={onPlayVoice}
         />
       </RailSection>
@@ -231,6 +237,7 @@ export function StatsRightRail({
           reviewMode={reviewMode}
           voiceMoments={voiceMoments}
           eventsWithVoice={eventsWithVoice}
+          playbackError={voicePlaybackError}
           onPlay={onPlayVoice}
         />
       ) : null}

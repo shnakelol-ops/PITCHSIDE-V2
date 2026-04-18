@@ -1,9 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import { Play } from "lucide-react";
+import { Play, AlertTriangle } from "lucide-react";
 
-import type { StatsVoiceMoment } from "@src/features/stats/hooks/use-stats-event-log";
+import type {
+  StatsVoiceMoment,
+  StatsVoicePlaybackError,
+} from "@src/features/stats/hooks/use-stats-event-log";
 import type {
   StatsLoggedEvent,
   StatsPeriodPhase,
@@ -17,6 +20,8 @@ export type StatsVoiceReviewCardProps = {
   voiceMoments: readonly StatsVoiceMoment[];
   /** Events that carry an attached voice clip. */
   eventsWithVoice: readonly StatsLoggedEvent[];
+  /** Most recent playback failure (auto-clears). Flags the failing row. */
+  playbackError?: StatsVoicePlaybackError | null;
   onPlay: (voiceNoteId: string) => void;
 };
 
@@ -94,6 +99,7 @@ export function StatsVoiceReviewCard({
   reviewMode,
   voiceMoments,
   eventsWithVoice,
+  playbackError = null,
   onPlay,
 }: StatsVoiceReviewCardProps) {
   const rows = useMemo<Row[]>(() => {
@@ -170,42 +176,82 @@ export function StatsVoiceReviewCard({
           </p>
         ) : (
           <ul className="flex flex-col gap-1" role="list">
-            {rows.map((r) => (
-              <li key={`${r.kind}:${r.voiceNoteId}`}>
-                <button
-                  type="button"
-                  onClick={() => onPlay(r.voiceNoteId)}
-                  className={cn(
-                    "group flex w-full items-center gap-2 rounded-[8px] border border-white/[0.06] bg-white/[0.015] px-2 py-1.5 text-left transition-colors",
-                    "hover:border-white/[0.14] hover:bg-white/[0.05]",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(90,167,255,0.4)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F12]",
-                  )}
-                  aria-label={`Play voice clip at ${formatHmm(r.timestampMs)}`}
-                >
-                  <span
+            {rows.map((r) => {
+              const failed = playbackError?.id === r.voiceNoteId;
+              return (
+                <li key={`${r.kind}:${r.voiceNoteId}`}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof console !== "undefined") {
+                        console.log("[voice] tap review", r.kind, r.voiceNoteId);
+                      }
+                      onPlay(r.voiceNoteId);
+                    }}
                     className={cn(
-                      "inline-flex size-6 shrink-0 items-center justify-center rounded-full",
-                      r.kind === "event"
-                        ? "bg-[rgba(90,167,255,0.14)] text-[rgba(188,214,246,0.98)]"
-                        : "bg-[rgba(167,139,250,0.14)] text-violet-100/95",
+                      "group flex w-full items-center gap-2 rounded-[8px] border px-2 py-1.5 text-left transition-colors",
+                      failed
+                        ? "border-rose-400/40 bg-rose-500/10 hover:border-rose-400/60 hover:bg-rose-500/15"
+                        : "border-white/[0.06] bg-white/[0.015] hover:border-white/[0.14] hover:bg-white/[0.05]",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(90,167,255,0.4)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F12]",
                     )}
+                    aria-label={
+                      failed
+                        ? `Voice clip at ${formatHmm(r.timestampMs)} failed to play: ${playbackError?.reason ?? "unknown"}`
+                        : `Play voice clip at ${formatHmm(r.timestampMs)}`
+                    }
+                    title={failed ? playbackError?.reason ?? undefined : undefined}
                   >
-                    <Play className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-                  </span>
-                  <span className="flex min-w-0 flex-1 items-center gap-2">
-                    <span className="inline-flex h-4 min-w-[1.5rem] shrink-0 items-center justify-center rounded-[4px] border border-white/[0.08] bg-black/30 px-1 text-[8.5px] font-bold uppercase tracking-[0.12em] text-slate-300/85">
-                      {phaseBadge(r.periodPhase)}
+                    <span
+                      className={cn(
+                        "inline-flex size-6 shrink-0 items-center justify-center rounded-full",
+                        failed
+                          ? "bg-[rgba(244,114,114,0.18)] text-rose-100/95"
+                          : r.kind === "event"
+                            ? "bg-[rgba(90,167,255,0.14)] text-[rgba(188,214,246,0.98)]"
+                            : "bg-[rgba(167,139,250,0.14)] text-violet-100/95",
+                      )}
+                    >
+                      {failed ? (
+                        <AlertTriangle
+                          className="h-3 w-3"
+                          strokeWidth={2.25}
+                          aria-hidden
+                        />
+                      ) : (
+                        <Play className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                      )}
                     </span>
-                    <span className="truncate text-[10.5px] font-semibold text-slate-100/95">
-                      {r.eventLabel ?? "Moment"}
+                    <span className="flex min-w-0 flex-1 items-center gap-2">
+                      <span className="inline-flex h-4 min-w-[1.5rem] shrink-0 items-center justify-center rounded-[4px] border border-white/[0.08] bg-black/30 px-1 text-[8.5px] font-bold uppercase tracking-[0.12em] text-slate-300/85">
+                        {phaseBadge(r.periodPhase)}
+                      </span>
+                      <span
+                        className={cn(
+                          "truncate text-[10.5px] font-semibold",
+                          failed ? "text-rose-100/95" : "text-slate-100/95",
+                        )}
+                      >
+                        {r.eventLabel ?? "Moment"}
+                        {failed ? (
+                          <span className="ml-1 font-normal text-rose-200/80">
+                            · {playbackError?.reason}
+                          </span>
+                        ) : null}
+                      </span>
                     </span>
-                  </span>
-                  <span className="shrink-0 font-mono text-[10px] tabular-nums text-slate-400/85">
-                    {formatHmm(r.timestampMs)}
-                  </span>
-                </button>
-              </li>
-            ))}
+                    <span
+                      className={cn(
+                        "shrink-0 font-mono text-[10px] tabular-nums",
+                        failed ? "text-rose-200/85" : "text-slate-400/85",
+                      )}
+                    >
+                      {formatHmm(r.timestampMs)}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

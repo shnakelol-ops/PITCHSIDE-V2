@@ -18,6 +18,7 @@ import {
 import type {
   StatsArmSelection,
   StatsVoiceMoment,
+  StatsVoicePlaybackError,
 } from "@src/features/stats/hooks/use-stats-event-log";
 import type { StatsContextTag } from "@src/features/stats/model/stats-more-tags";
 import type { SimulatorMatchPhase } from "@src/features/stats/hooks/use-simulator-match-clock";
@@ -92,6 +93,8 @@ export type StatsLaunchShellProps = {
   canAttachVoiceToLastEvent: boolean;
   voiceMoments: readonly StatsVoiceMoment[];
   eventsWithVoice: readonly StatsLoggedEvent[];
+  /** Latest playback failure (auto-clears). Renders a compact inline marker on the failing clip. */
+  voicePlaybackError: StatsVoicePlaybackError | null;
   onStartVoice: () => void;
   onStopVoice: () => void;
   onAttachVoiceToLastEvent: () => void;
@@ -186,6 +189,7 @@ export function StatsLaunchShell(props: StatsLaunchShellProps) {
     canAttachVoiceToLastEvent,
     voiceMoments,
     eventsWithVoice,
+    voicePlaybackError,
     onStartVoice,
     onStopVoice,
     onAttachVoiceToLastEvent,
@@ -236,6 +240,7 @@ export function StatsLaunchShell(props: StatsLaunchShellProps) {
       canRecordVoice={matchPhase !== "full_time"}
       voiceMoments={voiceMoments}
       eventsWithVoice={eventsWithVoice}
+      voicePlaybackError={voicePlaybackError}
       onStartVoice={onStartVoice}
       onStopVoice={onStopVoice}
       onAttachVoiceToLastEvent={onAttachVoiceToLastEvent}

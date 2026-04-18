@@ -2,9 +2,20 @@
 
 import { useEffect, useState } from "react";
 
-import type { StatsVoiceMoment } from "@src/features/stats/hooks/use-stats-event-log";
+import type {
+  StatsVoiceMoment,
+  StatsVoicePlaybackError,
+} from "@src/features/stats/hooks/use-stats-event-log";
 import type { StatsLoggedEvent } from "@src/features/stats/model/stats-logged-event";
 import { cn } from "@pitchside/utils";
+
+/** Small helper: a tap log is emitted on every play click so the UI→callback
+ *  wiring can be proven in the field without devtools. */
+function logVoiceTap(id: string, source: "moment" | "event") {
+  if (typeof console !== "undefined") {
+    console.log("[voice] tap", source, id);
+  }
+}
 
 function eventShortLabel(e: StatsLoggedEvent): string {
   return e.kind.replace(/_/g, " ").toLowerCase().slice(0, 12);
@@ -32,6 +43,8 @@ export type StatsVoiceStripProps = {
   onDiscardPending: () => void;
   voiceMoments: readonly StatsVoiceMoment[];
   eventsWithVoice: readonly StatsLoggedEvent[];
+  /** Most recent playback failure (auto-clears). Used to flag the failing clip. */
+  playbackError?: StatsVoicePlaybackError | null;
   onPlay: (voiceNoteId: string) => void;
 };
 
@@ -51,6 +64,7 @@ export function StatsVoiceStrip({
   onDiscardPending,
   voiceMoments,
   eventsWithVoice,
+  playbackError = null,
   onPlay,
 }: StatsVoiceStripProps) {
   const [tab, setTab] = useState<"record" | "playback">(
@@ -170,20 +184,31 @@ export function StatsVoiceStrip({
               <span className="text-[8px] font-semibold uppercase text-emerald-100/50">
                 Moments
               </span>
-              {voiceMoments.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  className="inline-flex items-center gap-1 rounded border border-violet-400/35 bg-violet-500/10 px-2 py-0.5 text-[9px] font-semibold text-violet-100/95 hover:bg-violet-500/20"
-                  title={m.id}
-                  onClick={() => onPlay(m.id)}
-                >
-                  <span aria-hidden>▶</span>
-                  <span className="font-mono tabular-nums">
-                    {formatHmm(m.timestampMs)}
-                  </span>
-                </button>
-              ))}
+              {voiceMoments.map((m) => {
+                const failed = playbackError?.id === m.id;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[9px] font-semibold",
+                      failed
+                        ? "border-rose-400/50 bg-rose-500/15 text-rose-100/95 hover:bg-rose-500/25"
+                        : "border-violet-400/35 bg-violet-500/10 text-violet-100/95 hover:bg-violet-500/20",
+                    )}
+                    title={failed ? playbackError?.reason ?? m.id : m.id}
+                    onClick={() => {
+                      logVoiceTap(m.id, "moment");
+                      onPlay(m.id);
+                    }}
+                  >
+                    <span aria-hidden>{failed ? "⚠" : "▶"}</span>
+                    <span className="font-mono tabular-nums">
+                      {formatHmm(m.timestampMs)}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           ) : null}
           {eventsWithVoice.length > 0 ? (
@@ -191,26 +216,52 @@ export function StatsVoiceStrip({
               <span className="text-[8px] font-semibold uppercase text-emerald-100/50">
                 On events
               </span>
-              {eventsWithVoice.map((e) => (
-                <button
-                  key={e.id}
-                  type="button"
-                  className="inline-flex max-w-[9rem] items-center gap-1 truncate rounded border border-sky-400/35 bg-sky-500/10 px-2 py-0.5 text-[9px] font-semibold text-sky-100/95 hover:bg-sky-500/20"
-                  title={e.id}
-                  onClick={() => e.voiceNoteId && onPlay(e.voiceNoteId)}
-                >
-                  <span aria-hidden>▶</span>
-                  <span className="truncate">{eventShortLabel(e)}</span>
-                  <span className="font-mono tabular-nums text-sky-100/70">
-                    {formatHmm(e.timestampMs)}
-                  </span>
-                </button>
-              ))}
+              {eventsWithVoice.map((e) => {
+                const vid = e.voiceNoteId;
+                const failed = vid != null && playbackError?.id === vid;
+                return (
+                  <button
+                    key={e.id}
+                    type="button"
+                    className={cn(
+                      "inline-flex max-w-[9rem] items-center gap-1 truncate rounded border px-2 py-0.5 text-[9px] font-semibold",
+                      failed
+                        ? "border-rose-400/50 bg-rose-500/15 text-rose-100/95 hover:bg-rose-500/25"
+                        : "border-sky-400/35 bg-sky-500/10 text-sky-100/95 hover:bg-sky-500/20",
+                    )}
+                    title={failed ? playbackError?.reason ?? e.id : e.id}
+                    onClick={() => {
+                      if (!vid) return;
+                      logVoiceTap(vid, "event");
+                      onPlay(vid);
+                    }}
+                  >
+                    <span aria-hidden>{failed ? "⚠" : "▶"}</span>
+                    <span className="truncate">{eventShortLabel(e)}</span>
+                    <span
+                      className={cn(
+                        "font-mono tabular-nums",
+                        failed ? "text-rose-100/75" : "text-sky-100/70",
+                      )}
+                    >
+                      {formatHmm(e.timestampMs)}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           ) : null}
           {voiceMoments.length === 0 && eventsWithVoice.length === 0 ? (
             <p className="text-[9px] leading-snug text-emerald-100/55">
               No voice notes yet. Record a clip to build up review material.
+            </p>
+          ) : null}
+          {playbackError ? (
+            <p
+              role="alert"
+              className="text-[9px] leading-snug text-rose-200/90"
+            >
+              Can't play clip — {playbackError.reason}
             </p>
           ) : null}
         </div>

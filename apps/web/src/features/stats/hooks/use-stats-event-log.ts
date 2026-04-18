@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import type { StatsPitchTapPayload } from "@src/features/stats/types/stats-pitch-tap";
 import {
@@ -36,6 +36,18 @@ export type StatsVoiceMoment = {
   timestampMs: number;
   periodPhase: StatsPeriodPhase;
 };
+
+/**
+ * Surfaced playback failure (id + short reason). Consumers render a compact
+ * inline marker on the failing clip so a dead play button is never silent.
+ * Auto-clears after a short window so one transient failure doesn't latch.
+ */
+export type StatsVoicePlaybackError = {
+  id: string;
+  reason: string;
+};
+
+const PLAYBACK_ERROR_AUTOCLEAR_MS = 6000;
 
 type State = {
   events: StatsLoggedEvent[];
@@ -202,6 +214,11 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
   const voiceBlobsRef = useRef<Map<string, Blob>>(new Map());
   const voicePlaybackRef = useRef<HTMLAudioElement | null>(null);
   const voicePlaybackUrlRef = useRef<string | null>(null);
+  const [voicePlaybackError, setVoicePlaybackError] =
+    useState<StatsVoicePlaybackError | null>(null);
+  const voicePlaybackErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const skipNextPersistRef = useRef(true);
   const onStatsEventLoggedRef = useRef(options?.onStatsEventLogged);
   onStatsEventLoggedRef.current = options?.onStatsEventLogged;
@@ -253,86 +270,137 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
     voiceBlobsRef.current.delete(id);
   }, []);
 
-  const playVoiceNote = useCallback((id: string) => {
-    // Direct, user-gesture playback path. Keep everything synchronous within
-    // the click handler so browser autoplay policy treats this as user-initiated.
-    const blob = voiceBlobsRef.current.get(id);
-    // Honest logging — explicitly requested for field diagnosis. Safe in prod:
-    // one short line per tap, no PII, no blob contents.
-    if (typeof console !== "undefined") {
-      console.log("[voice] Playing voice", id);
-      console.log(
-        "[voice] Blob exists:",
-        Boolean(blob),
-        blob ? `${blob.size}B ${blob.type || "no-mime"}` : "(missing)",
-      );
+  const reportPlaybackError = useCallback((id: string, reason: string) => {
+    setVoicePlaybackError({ id, reason });
+    if (voicePlaybackErrorTimerRef.current) {
+      clearTimeout(voicePlaybackErrorTimerRef.current);
     }
-    if (!blob) {
-      console.warn("[voice] No blob registered for id — cannot play", id);
-      return;
-    }
-
-    // Stop any currently-playing clip before starting the next one.
-    const prevAudio = voicePlaybackRef.current;
-    const prevUrl = voicePlaybackUrlRef.current;
-    voicePlaybackRef.current = null;
-    voicePlaybackUrlRef.current = null;
-    if (prevAudio) {
-      try {
-        prevAudio.pause();
-      } catch {
-        /* ignore */
-      }
-    }
-    if (prevUrl) {
-      try {
-        URL.revokeObjectURL(prevUrl);
-      } catch {
-        /* ignore */
-      }
-    }
-
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    audio.preload = "auto";
-    voicePlaybackUrlRef.current = url;
-    voicePlaybackRef.current = audio;
-
-    // Revoke only when playback has ended naturally, NOT on the 'error' event
-    // (some browsers fire a recoverable error during blob-url media loading;
-    // revoking there kills playback before it can start).
-    const cleanup = () => {
-      if (voicePlaybackUrlRef.current === url) {
-        voicePlaybackUrlRef.current = null;
-        voicePlaybackRef.current = null;
-      }
-      try {
-        URL.revokeObjectURL(url);
-      } catch {
-        /* ignore */
-      }
-    };
-
-    audio.addEventListener("ended", cleanup, { once: true });
-    audio.addEventListener("error", () => {
-      // Log honestly; don't revoke — play() may still succeed on some engines.
-      console.error(
-        "[voice] Audio element error for",
-        id,
-        audio.error?.code,
-        audio.error?.message,
-      );
-    });
-
-    const started = audio.play();
-    if (started && typeof (started as Promise<void>).then === "function") {
-      (started as Promise<void>).catch((err) => {
-        // Surface rejection so silent failures become visible in field conditions.
-        console.error("[voice] play() rejected for", id, err);
-        cleanup();
-      });
-    }
+    voicePlaybackErrorTimerRef.current = setTimeout(() => {
+      setVoicePlaybackError((cur) => (cur && cur.id === id ? null : cur));
+      voicePlaybackErrorTimerRef.current = null;
+    }, PLAYBACK_ERROR_AUTOCLEAR_MS);
   }, []);
+
+  const clearPlaybackError = useCallback(() => {
+    if (voicePlaybackErrorTimerRef.current) {
+      clearTimeout(voicePlaybackErrorTimerRef.current);
+      voicePlaybackErrorTimerRef.current = null;
+    }
+    setVoicePlaybackError(null);
+  }, []);
+
+  const playVoiceNote = useCallback(
+    (id: string) => {
+      // Direct, user-gesture playback path. Keep everything synchronous within
+      // the click handler so browser autoplay policy treats this as user-initiated.
+      const blob = voiceBlobsRef.current.get(id);
+      // Honest logging — explicitly requested for field diagnosis. Safe in prod:
+      // one short line per tap, no PII, no blob contents.
+      if (typeof console !== "undefined") {
+        console.log("[voice] Playing voice", id);
+        console.log(
+          "[voice] Blob exists:",
+          Boolean(blob),
+          blob ? `${blob.size}B ${blob.type || "no-mime"}` : "(missing)",
+        );
+      }
+      if (!blob) {
+        console.warn("[voice] No blob registered for id — cannot play", id);
+        reportPlaybackError(id, "Clip not available");
+        return;
+      }
+
+      // Clear any stale error banner — we're attempting a fresh play.
+      setVoicePlaybackError((cur) => (cur && cur.id === id ? null : cur));
+
+      // Stop any currently-playing clip before starting the next one.
+      const prevAudio = voicePlaybackRef.current;
+      const prevUrl = voicePlaybackUrlRef.current;
+      voicePlaybackRef.current = null;
+      voicePlaybackUrlRef.current = null;
+      if (prevAudio) {
+        try {
+          prevAudio.pause();
+          prevAudio.src = "";
+        } catch {
+          /* ignore */
+        }
+      }
+      if (prevUrl) {
+        try {
+          URL.revokeObjectURL(prevUrl);
+        } catch {
+          /* ignore */
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
+      // Construct, then set src + load() explicitly. Belt-and-braces against
+      // engines (notably iOS Safari) where the constructor-bound src hasn't
+      // fully committed before play() is invoked in the same microtask.
+      const audio = new Audio();
+      audio.preload = "auto";
+      audio.crossOrigin = "anonymous";
+      audio.src = url;
+      voicePlaybackUrlRef.current = url;
+      voicePlaybackRef.current = audio;
+
+      // Revoke only when playback has ended naturally, NOT on the 'error' event
+      // (some browsers fire a recoverable error during blob-url media loading;
+      // revoking there kills playback before it can start).
+      const cleanup = () => {
+        if (voicePlaybackUrlRef.current === url) {
+          voicePlaybackUrlRef.current = null;
+          voicePlaybackRef.current = null;
+        }
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          /* ignore */
+        }
+      };
+
+      audio.addEventListener("ended", cleanup, { once: true });
+      audio.addEventListener("error", () => {
+        // Log honestly; don't revoke — play() may still succeed on some engines.
+        const code = audio.error?.code;
+        const msg = audio.error?.message ?? "media error";
+        console.error("[voice] Audio element error for", id, code, msg);
+        // Only surface as UI error if play() hasn't already started — if the
+        // element errors AFTER play() resolved we let playback continue.
+        if (audio.paused && audio.currentTime === 0) {
+          reportPlaybackError(id, `Audio error${code ? ` (${code})` : ""}`);
+        }
+      });
+
+      try {
+        audio.load();
+      } catch {
+        /* ignore — some engines don't need explicit load() */
+      }
+
+      const started = audio.play();
+      if (started && typeof (started as Promise<void>).then === "function") {
+        (started as Promise<void>).catch((err) => {
+          // Surface rejection so silent failures become visible in field conditions.
+          console.error("[voice] play() rejected for", id, err);
+          const name =
+            err && typeof err === "object" && "name" in err
+              ? String((err as { name: unknown }).name)
+              : "";
+          const reason =
+            name === "NotAllowedError"
+              ? "Autoplay blocked — tap again"
+              : name === "NotSupportedError"
+                ? "Audio format not supported"
+                : "Playback failed";
+          reportPlaybackError(id, reason);
+          cleanup();
+        });
+      }
+    },
+    [reportPlaybackError],
+  );
 
   useEffect(() => {
     return () => {
@@ -345,6 +413,10 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
         a.src = "";
       }
       if (u) URL.revokeObjectURL(u);
+      if (voicePlaybackErrorTimerRef.current) {
+        clearTimeout(voicePlaybackErrorTimerRef.current);
+        voicePlaybackErrorTimerRef.current = null;
+      }
     };
   }, []);
 
@@ -419,6 +491,7 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
     activeScorerId: state.activeScorerId,
     reviewMode: state.reviewMode,
     voiceMoments: state.voiceMoments,
+    voicePlaybackError,
     armKind,
     clearArm,
     logTap,
@@ -430,6 +503,7 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
     storeVoiceBlob,
     removeVoiceBlob,
     playVoiceNote,
+    clearPlaybackError,
     attachVoiceNoteToEvent,
     addVoiceMoment,
     removeVoiceMoment,

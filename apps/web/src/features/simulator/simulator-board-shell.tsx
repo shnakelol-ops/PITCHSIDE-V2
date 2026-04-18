@@ -324,6 +324,7 @@ export function SimulatorBoardShell({
     activeScorerId,
     reviewMode,
     voiceMoments,
+    voicePlaybackError,
     armKind,
     clearArm,
     logTap,
@@ -657,6 +658,7 @@ export function SimulatorBoardShell({
         canAttachVoiceToLastEvent={Boolean(lastStatsEvent && pendingVoiceId)}
         voiceMoments={voiceMoments}
         eventsWithVoice={eventsWithVoice}
+        voicePlaybackError={voicePlaybackError}
         onStartVoice={() => void onStartVoice()}
         onStopVoice={() => void onStopVoice()}
         onAttachVoiceToLastEvent={onAttachVoiceToLastEvent}
