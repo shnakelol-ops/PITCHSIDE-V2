@@ -237,27 +237,30 @@ export function SimulatorFloatingShell({
     }
   }, [matchPhase]);
 
-  const onStatsEventLogged = useCallback((event: StatsLoggedEvent) => {
-    const mid = linkedMatchIdRef.current;
-    if (!mid) return;
-    void persistSimulatorStatsEvent({
-      matchId: mid,
-      matchPeriod: linkedMatchPeriodRef.current,
-      clockLabel: matchClockLabelRef.current,
-      event,
-    }).catch((err: unknown) => {
-      console.error("[simulator-stats] persist failed", err);
-      const message = err instanceof Error ? err.message : "Couldn’t save event.";
-      setStatsPersistError(message);
-      if (persistErrorClearTimerRef.current != null) {
-        clearTimeout(persistErrorClearTimerRef.current);
-      }
-      persistErrorClearTimerRef.current = setTimeout(() => {
-        setStatsPersistError(null);
-        persistErrorClearTimerRef.current = null;
-      }, 8000);
-    });
-  }, []);
+  const onStatsEventLogged = useCallback(
+    (event: StatsLoggedEvent) => {
+      const mid = linkedMatchIdRef.current;
+      if (!mid) return;
+      void persistSimulatorStatsEvent({
+        matchId: mid,
+        matchPeriod: linkedMatchPeriodRef.current,
+        clockLabel: matchClockLabelRef.current,
+        event,
+      }).catch((err: unknown) => {
+        console.error("[simulator-stats] persist failed", err);
+        const message = err instanceof Error ? err.message : "Couldn’t save event.";
+        setStatsPersistError(message);
+        if (persistErrorClearTimerRef.current != null) {
+          clearTimeout(persistErrorClearTimerRef.current);
+        }
+        persistErrorClearTimerRef.current = setTimeout(() => {
+          setStatsPersistError(null);
+          persistErrorClearTimerRef.current = null;
+        }, 8000);
+      });
+    },
+    [matchClockLabelRef],
+  );
 
   const {
     events: statsEvents,
@@ -1023,12 +1026,8 @@ export function SimulatorFloatingShell({
                             <Button
                               type="button"
                               variant="secondary"
-                              className={cn(
-                                mobileActionBtnClass,
-                                surfaceMode === "SIMULATOR" &&
-                                  "border-emerald-300/60 bg-emerald-600/25 text-emerald-50",
-                              )}
-                              aria-pressed={surfaceMode === "SIMULATOR"}
+                              className={mobileActionBtnClass}
+                              aria-pressed={false}
                               onClick={() => setMode("SIMULATOR")}
                             >
                               Sim
@@ -1038,10 +1037,9 @@ export function SimulatorFloatingShell({
                               variant="secondary"
                               className={cn(
                                 mobileActionBtnClass,
-                                surfaceMode === "STATS" &&
-                                  "border-emerald-300/60 bg-emerald-600/25 text-emerald-50",
+                                "border-emerald-300/60 bg-emerald-600/25 text-emerald-50",
                               )}
-                              aria-pressed={surfaceMode === "STATS"}
+                              aria-pressed
                               onClick={() => setMode("STATS")}
                             >
                               Stats
