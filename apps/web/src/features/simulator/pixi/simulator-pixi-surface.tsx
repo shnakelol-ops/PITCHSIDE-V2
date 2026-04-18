@@ -132,6 +132,7 @@ export const SimulatorPixiSurface = forwardRef<
   );
   const releaseAthleteInputRef = useRef<(() => void) | null>(null);
   const pathStore = useMemo(() => new MovementPathStore(), []);
+  const fillParent = /\bh-full\b/.test(className ?? "");
 
   sportRef.current = sport;
   recordingModeRef.current = recordingMode;
@@ -175,8 +176,9 @@ export const SimulatorPixiSurface = forwardRef<
     const world = worldRef.current;
     const host = hostRef.current;
     if (!app || !world || !host) return;
-    const w = host.clientWidth;
-    const h = host.clientHeight;
+    const container = host.parentElement ?? host;
+    const w = container.clientWidth;
+    const h = container.clientHeight;
     if (w <= 0 || h <= 0) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     app.renderer.resolution = dpr;
@@ -215,9 +217,10 @@ export const SimulatorPixiSurface = forwardRef<
       if (cancelled || !hostRef.current) return;
 
       const app = new Application();
+      const container = host.parentElement ?? host;
       await app.init({
-        width: host.clientWidth || 640,
-        height: host.clientHeight || 400,
+        width: container.clientWidth || host.clientWidth || 640,
+        height: container.clientHeight || host.clientHeight || 400,
         backgroundAlpha: 0,
         antialias: true,
         autoDensity: true,
@@ -375,7 +378,7 @@ export const SimulatorPixiSurface = forwardRef<
         layout();
         setResizeGen((n) => n + 1);
       });
-      ro.observe(host);
+      ro.observe(container);
     })();
 
     return () => {
@@ -448,7 +451,7 @@ export const SimulatorPixiSurface = forwardRef<
 
   return (
     <div
-      className="pitch-wrapper relative min-h-0 w-full flex-1 overflow-hidden rounded-2xl p-3 sm:p-4 md:p-5"
+      className="pitch-wrapper relative h-full min-h-0 w-full flex-1 overflow-hidden rounded-2xl p-3 sm:p-4 md:p-5"
       style={{
         backgroundColor: "#4a2f25",
         backgroundImage: [
@@ -471,11 +474,11 @@ export const SimulatorPixiSurface = forwardRef<
       <div
         ref={hostRef}
         className={cn(
-          "relative z-10 mx-auto min-h-0 w-full max-w-full overflow-hidden rounded-lg bg-transparent",
+          "relative z-10 mx-auto h-full min-h-0 w-full max-w-full overflow-hidden rounded-lg bg-transparent",
           className,
         )}
         style={{
-          aspectRatio: getPitchBoardAspectRatio(sport),
+          aspectRatio: fillParent ? undefined : getPitchBoardAspectRatio(sport),
           touchAction: "none",
           WebkitUserSelect: "none",
           userSelect: "none",
