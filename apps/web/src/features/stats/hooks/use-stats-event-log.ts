@@ -334,70 +334,107 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
         }
       }
 
-      const url = URL.createObjectURL(blob);
-      // Construct, then set src + load() explicitly. Belt-and-braces against
-      // engines (notably iOS Safari) where the constructor-bound src hasn't
-      // fully committed before play() is invoked in the same microtask.
-      const audio = new Audio();
-      audio.preload = "auto";
-      audio.crossOrigin = "anonymous";
-      audio.src = url;
-      voicePlaybackUrlRef.current = url;
-      voicePlaybackRef.current = audio;
+      // Single attempt with a given blob. Returns void; on a "source not
+      // supported" failure, invokes the onUnsupported callback exactly once
+      // so the caller can retry with a re-wrapped blob.
+      const attempt = (
+        attemptBlob: Blob,
+        label: "primary" | "retry",
+        onUnsupported: () => void,
+      ) => {
+        const url = URL.createObjectURL(attemptBlob);
+        // Construct, then set src + load() explicitly. Belt-and-braces against
+        // engines (notably iOS Safari) where the constructor-bound src hasn't
+        // fully committed before play() is invoked in the same microtask.
+        const audio = new Audio();
+        audio.preload = "auto";
+        audio.src = url;
+        voicePlaybackUrlRef.current = url;
+        voicePlaybackRef.current = audio;
 
-      // Revoke only when playback has ended naturally, NOT on the 'error' event
-      // (some browsers fire a recoverable error during blob-url media loading;
-      // revoking there kills playback before it can start).
-      const cleanup = () => {
-        if (voicePlaybackUrlRef.current === url) {
-          voicePlaybackUrlRef.current = null;
-          voicePlaybackRef.current = null;
-        }
+        let unsupportedFired = false;
+
+        const cleanup = () => {
+          if (voicePlaybackUrlRef.current === url) {
+            voicePlaybackUrlRef.current = null;
+            voicePlaybackRef.current = null;
+          }
+          try {
+            URL.revokeObjectURL(url);
+          } catch {
+            /* ignore */
+          }
+        };
+
+        audio.addEventListener("ended", cleanup, { once: true });
+        audio.addEventListener("error", () => {
+          const code = audio.error?.code;
+          const msg = audio.error?.message ?? "media error";
+          console.error(
+            `[voice] Audio element error (${label}) for`,
+            id,
+            code,
+            msg,
+          );
+          // MEDIA_ERR_SRC_NOT_SUPPORTED === 4. Fire the unsupported path once.
+          if (code === 4 && !unsupportedFired) {
+            unsupportedFired = true;
+            cleanup();
+            onUnsupported();
+            return;
+          }
+          // Other errors: only surface if play() never started.
+          if (audio.paused && audio.currentTime === 0) {
+            reportPlaybackError(id, `Audio error${code ? ` (${code})` : ""}`);
+          }
+        });
+
         try {
-          URL.revokeObjectURL(url);
+          audio.load();
         } catch {
-          /* ignore */
+          /* ignore — some engines don't need explicit load() */
+        }
+
+        const started = audio.play();
+        if (started && typeof (started as Promise<void>).then === "function") {
+          (started as Promise<void>).catch((err) => {
+            console.error(`[voice] play() rejected (${label}) for`, id, err);
+            const name =
+              err && typeof err === "object" && "name" in err
+                ? String((err as { name: unknown }).name)
+                : "";
+            if (name === "NotSupportedError" && !unsupportedFired) {
+              unsupportedFired = true;
+              cleanup();
+              onUnsupported();
+              return;
+            }
+            const reason =
+              name === "NotAllowedError"
+                ? "Autoplay blocked — tap again"
+                : name === "NotSupportedError"
+                  ? "Audio format not supported"
+                  : "Playback failed";
+            reportPlaybackError(id, reason);
+            cleanup();
+          });
         }
       };
 
-      audio.addEventListener("ended", cleanup, { once: true });
-      audio.addEventListener("error", () => {
-        // Log honestly; don't revoke — play() may still succeed on some engines.
-        const code = audio.error?.code;
-        const msg = audio.error?.message ?? "media error";
-        console.error("[voice] Audio element error for", id, code, msg);
-        // Only surface as UI error if play() hasn't already started — if the
-        // element errors AFTER play() resolved we let playback continue.
-        if (audio.paused && audio.currentTime === 0) {
-          reportPlaybackError(id, `Audio error${code ? ` (${code})` : ""}`);
+      // Primary attempt — use the blob as recorded.
+      attempt(blob, "primary", () => {
+        // Fallback: re-wrap the same bytes with an EMPTY MIME so the browser
+        // sniffs the container/codec from the data itself. Known to rescue
+        // Chromium builds that reject some codec-labelled blob URLs with
+        // MEDIA_ERR_SRC_NOT_SUPPORTED even when the raw webm plays fine.
+        if (typeof console !== "undefined") {
+          console.log("[voice] retrying with sniffed MIME for", id);
         }
-      });
-
-      try {
-        audio.load();
-      } catch {
-        /* ignore — some engines don't need explicit load() */
-      }
-
-      const started = audio.play();
-      if (started && typeof (started as Promise<void>).then === "function") {
-        (started as Promise<void>).catch((err) => {
-          // Surface rejection so silent failures become visible in field conditions.
-          console.error("[voice] play() rejected for", id, err);
-          const name =
-            err && typeof err === "object" && "name" in err
-              ? String((err as { name: unknown }).name)
-              : "";
-          const reason =
-            name === "NotAllowedError"
-              ? "Autoplay blocked — tap again"
-              : name === "NotSupportedError"
-                ? "Audio format not supported"
-                : "Playback failed";
-          reportPlaybackError(id, reason);
-          cleanup();
+        const sniffBlob = new Blob([blob], { type: "" });
+        attempt(sniffBlob, "retry", () => {
+          reportPlaybackError(id, "Audio format not supported");
         });
-      }
+      });
     },
     [reportPlaybackError],
   );
