@@ -203,6 +203,13 @@ export function StatsLaunchShell(props: StatsLaunchShellProps) {
     onExitStatsMode,
   } = props;
 
+  // Trace wrapper — logs then forwards to the owner's play handler. Debug
+  // scaffolding for the voice playback chain (UI → pipe → hook → audio).
+  const onPlayVoiceTraced = (voiceNoteId: string) => {
+    console.log("PLAY PIPE launch-shell", voiceNoteId);
+    onPlayVoice(voiceNoteId);
+  };
+
   // Mobile/tablet: rails collapse into sheets. Sheets close automatically
   // when navigating/logging so they don't linger over the pitch.
   const [leftSheetOpen, setLeftSheetOpen] = useState(false);
@@ -246,7 +253,7 @@ export function StatsLaunchShell(props: StatsLaunchShellProps) {
       onAttachVoiceToLastEvent={onAttachVoiceToLastEvent}
       onAttachVoiceAsMoment={onAttachVoiceAsMoment}
       onDiscardPendingVoice={onDiscardPendingVoice}
-      onPlayVoice={onPlayVoice}
+      onPlayVoice={onPlayVoiceTraced}
       statsEvents={statsEvents}
       reviewMode={reviewMode}
       pitchMarkerViewFilter={pitchMarkerViewFilter}

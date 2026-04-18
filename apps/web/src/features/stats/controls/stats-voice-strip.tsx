@@ -9,12 +9,10 @@ import type {
 import type { StatsLoggedEvent } from "@src/features/stats/model/stats-logged-event";
 import { cn } from "@pitchside/utils";
 
-/** Small helper: a tap log is emitted on every play click so the UI→callback
- *  wiring can be proven in the field without devtools. */
+/** Proof-of-wiring log fired from every play click. Kept terse so field
+ *  logs stay readable. Matches the debug contract used across the chain. */
 function logVoiceTap(id: string, source: "moment" | "event") {
-  if (typeof console !== "undefined") {
-    console.log("[voice] tap", source, id);
-  }
+  console.log("PLAY CLICK", source, id);
 }
 
 function eventShortLabel(e: StatsLoggedEvent): string {
@@ -261,7 +259,7 @@ export function StatsVoiceStrip({
               role="alert"
               className="text-[9px] leading-snug text-rose-200/90"
             >
-              Can't play clip — {playbackError.reason}
+              Playback failed — unsupported format or empty clip
             </p>
           ) : null}
         </div>

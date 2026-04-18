@@ -196,6 +196,13 @@ export function StatsRightRail({
 
   const isLive = reviewMode === "live";
 
+  // Trace wrapper: logs then forwards. New identity each render is fine —
+  // StatsVoiceStrip / StatsVoiceReviewCard aren't memoized.
+  const onPlayVoiceTraced = (voiceNoteId: string) => {
+    console.log("PLAY PIPE right-rail", voiceNoteId);
+    onPlayVoice(voiceNoteId);
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto pr-0.5">
       {/* 1. Active Scorer */}
@@ -224,7 +231,7 @@ export function StatsRightRail({
           voiceMoments={voiceMoments}
           eventsWithVoice={eventsWithVoice}
           playbackError={voicePlaybackError}
-          onPlay={onPlayVoice}
+          onPlay={onPlayVoiceTraced}
         />
       </RailSection>
 
@@ -238,7 +245,7 @@ export function StatsRightRail({
           voiceMoments={voiceMoments}
           eventsWithVoice={eventsWithVoice}
           playbackError={voicePlaybackError}
-          onPlay={onPlayVoice}
+          onPlay={onPlayVoiceTraced}
         />
       ) : null}
 

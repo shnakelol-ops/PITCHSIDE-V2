@@ -664,7 +664,10 @@ export function SimulatorBoardShell({
         onAttachVoiceToLastEvent={onAttachVoiceToLastEvent}
         onAttachVoiceAsMoment={onAttachVoiceAsMoment}
         onDiscardPendingVoice={onDiscardPendingVoice}
-        onPlayVoice={playVoiceNote}
+        onPlayVoice={(vid) => {
+          console.log("PLAY PIPE board-shell", vid);
+          playVoiceNote(vid);
+        }}
         players={statsPlayers}
         pitchMarkerViewFilter={pitchMarkerViewFilter}
         onSetPitchMarkerViewFilter={setPitchMarkerViewFilter}

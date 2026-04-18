@@ -183,9 +183,7 @@ export function StatsVoiceReviewCard({
                   <button
                     type="button"
                     onClick={() => {
-                      if (typeof console !== "undefined") {
-                        console.log("[voice] tap review", r.kind, r.voiceNoteId);
-                      }
+                      console.log("PLAY CLICK review", r.kind, r.voiceNoteId);
                       onPlay(r.voiceNoteId);
                     }}
                     className={cn(
@@ -235,7 +233,7 @@ export function StatsVoiceReviewCard({
                         {r.eventLabel ?? "Moment"}
                         {failed ? (
                           <span className="ml-1 font-normal text-rose-200/80">
-                            · {playbackError?.reason}
+                            · Playback failed
                           </span>
                         ) : null}
                       </span>

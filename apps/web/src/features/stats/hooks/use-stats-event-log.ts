@@ -291,44 +291,39 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
 
   const playVoiceNote = useCallback(
     (id: string) => {
-      // Direct, user-gesture playback path. Keep everything synchronous within
-      // the click handler so browser autoplay policy treats this as user-initiated.
-      const blob = voiceBlobsRef.current.get(id);
-      // Honest logging — safe in prod: one short line per tap, no PII.
-      if (typeof console !== "undefined") {
-        console.log("[voice] Playing voice", id);
-        console.log(
-          "[voice] Blob exists:",
-          Boolean(blob),
-          blob ? `${blob.size}B ${blob.type || "no-mime"}` : "(missing)",
-        );
-      }
+      // MUST stay synchronous within the caller's click handler for browser
+      // autoplay policy to treat this as a user-initiated gesture.
+      console.log("PLAY PIPE hook", id);
 
-      // ── Pre-play validation ───────────────────────────────────────────
-      // Refuse to start if we can't produce a playable source. Per the
-      // voice-MIME-compatibility contract: blob must exist, be non-empty,
-      // and carry a non-empty MIME type (set by the recorder from the
-      // runtime-supported picker).
+      const blob = voiceBlobsRef.current.get(id);
+      console.log("BLOB", blob);
+
+      // ── Pre-play validation ──
+      // Surface the single unified UI reason on any form of failure so the
+      // coach sees "Playback failed — unsupported format or empty clip"
+      // consistently rather than a variable internal string.
+      const FAIL_REASON = "unsupported format or empty clip";
+
       if (!blob) {
-        console.warn("[voice] No blob registered for id — cannot play", id);
-        reportPlaybackError(id, "Clip not available");
+        console.warn("PLAY FAILED", id, "no blob");
+        reportPlaybackError(id, FAIL_REASON);
         return;
       }
       if (blob.size === 0) {
-        console.warn("[voice] Blob is empty — cannot play", id);
-        reportPlaybackError(id, "Clip is empty");
+        console.warn("PLAY FAILED", id, "empty blob");
+        reportPlaybackError(id, FAIL_REASON);
         return;
       }
       if (!blob.type) {
-        console.warn("[voice] Blob has no MIME type — cannot play", id);
-        reportPlaybackError(id, "Audio format not supported");
+        console.warn("PLAY FAILED", id, "no MIME type");
+        reportPlaybackError(id, FAIL_REASON);
         return;
       }
 
-      // Clear any stale error banner — we're attempting a fresh play.
+      // Fresh attempt — clear stale error for this id.
       setVoicePlaybackError((cur) => (cur && cur.id === id ? null : cur));
 
-      // Stop any currently-playing clip before starting the next one.
+      // Stop anything currently playing.
       const prevAudio = voicePlaybackRef.current;
       const prevUrl = voicePlaybackUrlRef.current;
       voicePlaybackRef.current = null;
@@ -349,19 +344,12 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
         }
       }
 
+      // ── Minimal known-good playback ──
       const url = URL.createObjectURL(blob);
-      // Construct, then set src + load() explicitly. Belt-and-braces against
-      // engines (notably iOS Safari) where the constructor-bound src hasn't
-      // fully committed before play() is invoked in the same microtask.
-      const audio = new Audio();
-      audio.preload = "auto";
-      audio.src = url;
+      const audio = new Audio(url);
       voicePlaybackUrlRef.current = url;
       voicePlaybackRef.current = audio;
 
-      // Revoke only when playback ends naturally. NOT on the 'error' event —
-      // some engines fire a transient error during blob-url media loading
-      // that play() ultimately recovers from.
       const cleanup = () => {
         if (voicePlaybackUrlRef.current === url) {
           voicePlaybackUrlRef.current = null;
@@ -374,46 +362,37 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
         }
       };
 
-      audio.addEventListener("ended", cleanup, { once: true });
-      audio.addEventListener("error", () => {
+      audio.onplay = () => console.log("PLAY STARTED", id);
+      audio.onended = () => {
+        console.log("PLAY ENDED", id);
+        cleanup();
+      };
+      audio.onerror = () => {
         const code = audio.error?.code;
-        const msg = audio.error?.message ?? "media error";
-        console.error("[voice] Audio element error for", id, code, msg);
-        // Only surface as UI error if play() never started. If it already
-        // produced audio we let playback continue.
+        const msg = audio.error?.message ?? "";
+        console.error("PLAY ERROR", id, code, msg);
+        // Only surface if playback never actually started; otherwise an
+        // engine-level transient error shouldn't overwrite a working clip.
         if (audio.paused && audio.currentTime === 0) {
-          const reason =
-            code === 4
-              ? "Audio format not supported"
-              : `Audio error${code ? ` (${code})` : ""}`;
-          reportPlaybackError(id, reason);
+          reportPlaybackError(id, FAIL_REASON);
         }
+      };
+
+      audio.play().catch((err) => {
+        console.error("PLAY FAILED", id, err);
+        const name =
+          err && typeof err === "object" && "name" in err
+            ? String((err as { name: unknown }).name)
+            : "";
+        // NotAllowedError is the only non-format failure we distinguish:
+        // it means the browser rejected the gesture (rare with a real click).
+        const reason =
+          name === "NotAllowedError"
+            ? "Autoplay blocked — tap again"
+            : FAIL_REASON;
+        reportPlaybackError(id, reason);
+        cleanup();
       });
-
-      try {
-        audio.load();
-      } catch {
-        /* ignore — some engines don't need explicit load() */
-      }
-
-      const started = audio.play();
-      if (started && typeof (started as Promise<void>).then === "function") {
-        (started as Promise<void>).catch((err) => {
-          console.error("[voice] play() rejected for", id, err);
-          const name =
-            err && typeof err === "object" && "name" in err
-              ? String((err as { name: unknown }).name)
-              : "";
-          const reason =
-            name === "NotAllowedError"
-              ? "Autoplay blocked — tap again"
-              : name === "NotSupportedError"
-                ? "Audio format not supported"
-                : "Playback failed";
-          reportPlaybackError(id, reason);
-          cleanup();
-        });
-      }
     },
     [reportPlaybackError],
   );
