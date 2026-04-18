@@ -711,7 +711,249 @@ export function SimulatorBoardShell({
         }}
         aria-hidden
       />
-      <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5 md:flex">
+
+      {surfaceMode === "STATS" ? (
+        <div
+          className="fixed inset-0 z-40 h-[100dvh] w-screen overflow-hidden md:hidden"
+          style={grassFieldStyle}
+        >
+          <div
+            className="pointer-events-none absolute inset-0 z-0 opacity-[0.028] mix-blend-multiply"
+            style={{
+              backgroundImage: grassNoiseDataUrl,
+              backgroundSize: "240px 240px",
+            }}
+            aria-hidden
+          />
+          <div className="pointer-events-none absolute inset-0 z-10 flex min-h-0 flex-col overflow-hidden">
+            <div className="relative min-h-0 flex-1 overflow-hidden">
+              <SimulatorPixiSurface
+                ref={surfaceRef}
+                sport={sport}
+                recordingMode={false}
+                shadowRecordingMode={false}
+                surfaceMode={surfaceMode}
+                statsArm={statsArm}
+                statsLoggedEvents={statsEventsForPitchView}
+                onStatsPitchTap={onStatsPitchTapGuarded}
+                statsReviewMode={reviewMode}
+                statsPitchInteractive={canStatsPitchLog}
+                className="h-full w-full !mx-0 !max-w-none !rounded-none !border-0 !bg-transparent !shadow-none !ring-0"
+              />
+            </div>
+
+            <aside
+              className="pointer-events-none absolute left-[max(0.45rem,env(safe-area-inset-left))] top-[max(0.55rem,env(safe-area-inset-top))] z-30 flex flex-col gap-1.5"
+              aria-label="Mobile match utility"
+            >
+              <Button
+                type="button"
+                variant="secondary"
+                className="pointer-events-auto min-h-9 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-2.5 py-1 text-[9px] font-semibold text-stone-100"
+                aria-pressed={reviewMode === "live"}
+                onClick={() => setReviewMode("live")}
+              >
+                {matchClockDisplay}
+              </Button>
+              <div className="rounded-md border border-white/10 bg-black/25 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-stone-100/90">
+                {formatMatchPhaseLabel(matchPhase)}
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                className={cn(
+                  "pointer-events-auto min-h-9 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-2 py-1 text-[9px] font-semibold",
+                  recorder.isRecording &&
+                    "border-rose-300/60 bg-[rgba(120,42,54,0.82)] text-rose-50",
+                )}
+                onClick={onToggleMobileVoice}
+              >
+                <Mic className="mr-1 size-3.5" />
+                {recorder.isRecording ? "Stop" : "Voice"}
+              </Button>
+            </aside>
+
+            <aside className="pointer-events-none absolute right-[max(0.55rem,env(safe-area-inset-right))] top-[max(0.55rem,env(safe-area-inset-top))] z-30">
+              <Drawer open={mobileStatsDrawerOpen} onOpenChange={setMobileStatsDrawerOpen}>
+                <DrawerTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="pointer-events-auto min-h-10 rounded-full border border-white/20 bg-[rgba(32,44,69,0.92)] px-3 py-2 text-[11px] font-semibold text-stone-100 shadow-[0_12px_28px_-20px_rgba(0,0,0,0.9)]"
+                    aria-label="Open stats controls"
+                  >
+                    <SlidersHorizontal className="size-4" />
+                  </Button>
+                </DrawerTrigger>
+                <DrawerContent className="md:hidden">
+                  <DrawerHeader>
+                    <DrawerTitle>Stats controls</DrawerTitle>
+                    <DrawerDescription>
+                      Secondary controls for scorer, review, and voice.
+                    </DrawerDescription>
+                  </DrawerHeader>
+                  <div className="max-h-[calc(82dvh-4.25rem)] space-y-2.5 overflow-y-auto px-3 pb-[max(0.9rem,env(safe-area-inset-bottom))] pt-3">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle>Mode / review</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2.5">
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {MOBILE_STATS_REVIEW_CHIPS.map(({ mode, label }) => (
+                            <Button
+                              key={mode}
+                              type="button"
+                              variant="secondary"
+                              className={cn(
+                                mobileActionBtnClass,
+                                reviewMode === mode &&
+                                  "border-amber-300/55 bg-[rgba(98,80,46,0.72)] text-amber-50",
+                              )}
+                              aria-pressed={reviewMode === mode}
+                              onClick={() => setReviewMode(mode)}
+                            >
+                              {label}
+                            </Button>
+                          ))}
+                        </div>
+                        {!isStatsLive ? (
+                          <div className="space-y-1.5">
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-stone-300/85">
+                              Spatial filter
+                            </p>
+                            <div className="flex max-h-24 flex-wrap gap-1 overflow-y-auto pr-0.5">
+                              {PITCH_VIEW_FILTER_CHIPS.map(({ id, label }) => (
+                                <Button
+                                  key={id}
+                                  type="button"
+                                  variant="secondary"
+                                  className={cn(
+                                    "min-h-8 rounded-md px-2 py-1 text-[9px]",
+                                    pitchMarkerViewFilter === id &&
+                                      "border-amber-300/55 bg-[rgba(98,80,46,0.72)] text-amber-50",
+                                  )}
+                                  aria-pressed={pitchMarkerViewFilter === id}
+                                  onClick={() => setPitchMarkerViewFilter(id)}
+                                >
+                                  {label}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle>Scorer</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2.5">
+                        <p className="text-[10px] text-stone-200/80">
+                          Active scorer:{" "}
+                          <span className="font-semibold text-stone-100">
+                            {activeScorerPlayer
+                              ? `#${activeScorerPlayer.number} ${activeScorerPlayer.name}`
+                              : "No player"}
+                          </span>
+                        </p>
+                        {pendingScoreLabel ? (
+                          <p className="rounded-md border border-amber-300/40 bg-amber-500/15 px-2 py-1 text-[9px] font-semibold text-amber-100/95">
+                            {pendingScoreLabel}
+                          </p>
+                        ) : null}
+                        <div className="grid max-h-36 grid-cols-2 gap-1.5 overflow-y-auto pr-0.5">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className={cn(
+                              mobileActionBtnClass,
+                              activeScorerId == null &&
+                                "border-emerald-300/60 bg-emerald-600/25 text-emerald-50",
+                            )}
+                            aria-pressed={activeScorerId == null}
+                            onClick={() => setActiveScorer(null)}
+                          >
+                            No player
+                          </Button>
+                          {statsPlayers.map((p) => (
+                            <Button
+                              key={p.id}
+                              type="button"
+                              variant="secondary"
+                              className={cn(
+                                mobileActionBtnClass,
+                                activeScorerId === p.id &&
+                                  "border-emerald-300/60 bg-emerald-600/25 text-emerald-50",
+                              )}
+                              aria-pressed={activeScorerId === p.id}
+                              onClick={() => setActiveScorer(p.id)}
+                            >
+                              #{p.number} {p.name}
+                            </Button>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle>Voice</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <StatsVoiceStrip
+                          allowRecording={canStatsPitchLog}
+                          isRecording={recorder.isRecording}
+                          recordError={voiceError}
+                          onStartRecord={() => void onStartVoice()}
+                          onStopRecord={() => void onStopVoice()}
+                          pendingVoiceId={pendingVoiceId}
+                          canAttachToLastEvent={Boolean(lastStatsEvent && pendingVoiceId)}
+                          onAttachToLastEvent={onAttachVoiceToLastEvent}
+                          onAttachAsMoment={onAttachVoiceAsMoment}
+                          onDiscardPending={onDiscardPendingVoice}
+                          voiceMomentIds={voiceMomentIds}
+                          eventsWithVoice={eventsWithVoice}
+                          onPlay={playVoiceNote}
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
+                </DrawerContent>
+              </Drawer>
+            </aside>
+
+            <div className="pointer-events-none z-30 flex-shrink-0 px-2 pb-[max(0.45rem,env(safe-area-inset-bottom))]">
+              <div className="simulator-mobile-event-bar pointer-events-auto flex gap-1.5 overflow-x-auto rounded-xl border border-white/20 bg-[rgba(19,27,44,0.88)] px-2 py-2 backdrop-blur-md">
+                {MOBILE_PRIMARY_EVENT_KINDS.map((kind) => (
+                  <Button
+                    key={kind}
+                    type="button"
+                    variant="secondary"
+                    className={cn(
+                      "mobile-stats-event-btn h-12 min-w-[6.25rem] shrink-0 rounded-lg border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.02em]",
+                      statsArm === kind
+                        ? "border-emerald-300/65 bg-emerald-700/45 text-emerald-50"
+                        : "border-white/20 bg-[rgba(34,38,48,0.84)] text-stone-100",
+                    )}
+                    disabled={!canStatsPitchLog}
+                    onClick={() => onLogMobileEventKind(kind)}
+                  >
+                    {formatMobileEventLabel(kind)}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <header
+        className={cn(
+          "relative z-10 flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5 md:flex",
+          surfaceMode === "STATS" && "hidden md:flex",
+        )}
+      >
         <div className="min-w-0 space-y-0.5">
           <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-stone-800/65">
             Pitchside
@@ -728,7 +970,7 @@ export function SimulatorBoardShell({
       <main
         className={cn(
           "relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 md:flex lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14",
-          surfaceMode === "STATS" && "gap-0 p-0 sm:gap-0 sm:p-0 md:gap-5 md:p-6",
+          surfaceMode === "STATS" && "hidden gap-0 p-0 sm:gap-0 sm:p-0 md:flex md:gap-5 md:p-6",
         )}
       >
         <aside
@@ -955,231 +1197,6 @@ export function SimulatorBoardShell({
               : "Select a player · draw on the pitch · transport on the left"}
           </p>
         </div>
-
-        {surfaceMode === "STATS" ? (
-          <>
-            <div className="pointer-events-none absolute inset-0 z-20 flex min-h-0 flex-col overflow-hidden md:hidden">
-              <div className="relative flex-1 min-h-0 w-full overflow-hidden">
-                <SimulatorPixiSurface
-                  ref={surfaceRef}
-                  sport={sport}
-                  recordingMode={false}
-                  shadowRecordingMode={false}
-                  surfaceMode={surfaceMode}
-                  statsArm={statsArm}
-                  statsLoggedEvents={statsEventsForPitchView}
-                  onStatsPitchTap={onStatsPitchTapGuarded}
-                  statsReviewMode={reviewMode}
-                  statsPitchInteractive={canStatsPitchLog}
-                  className="h-full w-full !mx-0 !max-w-none !rounded-none !border-0 !bg-transparent !shadow-none !ring-0"
-                />
-              </div>
-
-              <aside
-                className="pointer-events-none absolute left-[max(0.45rem,env(safe-area-inset-left))] top-[max(0.55rem,env(safe-area-inset-top))] z-30 flex flex-col gap-1.5"
-                aria-label="Mobile match utility"
-              >
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="pointer-events-auto min-h-9 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-2.5 py-1 text-[9px] font-semibold text-stone-100"
-                  aria-pressed={reviewMode === "live"}
-                  onClick={() => setReviewMode("live")}
-                >
-                  {matchClockDisplay}
-                </Button>
-                <div className="rounded-md border border-white/10 bg-black/25 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-stone-100/90">
-                  {formatMatchPhaseLabel(matchPhase)}
-                </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className={cn(
-                    "pointer-events-auto min-h-9 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-2 py-1 text-[9px] font-semibold",
-                    recorder.isRecording &&
-                      "border-rose-300/60 bg-[rgba(120,42,54,0.82)] text-rose-50",
-                  )}
-                  onClick={onToggleMobileVoice}
-                >
-                  <Mic className="mr-1 size-3.5" />
-                  {recorder.isRecording ? "Stop" : "Voice"}
-                </Button>
-              </aside>
-
-              <aside className="pointer-events-none absolute right-[max(0.55rem,env(safe-area-inset-right))] top-[max(0.55rem,env(safe-area-inset-top))] z-30">
-                <Drawer open={mobileStatsDrawerOpen} onOpenChange={setMobileStatsDrawerOpen}>
-                  <DrawerTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="pointer-events-auto min-h-10 rounded-full border border-white/20 bg-[rgba(32,44,69,0.92)] px-3 py-2 text-[11px] font-semibold text-stone-100 shadow-[0_12px_28px_-20px_rgba(0,0,0,0.9)]"
-                      aria-label="Open stats controls"
-                    >
-                      <SlidersHorizontal className="size-4" />
-                    </Button>
-                  </DrawerTrigger>
-                  <DrawerContent className="md:hidden">
-                    <DrawerHeader>
-                      <DrawerTitle>Stats controls</DrawerTitle>
-                      <DrawerDescription>
-                        Secondary controls for scorer, review, and voice.
-                      </DrawerDescription>
-                    </DrawerHeader>
-                    <div className="max-h-[calc(82dvh-4.25rem)] space-y-2.5 overflow-y-auto px-3 pb-[max(0.9rem,env(safe-area-inset-bottom))] pt-3">
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle>Mode / review</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2.5">
-                          <div className="grid grid-cols-3 gap-1.5">
-                            {MOBILE_STATS_REVIEW_CHIPS.map(({ mode, label }) => (
-                              <Button
-                                key={mode}
-                                type="button"
-                                variant="secondary"
-                                className={cn(
-                                  mobileActionBtnClass,
-                                  reviewMode === mode &&
-                                    "border-amber-300/55 bg-[rgba(98,80,46,0.72)] text-amber-50",
-                                )}
-                                aria-pressed={reviewMode === mode}
-                                onClick={() => setReviewMode(mode)}
-                              >
-                                {label}
-                              </Button>
-                            ))}
-                          </div>
-                          {!isStatsLive ? (
-                            <div className="space-y-1.5">
-                              <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-stone-300/85">
-                                Spatial filter
-                              </p>
-                              <div className="flex max-h-24 flex-wrap gap-1 overflow-y-auto pr-0.5">
-                                {PITCH_VIEW_FILTER_CHIPS.map(({ id, label }) => (
-                                  <Button
-                                    key={id}
-                                    type="button"
-                                    variant="secondary"
-                                    className={cn(
-                                      "min-h-8 rounded-md px-2 py-1 text-[9px]",
-                                      pitchMarkerViewFilter === id &&
-                                        "border-amber-300/55 bg-[rgba(98,80,46,0.72)] text-amber-50",
-                                    )}
-                                    aria-pressed={pitchMarkerViewFilter === id}
-                                    onClick={() => setPitchMarkerViewFilter(id)}
-                                  >
-                                    {label}
-                                  </Button>
-                                ))}
-                              </div>
-                            </div>
-                          ) : null}
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle>Scorer</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2.5">
-                          <p className="text-[10px] text-stone-200/80">
-                            Active scorer:{" "}
-                            <span className="font-semibold text-stone-100">
-                              {activeScorerPlayer
-                                ? `#${activeScorerPlayer.number} ${activeScorerPlayer.name}`
-                                : "No player"}
-                            </span>
-                          </p>
-                          {pendingScoreLabel ? (
-                            <p className="rounded-md border border-amber-300/40 bg-amber-500/15 px-2 py-1 text-[9px] font-semibold text-amber-100/95">
-                              {pendingScoreLabel}
-                            </p>
-                          ) : null}
-                          <div className="grid max-h-36 grid-cols-2 gap-1.5 overflow-y-auto pr-0.5">
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              className={cn(
-                                mobileActionBtnClass,
-                                activeScorerId == null &&
-                                  "border-emerald-300/60 bg-emerald-600/25 text-emerald-50",
-                              )}
-                              aria-pressed={activeScorerId == null}
-                              onClick={() => setActiveScorer(null)}
-                            >
-                              No player
-                            </Button>
-                            {statsPlayers.map((p) => (
-                              <Button
-                                key={p.id}
-                                type="button"
-                                variant="secondary"
-                                className={cn(
-                                  mobileActionBtnClass,
-                                  activeScorerId === p.id &&
-                                    "border-emerald-300/60 bg-emerald-600/25 text-emerald-50",
-                                )}
-                                aria-pressed={activeScorerId === p.id}
-                                onClick={() => setActiveScorer(p.id)}
-                              >
-                                #{p.number} {p.name}
-                              </Button>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle>Voice</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <StatsVoiceStrip
-                            allowRecording={canStatsPitchLog}
-                            isRecording={recorder.isRecording}
-                            recordError={voiceError}
-                            onStartRecord={() => void onStartVoice()}
-                            onStopRecord={() => void onStopVoice()}
-                            pendingVoiceId={pendingVoiceId}
-                            canAttachToLastEvent={Boolean(lastStatsEvent && pendingVoiceId)}
-                            onAttachToLastEvent={onAttachVoiceToLastEvent}
-                            onAttachAsMoment={onAttachVoiceAsMoment}
-                            onDiscardPending={onDiscardPendingVoice}
-                            voiceMomentIds={voiceMomentIds}
-                            eventsWithVoice={eventsWithVoice}
-                            onPlay={playVoiceNote}
-                          />
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </DrawerContent>
-                </Drawer>
-              </aside>
-
-              <div className="pointer-events-none z-30 flex-shrink-0 px-2 pb-[max(0.45rem,env(safe-area-inset-bottom))]">
-                <div className="simulator-mobile-event-bar pointer-events-auto flex gap-1.5 overflow-x-auto rounded-xl border border-white/20 bg-[rgba(19,27,44,0.88)] px-2 py-2 backdrop-blur-md">
-                  {MOBILE_PRIMARY_EVENT_KINDS.map((kind) => (
-                    <Button
-                      key={kind}
-                      type="button"
-                      variant="secondary"
-                      className={cn(
-                        "mobile-stats-event-btn h-12 min-w-[6.25rem] shrink-0 rounded-lg border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.02em]",
-                        statsArm === kind
-                          ? "border-emerald-300/65 bg-emerald-700/45 text-emerald-50"
-                          : "border-white/20 bg-[rgba(34,38,48,0.84)] text-stone-100",
-                      )}
-                      disabled={!canStatsPitchLog}
-                      onClick={() => onLogMobileEventKind(kind)}
-                    >
-                      {formatMobileEventLabel(kind)}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </>
-        ) : null}
 
         <aside
           className={cn(
