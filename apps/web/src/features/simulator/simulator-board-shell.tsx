@@ -337,6 +337,7 @@ export function SimulatorBoardShell({
     attachVoiceNoteToEvent,
     addVoiceMoment,
     removeVoiceMoment,
+    applyContextTag,
   } = useStatsEventLog({
     onStatsEventLogged,
     resolvePeriodPhase: resolveCurrentPeriodPhase,
@@ -617,6 +618,7 @@ export function SimulatorBoardShell({
         setActiveScorer={setActiveScorer}
         setReviewMode={setReviewMode}
         onStatsPitchTap={onStatsPitchTapGuarded}
+        applyContextTag={applyContextTag}
         voiceIsRecording={recorder.isRecording}
         voiceError={voiceError}
         pendingVoiceId={pendingVoiceId}

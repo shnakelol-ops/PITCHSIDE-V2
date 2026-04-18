@@ -1,7 +1,10 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { StatsMoreMenu } from "@src/features/stats/controls/stats-more-menu";
 import type { StatsArmSelection } from "@src/features/stats/hooks/use-stats-event-log";
+import type { StatsLoggedEvent } from "@src/features/stats/model/stats-logged-event";
+import type { StatsContextTag } from "@src/features/stats/model/stats-more-tags";
 import type { StatsV1EventKind } from "@src/features/stats/model/stats-v1-event-kind";
 import { cn } from "@pitchside/utils";
 
@@ -83,13 +86,23 @@ export type StatsActionBarProps = {
   canLog: boolean;
   /** Arm the given kind (next pitch tap logs it). */
   onArm: (kind: StatsV1EventKind) => void;
+  /** Recent events used by MORE menu to resolve attachment targets. */
+  events: readonly StatsLoggedEvent[];
+  /** Apply a contextual coaching tag to the latest relevant event. */
+  onApplyContextTag: (tag: StatsContextTag) => void;
 };
 
 /**
  * Fast event-logging surface across the full width of the screen.
  * Clean grouped clusters; one-tap arm; respects `canLog` gate.
  */
-export function StatsActionBar({ armedKind, canLog, onArm }: StatsActionBarProps) {
+export function StatsActionBar({
+  armedKind,
+  canLog,
+  onArm,
+  events,
+  onApplyContextTag,
+}: StatsActionBarProps) {
   return (
     <footer
       className="relative z-20 shrink-0 border-t border-white/[0.06] px-3 py-2.5 backdrop-blur-[8px] sm:px-4 sm:py-3 lg:px-6"
@@ -108,47 +121,65 @@ export function StatsActionBar({ armedKind, canLog, onArm }: StatsActionBarProps
         }}
         aria-hidden
       />
-      <div
-        className={cn(
-          "flex items-center gap-3 overflow-x-auto pb-0.5",
-          !canLog && "pointer-events-none opacity-50",
-        )}
-      >
-        {GROUPS.map((group, i) => (
-          <div key={group.id} className="flex shrink-0 items-center gap-2">
-            {i > 0 ? (
-              <div className="mx-1 h-7 w-px shrink-0 bg-white/[0.08]" aria-hidden />
-            ) : null}
-            <span
-              className="flex shrink-0 items-center gap-1.5 pr-0.5 text-[9px] font-semibold uppercase leading-none tracking-[0.22em] text-[rgba(228,232,240,0.55)]"
-              aria-hidden
-            >
-              <span className={cn("size-1 rounded-full", GROUP_DOT[group.accent])} aria-hidden />
-              {group.label}
-            </span>
-            <div
-              className="flex shrink-0 items-center gap-1.5"
-              role="group"
-              aria-label={`${group.label} actions`}
-            >
-              {group.kinds.map((k) => {
-                const on = armedKind === k;
-                return (
-                  <Button
-                    key={`${group.id}-${k}`}
-                    type="button"
-                    variant="secondary"
-                    aria-pressed={on}
-                    onClick={() => onArm(k)}
-                    className={cn(BTN_BASE, on ? ACCENT_ON[group.accent] : BTN_IDLE)}
-                  >
-                    {LABELS[k]}
-                  </Button>
-                );
-              })}
+      <div className="flex items-center gap-2">
+        {/* Primary logging groups — scrollable on narrow viewports. */}
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-3 overflow-x-auto pb-0.5",
+            !canLog && "pointer-events-none opacity-50",
+          )}
+        >
+          {GROUPS.map((group, i) => (
+            <div key={group.id} className="flex shrink-0 items-center gap-2">
+              {i > 0 ? (
+                <div
+                  className="mx-1 h-7 w-px shrink-0 bg-white/[0.08]"
+                  aria-hidden
+                />
+              ) : null}
+              <span
+                className="flex shrink-0 items-center gap-1.5 pr-0.5 text-[9px] font-semibold uppercase leading-none tracking-[0.22em] text-[rgba(228,232,240,0.55)]"
+                aria-hidden
+              >
+                <span
+                  className={cn("size-1 rounded-full", GROUP_DOT[group.accent])}
+                  aria-hidden
+                />
+                {group.label}
+              </span>
+              <div
+                className="flex shrink-0 items-center gap-1.5"
+                role="group"
+                aria-label={`${group.label} actions`}
+              >
+                {group.kinds.map((k) => {
+                  const on = armedKind === k;
+                  return (
+                    <Button
+                      key={`${group.id}-${k}`}
+                      type="button"
+                      variant="secondary"
+                      aria-pressed={on}
+                      onClick={() => onArm(k)}
+                      className={cn(BTN_BASE, on ? ACCENT_ON[group.accent] : BTN_IDLE)}
+                    >
+                      {LABELS[k]}
+                    </Button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+
+        {/* MORE — secondary contextual coaching tags, always visible on the right. */}
+        <div className="flex shrink-0 items-center border-l border-white/[0.08] pl-2">
+          <StatsMoreMenu
+            events={events}
+            canLog={canLog}
+            onApply={onApplyContextTag}
+          />
+        </div>
       </div>
     </footer>
   );

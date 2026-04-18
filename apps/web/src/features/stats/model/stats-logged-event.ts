@@ -5,6 +5,7 @@
 
 import { clamp01 } from "@src/lib/pitch-coordinates";
 
+import type { StatsContextTag } from "@src/features/stats/model/stats-more-tags";
 import type { StatsV1EventKind } from "@src/features/stats/model/stats-v1-event-kind";
 
 export type StatsPeriodPhase =
@@ -28,6 +29,11 @@ export type StatsLoggedEvent = {
   playerId: string | null;
   voiceNoteId: string | null;
   teamContext: StatsTeamContext | null;
+  /**
+   * Optional Stats V1 "MORE" contextual coaching tags (client-side only).
+   * Absent/undefined by default — preserves existing persistence + renderers.
+   */
+  contextTags?: StatsContextTag[];
 };
 
 export type CreateStatsLoggedEventInput = {

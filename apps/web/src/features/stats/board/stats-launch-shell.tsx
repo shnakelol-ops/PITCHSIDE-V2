@@ -19,6 +19,7 @@ import type {
   StatsArmSelection,
   StatsVoiceMoment,
 } from "@src/features/stats/hooks/use-stats-event-log";
+import type { StatsContextTag } from "@src/features/stats/model/stats-more-tags";
 import type { SimulatorMatchPhase } from "@src/features/stats/hooks/use-simulator-match-clock";
 import type { StatsLoggedEvent } from "@src/features/stats/model/stats-logged-event";
 import type {
@@ -80,6 +81,9 @@ export type StatsLaunchShellProps = {
   setActiveScorer: (playerId: string | null) => void;
   setReviewMode: (mode: StatsReviewMode) => void;
   onStatsPitchTap: (payload: StatsPitchTapPayload) => void;
+
+  /** Attach a "MORE" contextual coaching tag to the latest relevant event. */
+  applyContextTag: (tag: StatsContextTag) => void;
 
   // Voice
   voiceIsRecording: boolean;
@@ -175,6 +179,7 @@ export function StatsLaunchShell(props: StatsLaunchShellProps) {
     setActiveScorer,
     setReviewMode,
     onStatsPitchTap,
+    applyContextTag,
     voiceIsRecording,
     voiceError,
     pendingVoiceId,
@@ -408,6 +413,8 @@ export function StatsLaunchShell(props: StatsLaunchShellProps) {
         armedKind={statsArm}
         canLog={canStatsPitchLog}
         onArm={armKind}
+        events={statsEvents}
+        onApplyContextTag={applyContextTag}
       />
     </div>
   );

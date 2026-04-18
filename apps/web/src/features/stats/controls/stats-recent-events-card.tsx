@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react";
 
 import { cn } from "@pitchside/utils";
 import type { StatsLoggedEvent } from "@src/features/stats/model/stats-logged-event";
+import { STATS_CONTEXT_TAG_SHORT } from "@src/features/stats/model/stats-more-tags";
 import type { StatsV1EventKind } from "@src/features/stats/model/stats-v1-event-kind";
 import type { StatsRosterPlayer } from "@src/features/stats/types/stats-roster";
 
@@ -156,6 +157,12 @@ function StatsRecentEventsCardInner({
                 const scorer = e.playerId
                   ? playerNameById.get(e.playerId) ?? null
                   : null;
+                const tagSuffix =
+                  e.contextTags && e.contextTags.length > 0
+                    ? e.contextTags
+                        .map((t) => STATS_CONTEXT_TAG_SHORT[t] ?? t)
+                        .join(", ")
+                    : null;
                 return (
                   <li
                     key={e.id}
@@ -170,6 +177,12 @@ function StatsRecentEventsCardInner({
                     />
                     <span className="flex-1 truncate text-[10.5px] font-medium text-slate-100/92">
                       {label}
+                      {tagSuffix ? (
+                        <span className="text-[rgba(208,228,250,0.85)]">
+                          {" · "}
+                          {tagSuffix}
+                        </span>
+                      ) : null}
                       {scorer ? (
                         <span className="text-slate-300/75"> – {scorer}</span>
                       ) : null}

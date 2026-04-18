@@ -13,6 +13,10 @@ import {
   type StatsV1EventKind,
 } from "@src/features/stats/model/stats-v1-event-kind";
 import {
+  resolveTargetEventId,
+  type StatsContextTag,
+} from "@src/features/stats/model/stats-more-tags";
+import {
   assignScorerToEvents,
   findLatestScorePendingScorer,
 } from "@src/features/stats/model/stats-scorer-utils";
@@ -64,7 +68,8 @@ type Action =
       timestampMs: number;
       periodPhase: StatsPeriodPhase;
     }
-  | { type: "removeVoiceMoment"; voiceNoteId: string };
+  | { type: "removeVoiceMoment"; voiceNoteId: string }
+  | { type: "applyContextTag"; tag: StatsContextTag };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -150,6 +155,21 @@ function reducer(state: State, action: Action): State {
     case "undoLastEvent":
       if (state.events.length === 0) return state;
       return { ...state, events: state.events.slice(0, -1) };
+    case "applyContextTag": {
+      // Attach tag to the latest relevant event (dedup). No-op when no target
+      // exists — UI guards this with the disabled-row state.
+      const targetId = resolveTargetEventId(state.events, action.tag);
+      if (!targetId) return state;
+      return {
+        ...state,
+        events: state.events.map((e) => {
+          if (e.id !== targetId) return e;
+          const existing = e.contextTags ?? [];
+          if (existing.includes(action.tag)) return e;
+          return { ...e, contextTags: [...existing, action.tag] };
+        }),
+      };
+    }
   }
 }
 
@@ -334,6 +354,10 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
     dispatch({ type: "removeVoiceMoment", voiceNoteId });
   }, []);
 
+  const applyContextTag = useCallback((tag: StatsContextTag) => {
+    dispatch({ type: "applyContextTag", tag });
+  }, []);
+
   return {
     events: state.events,
     arm: state.arm,
@@ -354,5 +378,6 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
     attachVoiceNoteToEvent,
     addVoiceMoment,
     removeVoiceMoment,
+    applyContextTag,
   };
 }
