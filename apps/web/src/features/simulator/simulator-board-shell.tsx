@@ -711,7 +711,7 @@ export function SimulatorBoardShell({
         }}
         aria-hidden
       />
-      <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5">
+      <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5 md:flex">
         <div className="min-w-0 space-y-0.5">
           <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-stone-800/65">
             Pitchside
@@ -725,7 +725,7 @@ export function SimulatorBoardShell({
         </div>
       </header>
 
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14">
+      <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 md:flex lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14">
         <aside
           className={cn(
             "order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4",
@@ -946,7 +946,7 @@ export function SimulatorBoardShell({
 
         {surfaceMode === "STATS" ? (
           <>
-            <div className="pointer-events-none absolute inset-0 z-20 md:hidden">
+            <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden md:hidden">
               <div className="absolute inset-0">
                 <SimulatorPixiSurface
                   ref={surfaceRef}
@@ -959,7 +959,7 @@ export function SimulatorBoardShell({
                   onStatsPitchTap={onStatsPitchTapGuarded}
                   statsReviewMode={reviewMode}
                   statsPitchInteractive={canStatsPitchLog}
-                  className="h-[100dvh] w-full !rounded-none !border-0 !bg-transparent !shadow-none !ring-0"
+                  className="h-[calc(100svh-5.25rem-env(safe-area-inset-bottom))] w-full !rounded-none !border-0 !bg-transparent !shadow-none !ring-0"
                 />
               </div>
 
