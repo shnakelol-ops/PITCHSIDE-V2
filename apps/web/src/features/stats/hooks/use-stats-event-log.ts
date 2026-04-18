@@ -254,29 +254,84 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
   }, []);
 
   const playVoiceNote = useCallback((id: string) => {
+    // Direct, user-gesture playback path. Keep everything synchronous within
+    // the click handler so browser autoplay policy treats this as user-initiated.
     const blob = voiceBlobsRef.current.get(id);
-    if (!blob) return;
-    const prevA = voicePlaybackRef.current;
-    const prevUrl = voicePlaybackUrlRef.current;
-    if (prevA) {
-      prevA.pause();
-      prevA.src = "";
+    // Honest logging — explicitly requested for field diagnosis. Safe in prod:
+    // one short line per tap, no PII, no blob contents.
+    if (typeof console !== "undefined") {
+      console.log("[voice] Playing voice", id);
+      console.log(
+        "[voice] Blob exists:",
+        Boolean(blob),
+        blob ? `${blob.size}B ${blob.type || "no-mime"}` : "(missing)",
+      );
     }
-    if (prevUrl) URL.revokeObjectURL(prevUrl);
+    if (!blob) {
+      console.warn("[voice] No blob registered for id — cannot play", id);
+      return;
+    }
+
+    // Stop any currently-playing clip before starting the next one.
+    const prevAudio = voicePlaybackRef.current;
+    const prevUrl = voicePlaybackUrlRef.current;
+    voicePlaybackRef.current = null;
+    voicePlaybackUrlRef.current = null;
+    if (prevAudio) {
+      try {
+        prevAudio.pause();
+      } catch {
+        /* ignore */
+      }
+    }
+    if (prevUrl) {
+      try {
+        URL.revokeObjectURL(prevUrl);
+      } catch {
+        /* ignore */
+      }
+    }
+
     const url = URL.createObjectURL(blob);
-    voicePlaybackUrlRef.current = url;
     const audio = new Audio(url);
+    audio.preload = "auto";
+    voicePlaybackUrlRef.current = url;
     voicePlaybackRef.current = audio;
-    const revoke = () => {
+
+    // Revoke only when playback has ended naturally, NOT on the 'error' event
+    // (some browsers fire a recoverable error during blob-url media loading;
+    // revoking there kills playback before it can start).
+    const cleanup = () => {
       if (voicePlaybackUrlRef.current === url) {
         voicePlaybackUrlRef.current = null;
         voicePlaybackRef.current = null;
       }
-      URL.revokeObjectURL(url);
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        /* ignore */
+      }
     };
-    audio.addEventListener("ended", revoke, { once: true });
-    audio.addEventListener("error", revoke, { once: true });
-    void audio.play().catch(() => revoke());
+
+    audio.addEventListener("ended", cleanup, { once: true });
+    audio.addEventListener("error", () => {
+      // Log honestly; don't revoke — play() may still succeed on some engines.
+      console.error(
+        "[voice] Audio element error for",
+        id,
+        audio.error?.code,
+        audio.error?.message,
+      );
+    });
+
+    const started = audio.play();
+    if (started && typeof (started as Promise<void>).then === "function") {
+      (started as Promise<void>).catch((err) => {
+        // Surface rejection so silent failures become visible in field conditions.
+        console.error("[voice] play() rejected for", id, err);
+        cleanup();
+      });
+    }
   }, []);
 
   useEffect(() => {
