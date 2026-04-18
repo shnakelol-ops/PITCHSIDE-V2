@@ -294,8 +294,7 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
       // Direct, user-gesture playback path. Keep everything synchronous within
       // the click handler so browser autoplay policy treats this as user-initiated.
       const blob = voiceBlobsRef.current.get(id);
-      // Honest logging — explicitly requested for field diagnosis. Safe in prod:
-      // one short line per tap, no PII, no blob contents.
+      // Honest logging — safe in prod: one short line per tap, no PII.
       if (typeof console !== "undefined") {
         console.log("[voice] Playing voice", id);
         console.log(
@@ -304,9 +303,25 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
           blob ? `${blob.size}B ${blob.type || "no-mime"}` : "(missing)",
         );
       }
+
+      // ── Pre-play validation ───────────────────────────────────────────
+      // Refuse to start if we can't produce a playable source. Per the
+      // voice-MIME-compatibility contract: blob must exist, be non-empty,
+      // and carry a non-empty MIME type (set by the recorder from the
+      // runtime-supported picker).
       if (!blob) {
         console.warn("[voice] No blob registered for id — cannot play", id);
         reportPlaybackError(id, "Clip not available");
+        return;
+      }
+      if (blob.size === 0) {
+        console.warn("[voice] Blob is empty — cannot play", id);
+        reportPlaybackError(id, "Clip is empty");
+        return;
+      }
+      if (!blob.type) {
+        console.warn("[voice] Blob has no MIME type — cannot play", id);
+        reportPlaybackError(id, "Audio format not supported");
         return;
       }
 
@@ -334,107 +349,71 @@ export function useStatsEventLog(options?: UseStatsEventLogOptions) {
         }
       }
 
-      // Single attempt with a given blob. Returns void; on a "source not
-      // supported" failure, invokes the onUnsupported callback exactly once
-      // so the caller can retry with a re-wrapped blob.
-      const attempt = (
-        attemptBlob: Blob,
-        label: "primary" | "retry",
-        onUnsupported: () => void,
-      ) => {
-        const url = URL.createObjectURL(attemptBlob);
-        // Construct, then set src + load() explicitly. Belt-and-braces against
-        // engines (notably iOS Safari) where the constructor-bound src hasn't
-        // fully committed before play() is invoked in the same microtask.
-        const audio = new Audio();
-        audio.preload = "auto";
-        audio.src = url;
-        voicePlaybackUrlRef.current = url;
-        voicePlaybackRef.current = audio;
+      const url = URL.createObjectURL(blob);
+      // Construct, then set src + load() explicitly. Belt-and-braces against
+      // engines (notably iOS Safari) where the constructor-bound src hasn't
+      // fully committed before play() is invoked in the same microtask.
+      const audio = new Audio();
+      audio.preload = "auto";
+      audio.src = url;
+      voicePlaybackUrlRef.current = url;
+      voicePlaybackRef.current = audio;
 
-        let unsupportedFired = false;
-
-        const cleanup = () => {
-          if (voicePlaybackUrlRef.current === url) {
-            voicePlaybackUrlRef.current = null;
-            voicePlaybackRef.current = null;
-          }
-          try {
-            URL.revokeObjectURL(url);
-          } catch {
-            /* ignore */
-          }
-        };
-
-        audio.addEventListener("ended", cleanup, { once: true });
-        audio.addEventListener("error", () => {
-          const code = audio.error?.code;
-          const msg = audio.error?.message ?? "media error";
-          console.error(
-            `[voice] Audio element error (${label}) for`,
-            id,
-            code,
-            msg,
-          );
-          // MEDIA_ERR_SRC_NOT_SUPPORTED === 4. Fire the unsupported path once.
-          if (code === 4 && !unsupportedFired) {
-            unsupportedFired = true;
-            cleanup();
-            onUnsupported();
-            return;
-          }
-          // Other errors: only surface if play() never started.
-          if (audio.paused && audio.currentTime === 0) {
-            reportPlaybackError(id, `Audio error${code ? ` (${code})` : ""}`);
-          }
-        });
-
-        try {
-          audio.load();
-        } catch {
-          /* ignore — some engines don't need explicit load() */
+      // Revoke only when playback ends naturally. NOT on the 'error' event —
+      // some engines fire a transient error during blob-url media loading
+      // that play() ultimately recovers from.
+      const cleanup = () => {
+        if (voicePlaybackUrlRef.current === url) {
+          voicePlaybackUrlRef.current = null;
+          voicePlaybackRef.current = null;
         }
-
-        const started = audio.play();
-        if (started && typeof (started as Promise<void>).then === "function") {
-          (started as Promise<void>).catch((err) => {
-            console.error(`[voice] play() rejected (${label}) for`, id, err);
-            const name =
-              err && typeof err === "object" && "name" in err
-                ? String((err as { name: unknown }).name)
-                : "";
-            if (name === "NotSupportedError" && !unsupportedFired) {
-              unsupportedFired = true;
-              cleanup();
-              onUnsupported();
-              return;
-            }
-            const reason =
-              name === "NotAllowedError"
-                ? "Autoplay blocked — tap again"
-                : name === "NotSupportedError"
-                  ? "Audio format not supported"
-                  : "Playback failed";
-            reportPlaybackError(id, reason);
-            cleanup();
-          });
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          /* ignore */
         }
       };
 
-      // Primary attempt — use the blob as recorded.
-      attempt(blob, "primary", () => {
-        // Fallback: re-wrap the same bytes with an EMPTY MIME so the browser
-        // sniffs the container/codec from the data itself. Known to rescue
-        // Chromium builds that reject some codec-labelled blob URLs with
-        // MEDIA_ERR_SRC_NOT_SUPPORTED even when the raw webm plays fine.
-        if (typeof console !== "undefined") {
-          console.log("[voice] retrying with sniffed MIME for", id);
+      audio.addEventListener("ended", cleanup, { once: true });
+      audio.addEventListener("error", () => {
+        const code = audio.error?.code;
+        const msg = audio.error?.message ?? "media error";
+        console.error("[voice] Audio element error for", id, code, msg);
+        // Only surface as UI error if play() never started. If it already
+        // produced audio we let playback continue.
+        if (audio.paused && audio.currentTime === 0) {
+          const reason =
+            code === 4
+              ? "Audio format not supported"
+              : `Audio error${code ? ` (${code})` : ""}`;
+          reportPlaybackError(id, reason);
         }
-        const sniffBlob = new Blob([blob], { type: "" });
-        attempt(sniffBlob, "retry", () => {
-          reportPlaybackError(id, "Audio format not supported");
-        });
       });
+
+      try {
+        audio.load();
+      } catch {
+        /* ignore — some engines don't need explicit load() */
+      }
+
+      const started = audio.play();
+      if (started && typeof (started as Promise<void>).then === "function") {
+        (started as Promise<void>).catch((err) => {
+          console.error("[voice] play() rejected for", id, err);
+          const name =
+            err && typeof err === "object" && "name" in err
+              ? String((err as { name: unknown }).name)
+              : "";
+          const reason =
+            name === "NotAllowedError"
+              ? "Autoplay blocked — tap again"
+              : name === "NotSupportedError"
+                ? "Audio format not supported"
+                : "Playback failed";
+          reportPlaybackError(id, reason);
+          cleanup();
+        });
+      }
     },
     [reportPlaybackError],
   );
