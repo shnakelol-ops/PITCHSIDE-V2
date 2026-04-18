@@ -886,8 +886,8 @@ export function SimulatorBoardShell({
           </p>
         </div>
 
-        <aside className="order-3 flex w-full shrink-0 flex-col gap-3.5 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
-          <ToolRail title="Mode" className="min-w-0 w-full lg:flex-none">
+        <aside className="order-3 flex w-full shrink-0 flex-row flex-wrap gap-3.5 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
+          <ToolRail title="Mode" className="min-w-0 flex-1 basis-[calc(50%-0.4375rem)] lg:basis-auto lg:flex-none">
             <div className="flex flex-col gap-2" role="group" aria-label="Canvas mode">
               <Button
                 type="button"
@@ -916,7 +916,7 @@ export function SimulatorBoardShell({
             </div>
           </ToolRail>
           {surfaceMode === "STATS" ? (
-            <ToolRail title="Stats V1" className="min-w-0 w-full lg:flex-none">
+            <ToolRail title="Stats V1" className="min-w-0 basis-full lg:basis-auto lg:flex-none">
               <div
                 className="mt-1 flex flex-col gap-2 pr-0.5 lg:max-h-[min(70vh,28rem)] lg:overflow-y-auto"
                 role="group"
@@ -1125,7 +1125,7 @@ export function SimulatorBoardShell({
           {surfaceMode === "STATS" ? (
             <ToolRail
               title="Players"
-              className="min-w-0 w-full lg:flex-none"
+              className="min-w-0 flex-1 basis-[calc(50%-0.4375rem)] lg:basis-auto lg:flex-none"
             >
               <div className="flex flex-col gap-2">
                 <div className="flex gap-1 overflow-x-auto pb-1">
@@ -1170,7 +1170,7 @@ export function SimulatorBoardShell({
               </div>
             </ToolRail>
           ) : null}
-          <ToolRail title="Pitch" className="min-w-0 w-full lg:flex-none">
+          <ToolRail title="Pitch" className="min-w-0 flex-1 basis-[calc(50%-0.4375rem)] lg:basis-auto lg:flex-none">
             <div className="flex flex-col gap-2" role="group" aria-label="Pitch sport">
               {SPORT_OPTIONS.map((opt) => (
                 <Button
@@ -1188,7 +1188,7 @@ export function SimulatorBoardShell({
               ))}
             </div>
           </ToolRail>
-          <ToolRail title="Capture" className="min-w-0 w-full lg:flex-none">
+          <ToolRail title="Capture" className="min-w-0 flex-1 basis-[calc(50%-0.4375rem)] lg:basis-auto lg:flex-none">
             <div className="flex flex-col gap-2" role="group" aria-label="Path capture">
               <Button
                 type="button"
