@@ -699,7 +699,7 @@ export function SimulatorBoardShell({
 
   return (
     <div
-      className="relative flex h-[100dvh] min-h-0 flex-col overflow-hidden text-stone-800"
+      className="relative flex h-full min-h-0 flex-col overflow-hidden text-stone-800"
       style={grassFieldStyle}
     >
       {/* Minimal grain only (~2.8%) — enough to kill “flat UI”, not noisy. */}
