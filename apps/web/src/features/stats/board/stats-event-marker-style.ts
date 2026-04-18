@@ -59,10 +59,12 @@ function emphasisKind(event: StatsLoggedEvent): EmphasisKind {
 
 function applyReviewEmphasis(
   s: StatsEventMarkerStyle,
-  review: "halftime" | "full_time",
+  review: "1h" | "2h" | "all",
   kind: EmphasisKind,
 ): StatsEventMarkerStyle {
-  const phaseBoost = review === "full_time" ? 1.08 : 1.04;
+  // "all" = full-match review (biggest emphasis, as old "full_time" was).
+  // "1h"/"2h" = half-scoped review (same feel as old "halftime").
+  const phaseBoost = review === "all" ? 1.08 : 1.04;
   const kindRadius: Record<EmphasisKind, number> = {
     wide: 1.44,
     shot: 1.22,

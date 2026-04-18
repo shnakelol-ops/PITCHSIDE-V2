@@ -73,11 +73,15 @@ function isPhaseVisibleInReview(
   phase: StatsPeriodPhase,
   reviewMode: StatsReviewMode,
 ): boolean {
-  if (reviewMode === "halftime") {
-    // Halftime review: show 1st-half play + HT captures.
+  if (reviewMode === "1h") {
+    // 1H review: show 1st-half play + HT captures.
     return phase === "first_half" || phase === "half_time";
   }
-  // Full-time review: show everything (all match phases).
+  if (reviewMode === "2h") {
+    // 2H review: show 2nd-half play + FT captures.
+    return phase === "second_half" || phase === "full_time";
+  }
+  // "all" (and "live" as a safe fallback): show everything.
   return true;
 }
 

@@ -426,7 +426,7 @@ export function SimulatorBoardShell({
     if (matchPhase !== "first_half") return;
     setMatchClockRunning(false);
     setMatchPhase("halftime");
-    setReviewMode("halftime");
+    setReviewMode("1h");
     linkedMatchPeriodRef.current = MatchPeriod.HALF_TIME;
     setLinkedMatchPeriod(MatchPeriod.HALF_TIME);
     persistPhase(MatchPeriod.HALF_TIME);
@@ -446,7 +446,7 @@ export function SimulatorBoardShell({
     if (matchPhase !== "second_half") return;
     setMatchClockRunning(false);
     setMatchPhase("full_time");
-    setReviewMode("full_time");
+    setReviewMode("all");
     linkedMatchPeriodRef.current = MatchPeriod.FULL_TIME;
     setLinkedMatchPeriod(MatchPeriod.FULL_TIME);
     persistPhase(MatchPeriod.FULL_TIME);
@@ -456,20 +456,52 @@ export function SimulatorBoardShell({
     if (canStatsPitchLog) setPitchMarkerViewFilter("all");
   }, [canStatsPitchLog]);
 
+  // Base review window — preserves existing shape/ordering/behaviour.
+  // Scopes by explicit review mode only. Live passes the full list through
+  // (the half-split layer below trims it to the current half for the pitch).
   const statsEventsForReviewWindow = useMemo(() => {
     if (reviewMode === "live") return statsEvents;
-    if (reviewMode === "halftime") {
+    if (reviewMode === "1h") {
       return statsEvents.filter(
         (e) => e.periodPhase === "first_half" || e.periodPhase === "half_time",
       );
     }
+    if (reviewMode === "2h") {
+      return statsEvents.filter(
+        (e) => e.periodPhase === "second_half" || e.periodPhase === "full_time",
+      );
+    }
+    // "all"
     return statsEvents;
   }, [reviewMode, statsEvents]);
 
+  // Half-split filter layer — sits ON TOP of the review window.
+  // Only trims the LIVE pitch view to the current half so 2H starts visually
+  // clean. Review scopes (1h/2h/all) fall through untouched. Non-destructive.
+  const statsEventsForLiveHalf = useMemo(() => {
+    if (reviewMode !== "live") return statsEventsForReviewWindow;
+    switch (matchPhase) {
+      case "first_half":
+      case "halftime":
+        return statsEventsForReviewWindow.filter(
+          (e) => e.periodPhase === "first_half",
+        );
+      case "second_half":
+        return statsEventsForReviewWindow.filter(
+          (e) => e.periodPhase === "second_half",
+        );
+      case "pre_match":
+        return [];
+      case "full_time":
+      default:
+        return statsEventsForReviewWindow;
+    }
+  }, [statsEventsForReviewWindow, reviewMode, matchPhase]);
+
   const statsEventsForPitchView = useMemo(() => {
-    if (isStatsLive || pitchMarkerViewFilter === "all") return statsEventsForReviewWindow;
-    return statsEventsForReviewWindow.filter((e) => e.kind === pitchMarkerViewFilter);
-  }, [statsEventsForReviewWindow, isStatsLive, pitchMarkerViewFilter]);
+    if (isStatsLive || pitchMarkerViewFilter === "all") return statsEventsForLiveHalf;
+    return statsEventsForLiveHalf.filter((e) => e.kind === pitchMarkerViewFilter);
+  }, [statsEventsForLiveHalf, isStatsLive, pitchMarkerViewFilter]);
   const pendingScore = useMemo(
     () => findLatestScorePendingScorer(statsEvents),
     [statsEvents],

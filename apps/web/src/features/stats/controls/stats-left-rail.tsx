@@ -27,8 +27,9 @@ const BTN_AMBER =
 
 const REVIEW_CHIPS: { mode: StatsReviewMode; label: string }[] = [
   { mode: "live", label: "Live" },
-  { mode: "halftime", label: "HT" },
-  { mode: "full_time", label: "FT" },
+  { mode: "1h", label: "1H" },
+  { mode: "2h", label: "2H" },
+  { mode: "all", label: "All" },
 ];
 
 const SPORT_OPTIONS: { id: PitchSport; label: string }[] = [
@@ -254,9 +255,11 @@ export function StatsLeftRail({
         <p className="px-0.5 text-[9px] leading-snug text-slate-400/70">
           {reviewMode === "live"
             ? "Logging events to the pitch."
-            : reviewMode === "halftime"
+            : reviewMode === "1h"
               ? "Reviewing first-half events."
-              : "Reviewing full match events."}
+              : reviewMode === "2h"
+                ? "Reviewing second-half events."
+                : "Reviewing full match events."}
         </p>
       </RailSection>
 
