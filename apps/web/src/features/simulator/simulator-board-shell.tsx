@@ -699,7 +699,7 @@ export function SimulatorBoardShell({
 
   return (
     <div
-      className="relative flex h-[100dvh] min-h-0 flex-col overflow-hidden text-stone-800"
+      className="relative flex h-[100svh] max-h-[100svh] min-h-0 flex-col overflow-hidden text-stone-800"
       style={grassFieldStyle}
     >
       {/* Minimal grain only (~2.8%) — enough to kill “flat UI”, not noisy. */}
@@ -711,7 +711,12 @@ export function SimulatorBoardShell({
         }}
         aria-hidden
       />
-      <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5 md:flex">
+      <header
+        className={cn(
+          "relative z-10 flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5",
+          surfaceMode === "STATS" && "hidden md:flex",
+        )}
+      >
         <div className="min-w-0 space-y-0.5">
           <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-stone-800/65">
             Pitchside
@@ -725,7 +730,12 @@ export function SimulatorBoardShell({
         </div>
       </header>
 
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 md:flex lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14">
+      <main
+        className={cn(
+          "relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14",
+          surfaceMode === "STATS" && "gap-0 p-0 sm:gap-0 sm:p-0 md:gap-5 md:p-6",
+        )}
+      >
         <aside
           className={cn(
             "order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4",
@@ -836,7 +846,12 @@ export function SimulatorBoardShell({
           </ToolRail>
         </aside>
 
-        <div className="order-1 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center lg:order-2 lg:max-w-[min(96vw,74rem)]">
+        <div
+          className={cn(
+            "order-1 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center lg:order-2 lg:max-w-[min(96vw,74rem)]",
+            surfaceMode === "STATS" && "hidden md:flex",
+          )}
+        >
           <div className="relative w-full max-w-full px-1 sm:px-2">
             {/* Soft lift behind pitch — no hard frame ring */}
             <div
@@ -959,7 +974,7 @@ export function SimulatorBoardShell({
                   onStatsPitchTap={onStatsPitchTapGuarded}
                   statsReviewMode={reviewMode}
                   statsPitchInteractive={canStatsPitchLog}
-                  className="h-[calc(100svh-5.25rem-env(safe-area-inset-bottom))] w-full !rounded-none !border-0 !bg-transparent !shadow-none !ring-0"
+                  className="h-[calc(100svh-4.75rem-env(safe-area-inset-bottom))] w-full !rounded-none !border-0 !bg-transparent !shadow-none !ring-0"
                 />
               </div>
 
@@ -1144,7 +1159,7 @@ export function SimulatorBoardShell({
                 </Drawer>
               </aside>
 
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-2 pb-[max(0.45rem,env(safe-area-inset-bottom))]">
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-2 pb-[max(0.35rem,env(safe-area-inset-bottom))]">
                 <div className="simulator-mobile-event-bar pointer-events-auto flex gap-1.5 overflow-x-auto rounded-xl border border-white/20 bg-[rgba(19,27,44,0.88)] px-2 py-2 backdrop-blur-md">
                   {MOBILE_PRIMARY_EVENT_KINDS.map((kind) => (
                     <Button
@@ -1166,6 +1181,15 @@ export function SimulatorBoardShell({
                 </div>
               </div>
             </div>
+            <style jsx>{`
+              @media (max-width: 767px) and (orientation: landscape) {
+                :global(html),
+                :global(body) {
+                  height: 100%;
+                  overflow: hidden;
+                }
+              }
+            `}</style>
           </>
         ) : null}
 
