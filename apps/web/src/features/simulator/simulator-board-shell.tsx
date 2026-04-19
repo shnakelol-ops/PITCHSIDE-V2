@@ -738,6 +738,7 @@ export function SimulatorBoardShell({
                 onStatsPitchTap={onStatsPitchTapGuarded}
                 statsReviewMode={reviewMode}
                 statsPitchInteractive={canStatsPitchLog}
+                fullBleed
                 className="h-full w-full !mx-0 !max-w-none !rounded-none !border-0 !bg-transparent !shadow-none !ring-0"
               />
             </div>

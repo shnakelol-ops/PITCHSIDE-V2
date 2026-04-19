@@ -65,6 +65,8 @@ export type SimulatorPixiSurfaceProps = {
   statsReviewMode?: StatsReviewMode;
   /** When false (e.g. HT/FT review), pitch stops accepting logs; dots stay visible. */
   statsPitchInteractive?: boolean;
+  /** Full-bleed mount path used by phone stats shell. */
+  fullBleed?: boolean;
   className?: string;
 };
 
@@ -88,6 +90,7 @@ export const SimulatorPixiSurface = forwardRef<
     onStatsPitchTap,
     statsReviewMode = "live",
     statsPitchInteractive = true,
+    fullBleed = false,
     className,
   },
   ref,
@@ -132,8 +135,7 @@ export const SimulatorPixiSurface = forwardRef<
   );
   const releaseAthleteInputRef = useRef<(() => void) | null>(null);
   const pathStore = useMemo(() => new MovementPathStore(), []);
-  const fillParent =
-    /\bh-full\b/.test(className ?? "") && /\!max-w-none\b/.test(className ?? "");
+  const fillParent = fullBleed;
 
   sportRef.current = sport;
   recordingModeRef.current = recordingMode;
