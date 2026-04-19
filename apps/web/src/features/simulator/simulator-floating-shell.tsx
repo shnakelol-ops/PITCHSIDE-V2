@@ -54,6 +54,7 @@ export function SimulatorFloatingShell({
   initialSurfaceMode = "SIMULATOR",
   linkedMatchId = null,
 }: SimulatorFloatingShellProps = {}) {
+  const shellRef = useRef<HTMLDivElement | null>(null);
   const [surfaceMode, setSurfaceMode] =
     useState<SimulatorSurfaceMode>(initialSurfaceMode);
   const [sport, setSport] = useState<PitchSport>("gaelic");
@@ -88,6 +89,10 @@ export function SimulatorFloatingShell({
   const [pitchMarkerViewFilter, setPitchMarkerViewFilter] =
     useState<PitchMarkerViewFilter>("all");
   const [showLegacyTransport, setShowLegacyTransport] = useState(false);
+  const [pitchOverlayAnchors, setPitchOverlayAnchors] = useState<{
+    leftPx: number;
+    rightPx: number;
+  } | null>(null);
 
   useEffect(() => {
     setSurfaceMode(initialSurfaceMode);
@@ -464,7 +469,10 @@ export function SimulatorFloatingShell({
   }, []);
 
   return (
-    <div className="simulator-direct relative flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-[#0b0f0c] text-stone-100">
+    <div
+      ref={shellRef}
+      className="simulator-direct relative flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-[#0b0f0c] text-stone-100"
+    >
       <div
         ref={pitchHostRef}
         className="simulator-pitch-slot relative z-0 flex flex-1 items-center justify-center"
@@ -618,6 +626,7 @@ export function SimulatorFloatingShell({
         onAttachVoiceAsMoment={onAttachVoiceAsMoment}
         onDiscardPendingVoice={onDiscardPendingVoice}
         onPlayVoice={playVoiceNote}
+        pitchOverlayAnchors={pitchOverlayAnchors}
       />
 
       <style jsx global>{`

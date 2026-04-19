@@ -124,6 +124,10 @@ export type MobileStatsOverlayProps = {
   onAttachVoiceAsMoment: () => void;
   onDiscardPendingVoice: () => void;
   onPlayVoice: (voiceNoteId: string) => void;
+  pitchOverlayAnchors?: {
+    leftPx: number;
+    rightPx: number;
+  } | null;
 };
 
 export function MobileStatsOverlay({
@@ -178,6 +182,7 @@ export function MobileStatsOverlay({
   onAttachVoiceAsMoment,
   onDiscardPendingVoice,
   onPlayVoice,
+  pitchOverlayAnchors = null,
 }: MobileStatsOverlayProps) {
   const [openPanel, setOpenPanel] = useState<OverlayPanel>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -204,10 +209,21 @@ export function MobileStatsOverlay({
   }, [openPanel]);
 
   const logPanelDisabled = !canStatsPitchLog;
+  const leftEdgeStyle =
+    pitchOverlayAnchors != null
+      ? { left: `${Math.round(pitchOverlayAnchors.leftPx)}px` }
+      : { left: "max(0.45rem, env(safe-area-inset-left))" };
+  const rightEdgeStyle =
+    pitchOverlayAnchors != null
+      ? { right: `${Math.round(pitchOverlayAnchors.rightPx)}px` }
+      : { right: "max(0.45rem, env(safe-area-inset-right))" };
 
   return (
     <div ref={rootRef} className="pointer-events-none absolute inset-0 z-40">
-      <div className="pointer-events-none absolute left-[max(0.45rem,env(safe-area-inset-left))] top-1/2 z-50 -translate-y-1/2">
+      <div
+        className="pointer-events-none absolute top-1/2 z-50 -translate-y-1/2"
+        style={leftEdgeStyle}
+      >
         <div className="flex flex-col gap-2">
           <Button
             type="button"
@@ -235,7 +251,7 @@ export function MobileStatsOverlay({
       {surfaceMode === "STATS" ? (
         <div
           className="pointer-events-none absolute top-1/2 z-50 -translate-y-1/2"
-          style={{ right: "max(0.45rem, env(safe-area-inset-right))" }}
+          style={rightEdgeStyle}
         >
           <Button
             type="button"
