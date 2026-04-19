@@ -132,7 +132,8 @@ export const SimulatorPixiSurface = forwardRef<
   );
   const releaseAthleteInputRef = useRef<(() => void) | null>(null);
   const pathStore = useMemo(() => new MovementPathStore(), []);
-  const fillParent = /\bh-full\b/.test(className ?? "");
+  const fillParent =
+    /\bh-full\b/.test(className ?? "") && /\!max-w-none\b/.test(className ?? "");
 
   sportRef.current = sport;
   recordingModeRef.current = recordingMode;
