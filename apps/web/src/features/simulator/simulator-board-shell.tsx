@@ -239,6 +239,11 @@ const mobileStatsStadiumFloodlightStyle: CSSProperties = {
   ].join(", "),
 };
 
+const mobileStatsStadiumEdgeFadeStyle: CSSProperties = {
+  backgroundImage:
+    "radial-gradient(ellipse 88% 60% at 50% 54%, transparent 0%, transparent 56%, rgba(15,22,38,0.14) 74%, rgba(10,16,28,0.26) 100%)",
+};
+
 const btnBase =
   "min-h-10 w-full justify-center rounded-[11px] px-3 py-2.5 text-[12px] font-medium leading-tight tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_8px_-2px_rgba(0,0,0,0.35)] transition-[transform,box-shadow,background-color,border-color,color] duration-200 sm:min-h-9 sm:py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(18,20,24,0.9)] active:translate-y-px active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.35)]";
 
@@ -410,6 +415,7 @@ export function SimulatorBoardShell({
   }>(MOBILE_LOG_BUBBLE_FALLBACK_SIZE);
   const mobileLogBubbleDragRef = useRef<MobileLogBubbleDragState | null>(null);
   const mobileLogBubbleLastPointerDownRef = useRef(0);
+  const mobileLogBubbleJustDraggedRef = useRef(false);
   const persistErrorClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
