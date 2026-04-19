@@ -449,47 +449,55 @@ export const SimulatorPixiSurface = forwardRef<
     layout();
   }, [sport]);
 
-  return (
-    <div
-      className={cn(
-        "pitch-wrapper relative h-full min-h-0 w-full overflow-hidden",
-        fillParent ? "flex-1" : "flex-1 rounded-2xl p-3 sm:p-4 md:p-5",
-      )}
-      style={
-        fillParent
-          ? undefined
-          : {
-              backgroundColor: "#4a2f25",
-              backgroundImage: [
-                "linear-gradient(175deg, rgba(100, 72, 60, 0.2) 0%, transparent 42%, rgba(22, 14, 10, 0.32) 100%)",
-                "linear-gradient(95deg, rgba(32, 20, 16, 0.4) 0%, transparent 48%, rgba(68, 48, 38, 0.22) 100%)",
-                "radial-gradient(ellipse 120% 80% at 50% 0%, rgba(78, 56, 44, 0.14), transparent 55%)",
-              ].join(", "),
-              boxShadow:
-                "inset 0 2px 12px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.045), inset 0 -2px 16px rgba(0, 0, 0, 0.2)",
-            }
-      }
-    >
-      {!fillParent ? (
-        <div
-          className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.045] mix-blend-multiply"
-          style={{
-            backgroundImage: pitchSurroundNoiseDataUrl,
-            backgroundSize: "200px 200px",
-          }}
-          aria-hidden
-        />
-      ) : null}
+  if (fillParent) {
+    return (
       <div
         ref={hostRef}
         className={cn(
-          fillParent
-            ? "absolute inset-0 h-full w-full min-h-0 overflow-hidden bg-transparent"
-            : "relative z-10 mx-auto h-full min-h-0 w-full max-w-full overflow-hidden rounded-lg bg-transparent",
+          "absolute inset-0 h-full w-full min-h-0 overflow-hidden bg-transparent",
           className,
         )}
         style={{
-          aspectRatio: fillParent ? undefined : getPitchBoardAspectRatio(sport),
+          touchAction: "none",
+          WebkitUserSelect: "none",
+          userSelect: "none",
+        }}
+        aria-label="Simulator pitch"
+        role="img"
+      />
+    );
+  }
+
+  return (
+    <div
+      className="pitch-wrapper relative h-full min-h-0 w-full flex-1 overflow-hidden rounded-2xl p-3 sm:p-4 md:p-5"
+      style={{
+        backgroundColor: "#4a2f25",
+        backgroundImage: [
+          "linear-gradient(175deg, rgba(100, 72, 60, 0.2) 0%, transparent 42%, rgba(22, 14, 10, 0.32) 100%)",
+          "linear-gradient(95deg, rgba(32, 20, 16, 0.4) 0%, transparent 48%, rgba(68, 48, 38, 0.22) 100%)",
+          "radial-gradient(ellipse 120% 80% at 50% 0%, rgba(78, 56, 44, 0.14), transparent 55%)",
+        ].join(", "),
+        boxShadow:
+          "inset 0 2px 12px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.045), inset 0 -2px 16px rgba(0, 0, 0, 0.2)",
+      }}
+    >
+      <div
+        className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.045] mix-blend-multiply"
+        style={{
+          backgroundImage: pitchSurroundNoiseDataUrl,
+          backgroundSize: "200px 200px",
+        }}
+        aria-hidden
+      />
+      <div
+        ref={hostRef}
+        className={cn(
+          "relative z-10 mx-auto h-full min-h-0 w-full max-w-full overflow-hidden rounded-lg bg-transparent",
+          className,
+        )}
+        style={{
+          aspectRatio: getPitchBoardAspectRatio(sport),
           touchAction: "none",
           WebkitUserSelect: "none",
           userSelect: "none",

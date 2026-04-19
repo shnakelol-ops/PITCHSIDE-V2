@@ -923,7 +923,7 @@ export function SimulatorBoardShell({
               </Drawer>
             </aside>
 
-            <div className="pointer-events-none z-30 flex-shrink-0 px-2 pb-[max(0.45rem,env(safe-area-inset-bottom))]">
+            <div className="pointer-events-none z-30 h-[90px] flex-shrink-0 px-2 pb-[max(0.45rem,env(safe-area-inset-bottom))]">
               <div className="simulator-mobile-event-bar pointer-events-auto flex gap-1.5 overflow-x-auto rounded-xl border border-white/20 bg-[rgba(19,27,44,0.88)] px-2 py-2 backdrop-blur-md">
                 {MOBILE_PRIMARY_EVENT_KINDS.map((kind) => (
                   <Button
