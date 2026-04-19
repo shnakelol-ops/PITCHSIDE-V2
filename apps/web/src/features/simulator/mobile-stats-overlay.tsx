@@ -217,6 +217,23 @@ export function MobileStatsOverlay({
     pitchOverlayAnchors != null
       ? { right: `${Math.round(pitchOverlayAnchors.rightPx)}px` }
       : { right: "max(0.45rem, env(safe-area-inset-right))" };
+  const onMenuPress = () => {
+    setOpenPanel((v) => (v === "menu" ? null : "menu"));
+  };
+  const onVoicePress = () => {
+    setOpenPanel("voice");
+    if (isVoiceRecording) {
+      onStopVoice();
+      return;
+    }
+    onStartVoice();
+  };
+  const onLogEventPress = () => {
+    if (openPanel !== "log") {
+      onArmKind(statsArm ?? "SHOT");
+    }
+    setOpenPanel((v) => (v === "log" ? null : "log"));
+  };
 
   return (
     <div ref={rootRef} className="pointer-events-none absolute inset-0 z-40">
@@ -230,7 +247,7 @@ export function MobileStatsOverlay({
             variant="secondary"
             className={cn("pointer-events-auto", bubbleButtonClass(openPanel === "menu"))}
             aria-pressed={openPanel === "menu"}
-            onClick={() => setOpenPanel((v) => (v === "menu" ? null : "menu"))}
+            onClick={onMenuPress}
           >
             Menu
           </Button>
@@ -238,9 +255,12 @@ export function MobileStatsOverlay({
             <Button
               type="button"
               variant="secondary"
-              className={cn("pointer-events-auto", bubbleButtonClass(openPanel === "voice"))}
+              className={cn(
+                "pointer-events-auto",
+                bubbleButtonClass(openPanel === "voice" || isVoiceRecording),
+              )}
               aria-pressed={openPanel === "voice"}
-              onClick={() => setOpenPanel((v) => (v === "voice" ? null : "voice"))}
+              onClick={onVoicePress}
             >
               Voice
             </Button>
@@ -258,7 +278,7 @@ export function MobileStatsOverlay({
             variant="secondary"
             className={cn("pointer-events-auto", bubbleButtonClass(openPanel === "log"))}
             aria-pressed={openPanel === "log"}
-            onClick={() => setOpenPanel((v) => (v === "log" ? null : "log"))}
+            onClick={onLogEventPress}
           >
             Log Event
           </Button>
