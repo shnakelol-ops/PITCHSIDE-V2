@@ -88,33 +88,28 @@ const MOBILE_PRIMARY_EVENT_KINDS: readonly StatsV1EventKind[] = [
   "KICKOUT_WON",
   "KICKOUT_LOST",
 ];
-const MOBILE_LOG_BUBBLE_STORAGE_KEY = "pitchside:stats-mobile-log-bubble:v1";
-const MOBILE_LOG_BUBBLE_FALLBACK = { x: 0, y: 0 };
-const MOBILE_LOG_BUBBLE_MIN_MARGIN = 8;
-const MOBILE_LOG_BUBBLE_DEFAULT_RIGHT_MARGIN = 12;
-const MOBILE_LOG_BUBBLE_DEFAULT_TOP = 62;
-const MOBILE_LOG_BUBBLE_FALLBACK_SIZE = { width: 112, height: 36 };
-
-type MobileLogBubblePosition = { x: number; y: number };
+const MOBILE_LOG_BUBBLE_STORAGE_KEY = "pitchside.mobileStats.logEventBubbleY";
+const MOBILE_LOG_BUBBLE_FIXED_RIGHT = 14;
+const MOBILE_LOG_BUBBLE_MIN_TOP = 88;
+const MOBILE_LOG_BUBBLE_BOTTOM_SAFE_OFFSET = 160;
+const MOBILE_LOG_BUBBLE_DEFAULT_TOP_VH = 42;
 
 type MobileLogBubbleDragState = {
   pointerId: number;
-  startX: number;
   startY: number;
-  originX: number;
   originY: number;
   dragging: boolean;
 };
 const MOBILE_LOG_BUBBLE_DRAG_THRESHOLD = 6;
 
-function readMobileLogBubblePosition(): MobileLogBubblePosition | null {
+function readMobileLogBubbleY(): number | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(MOBILE_LOG_BUBBLE_STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<MobileLogBubblePosition>;
-    if (typeof parsed.x !== "number" || typeof parsed.y !== "number") return null;
-    return { x: parsed.x, y: parsed.y };
+    const parsed = Number.parseFloat(raw);
+    if (!Number.isFinite(parsed)) return null;
+    return parsed;
   } catch {
     return null;
   }
@@ -404,15 +399,8 @@ export function SimulatorBoardShell({
   const [clearLogConfirmOpen, setClearLogConfirmOpen] = useState(false);
   const [mobileStatsDrawerOpen, setMobileStatsDrawerOpen] = useState(false);
   const [mobileStatsLogDrawerOpen, setMobileStatsLogDrawerOpen] = useState(false);
-  const [mobileLogBubblePos, setMobileLogBubblePos] = useState<MobileLogBubblePosition | null>(
-    null,
-  );
-  const [mobileLogBubblePositionHydrated, setMobileLogBubblePositionHydrated] =
-    useState(false);
-  const [mobileLogBubbleRect, setMobileLogBubbleRect] = useState<{
-    width: number;
-    height: number;
-  }>(MOBILE_LOG_BUBBLE_FALLBACK_SIZE);
+  const [mobileLogBubbleY, setMobileLogBubbleY] = useState<number | null>(null);
+  const [mobileLogBubbleYHydrated, setMobileLogBubbleYHydrated] = useState(false);
   const mobileLogBubbleDragRef = useRef<MobileLogBubbleDragState | null>(null);
   const mobileLogBubbleLastPointerDownRef = useRef(0);
   const mobileLogBubbleJustDraggedRef = useRef(false);
@@ -442,65 +430,53 @@ export function SimulatorBoardShell({
     }
   }, [surfaceMode]);
 
-  const clampMobileLogBubble = useCallback(
-    (x: number, y: number) => {
-      if (typeof window === "undefined") return { x, y };
-      const width = mobileLogBubbleRect.width;
-      const height = mobileLogBubbleRect.height;
-      const maxX = Math.max(
-        MOBILE_LOG_BUBBLE_MIN_MARGIN,
-        window.innerWidth - width - MOBILE_LOG_BUBBLE_MIN_MARGIN,
+  const clampMobileLogBubbleY = useCallback(
+    (y: number) => {
+      if (typeof window === "undefined") return y;
+      const viewportTop = window.visualViewport?.offsetTop ?? 0;
+      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+      const minTop = MOBILE_LOG_BUBBLE_MIN_TOP + viewportTop;
+      const maxTop = Math.max(
+        minTop,
+        viewportTop + viewportHeight - MOBILE_LOG_BUBBLE_BOTTOM_SAFE_OFFSET,
       );
-      const maxY = Math.max(
-        MOBILE_LOG_BUBBLE_MIN_MARGIN,
-        window.innerHeight - height - MOBILE_LOG_BUBBLE_MIN_MARGIN,
-      );
-      return {
-        x: Math.min(Math.max(x, MOBILE_LOG_BUBBLE_MIN_MARGIN), maxX),
-        y: Math.min(Math.max(y, MOBILE_LOG_BUBBLE_MIN_MARGIN), maxY),
-      };
+      return Math.min(Math.max(y, minTop), maxTop);
     },
-    [mobileLogBubbleRect.height, mobileLogBubbleRect.width],
+    [],
   );
 
-  const computeDefaultMobileLogBubblePos = useCallback(() => {
-    if (typeof window === "undefined") return MOBILE_LOG_BUBBLE_FALLBACK;
-    const width = mobileLogBubbleRect.width;
-    return clampMobileLogBubble(
-      window.innerWidth - width - MOBILE_LOG_BUBBLE_DEFAULT_RIGHT_MARGIN,
-      MOBILE_LOG_BUBBLE_DEFAULT_TOP + (window.visualViewport?.offsetTop ?? 0),
+  const computeDefaultMobileLogBubbleY = useCallback(() => {
+    if (typeof window === "undefined") return MOBILE_LOG_BUBBLE_MIN_TOP;
+    const viewportTop = window.visualViewport?.offsetTop ?? 0;
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    return clampMobileLogBubbleY(
+      viewportTop + (viewportHeight * MOBILE_LOG_BUBBLE_DEFAULT_TOP_VH) / 100,
     );
-  }, [clampMobileLogBubble, mobileLogBubbleRect.width]);
+  }, [clampMobileLogBubbleY]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const saved = readMobileLogBubblePosition();
-    if (saved) {
-      setMobileLogBubblePos(clampMobileLogBubble(saved.x, saved.y));
+    const savedY = readMobileLogBubbleY();
+    if (savedY != null) {
+      setMobileLogBubbleY(clampMobileLogBubbleY(savedY));
     } else {
-      setMobileLogBubblePos(computeDefaultMobileLogBubblePos());
+      setMobileLogBubbleY(computeDefaultMobileLogBubbleY());
     }
-    setMobileLogBubblePositionHydrated(true);
-  }, [clampMobileLogBubble, computeDefaultMobileLogBubblePos]);
+    setMobileLogBubbleYHydrated(true);
+  }, [clampMobileLogBubbleY, computeDefaultMobileLogBubbleY]);
 
   useEffect(() => {
-    if (!mobileLogBubblePositionHydrated || mobileLogBubblePos == null) return;
+    if (!mobileLogBubbleYHydrated || mobileLogBubbleY == null) return;
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      MOBILE_LOG_BUBBLE_STORAGE_KEY,
-      JSON.stringify(mobileLogBubblePos),
-    );
-  }, [mobileLogBubblePos, mobileLogBubblePositionHydrated]);
+    window.localStorage.setItem(MOBILE_LOG_BUBBLE_STORAGE_KEY, `${mobileLogBubbleY}`);
+  }, [mobileLogBubbleY, mobileLogBubbleYHydrated]);
 
   useEffect(() => {
-    if (!mobileLogBubblePositionHydrated) return;
+    if (!mobileLogBubbleYHydrated) return;
     if (typeof window === "undefined") return;
     const onResize = () => {
-      setMobileLogBubblePos((prev) =>
-        clampMobileLogBubble(
-          prev?.x ?? computeDefaultMobileLogBubblePos().x,
-          prev?.y ?? computeDefaultMobileLogBubblePos().y,
-        ),
+      setMobileLogBubbleY((prev) =>
+        clampMobileLogBubbleY(prev ?? computeDefaultMobileLogBubbleY()),
       );
     };
     window.addEventListener("resize", onResize);
@@ -510,9 +486,9 @@ export function SimulatorBoardShell({
       window.visualViewport?.removeEventListener("resize", onResize);
     };
   }, [
-    clampMobileLogBubble,
-    computeDefaultMobileLogBubblePos,
-    mobileLogBubblePositionHydrated,
+    clampMobileLogBubbleY,
+    computeDefaultMobileLogBubbleY,
+    mobileLogBubbleYHydrated,
   ]);
 
   const matchClock = useSimulatorMatchClock(surfaceMode === "STATS");
@@ -850,35 +826,32 @@ export function SimulatorBoardShell({
       const now = Date.now();
       if (now - mobileLogBubbleLastPointerDownRef.current < 250) return;
       mobileLogBubbleLastPointerDownRef.current = now;
-      const current = mobileLogBubblePos ?? computeDefaultMobileLogBubblePos();
+      const currentY = mobileLogBubbleY ?? computeDefaultMobileLogBubbleY();
       mobileLogBubbleDragRef.current = {
         pointerId: e.pointerId,
-        startX: e.clientX,
         startY: e.clientY,
-        originX: current.x,
-        originY: current.y,
+        originY: currentY,
         dragging: false,
       };
+      mobileLogBubbleJustDraggedRef.current = false;
       e.currentTarget.setPointerCapture(e.pointerId);
     },
-    [computeDefaultMobileLogBubblePos, mobileLogBubblePos],
+    [computeDefaultMobileLogBubbleY, mobileLogBubbleY],
   );
 
   const onMobileLogBubblePointerMove = useCallback(
     (e: ReactPointerEvent<HTMLButtonElement>) => {
       const drag = mobileLogBubbleDragRef.current;
       if (!drag || drag.pointerId !== e.pointerId) return;
-      const dx = e.clientX - drag.startX;
       const dy = e.clientY - drag.startY;
-      if (!drag.dragging && Math.hypot(dx, dy) > MOBILE_LOG_BUBBLE_DRAG_THRESHOLD) {
+      if (!drag.dragging && Math.abs(dy) > MOBILE_LOG_BUBBLE_DRAG_THRESHOLD) {
         drag.dragging = true;
       }
       if (!drag.dragging) return;
-      const next = clampMobileLogBubble(drag.originX + dx, drag.originY + dy);
-      setMobileLogBubblePos(next);
+      setMobileLogBubbleY(clampMobileLogBubbleY(drag.originY + dy));
       e.preventDefault();
     },
-    [clampMobileLogBubble],
+    [clampMobileLogBubbleY],
   );
 
   const onMobileLogBubblePointerUp = useCallback(
@@ -1169,27 +1142,14 @@ export function SimulatorBoardShell({
               >
                 <DrawerTrigger asChild>
                   <Button
-                    ref={(el) => {
-                      if (!el) return;
-                      const rect = el.getBoundingClientRect();
-                      const next = {
-                        width: rect.width || MOBILE_LOG_BUBBLE_FALLBACK_SIZE.width,
-                        height: rect.height || MOBILE_LOG_BUBBLE_FALLBACK_SIZE.height,
-                      };
-                      setMobileLogBubbleRect((prev) => {
-                        const widthUnchanged = Math.abs(prev.width - next.width) < 0.5;
-                        const heightUnchanged = Math.abs(prev.height - next.height) < 0.5;
-                        return widthUnchanged && heightUnchanged ? prev : next;
-                      });
-                    }}
                     type="button"
                     variant="secondary"
                     style={{
-                      left: `${(mobileLogBubblePos ?? MOBILE_LOG_BUBBLE_FALLBACK).x}px`,
-                      top: `${(mobileLogBubblePos ?? MOBILE_LOG_BUBBLE_FALLBACK).y}px`,
+                      right: `${MOBILE_LOG_BUBBLE_FIXED_RIGHT}px`,
+                      top: `${mobileLogBubbleY ?? computeDefaultMobileLogBubbleY()}px`,
                       touchAction: "none",
                     }}
-                    className="pointer-events-auto absolute min-h-9 rounded-full border border-white/20 bg-[rgba(19,27,44,0.88)] px-3 py-1.5 text-[10px] font-semibold text-stone-100 shadow-[0_12px_28px_-20px_rgba(0,0,0,0.9)] backdrop-blur-md"
+                    className="pointer-events-auto absolute flex h-[52px] items-center gap-2 rounded-full border border-white/20 bg-[rgba(18,28,46,0.84)] px-3.5 text-[11px] font-semibold text-stone-100 shadow-[0_10px_26px_-14px_rgba(0,0,0,0.85)] backdrop-blur-[10px]"
                     aria-label="Open quick event logger"
                     onPointerDown={onMobileLogBubblePointerDown}
                     onPointerMove={onMobileLogBubblePointerMove}
@@ -1197,7 +1157,9 @@ export function SimulatorBoardShell({
                     onPointerCancel={onMobileLogBubblePointerCancel}
                     onClickCapture={onMobileLogBubbleClickCapture}
                   >
-                    <CirclePlus className="mr-1.5 size-3.5" />
+                    <span className="inline-flex size-7 items-center justify-center rounded-full border border-white/15 bg-white/10">
+                      <CirclePlus className="size-3.5" />
+                    </span>
                     Log Event
                   </Button>
                 </DrawerTrigger>
