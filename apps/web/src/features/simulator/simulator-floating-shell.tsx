@@ -450,9 +450,12 @@ export function SimulatorFloatingShell({
   }, []);
 
   return (
-    <div className="simulator-direct relative flex min-h-[100dvh] flex-col overflow-hidden bg-[#0b0f0c] text-stone-100">
-      <div ref={pitchHostRef} className="relative z-0 flex flex-1 items-center justify-center">
-        <div className="w-full">
+    <div className="simulator-direct relative flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-[#0b0f0c] text-stone-100">
+      <div
+        ref={pitchHostRef}
+        className="simulator-pitch-slot relative z-0 flex flex-1 items-center justify-center"
+      >
+        <div className="simulator-pitch-frame w-full">
           <SimulatorPixiSurface
             ref={surfaceRef}
             sport={sport}
@@ -464,19 +467,19 @@ export function SimulatorFloatingShell({
             onStatsPitchTap={surfaceMode === "STATS" ? onStatsPitchTapGuarded : undefined}
             statsReviewMode={reviewMode}
             statsPitchInteractive={canStatsPitchLog}
-            className="w-full"
+            className="simulator-pitch-host w-full"
           />
         </div>
       </div>
 
       <div className="pointer-events-none absolute inset-0 z-30">
-        <div className="pointer-events-none absolute left-3 top-2">
+        <div className="simulator-corner-badge pointer-events-none absolute left-3 top-2">
           <p className="rounded-lg border border-white/10 bg-black/35 px-2 py-1 text-[9px] uppercase tracking-[0.2em] text-stone-200/70 backdrop-blur">
             Simulator
           </p>
         </div>
 
-        <div className="pointer-events-none absolute bottom-[max(0.55rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2">
+        <div className="simulator-transport-anchor pointer-events-none absolute bottom-[max(0.55rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2">
           <div className="simulator-transport-strip pointer-events-none flex items-center gap-1 rounded-xl px-2 py-1 backdrop-blur-md">
             {surfaceMode === "SIMULATOR" ? (
               <>
@@ -609,6 +612,48 @@ export function SimulatorFloatingShell({
             rgba(20, 28, 47, 0.72) 100%
           );
           box-shadow: 0 14px 34px -24px rgba(0, 0, 0, 0.82);
+        }
+
+        @media (max-width: 900px) and (max-height: 520px) and (orientation: landscape) {
+          .simulator-direct .simulator-pitch-slot {
+            padding-top: max(0.15rem, env(safe-area-inset-top));
+            padding-bottom: max(0.15rem, env(safe-area-inset-bottom));
+          }
+
+          .simulator-direct .simulator-pitch-frame {
+            display: flex;
+            height: 100%;
+            width: 100%;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .simulator-direct .simulator-pitch-host {
+            width: min(
+              100%,
+              calc(
+                (100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 3.8rem) *
+                  35 /
+                  24
+              )
+            );
+            max-height: calc(
+              100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 3.8rem
+            );
+            margin-inline: auto;
+          }
+
+          .simulator-direct .pitch-wrapper {
+            padding: 0.45rem;
+          }
+
+          .simulator-direct .simulator-corner-badge {
+            top: max(0.2rem, env(safe-area-inset-top));
+          }
+
+          .simulator-direct .simulator-transport-anchor {
+            bottom: max(0.2rem, env(safe-area-inset-bottom)) !important;
+          }
         }
       `}</style>
     </div>
