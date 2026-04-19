@@ -924,15 +924,15 @@ export function SimulatorBoardShell({
               </Drawer>
             </aside>
 
-            <div className="pointer-events-none z-30 h-[90px] flex-shrink-0 px-2 pb-[max(0.45rem,env(safe-area-inset-bottom))]">
-              <div className="simulator-mobile-event-bar pointer-events-auto flex gap-1.5 overflow-x-auto rounded-xl border border-white/20 bg-[rgba(19,27,44,0.88)] px-2 py-2 backdrop-blur-md">
+            <div className="pointer-events-none z-30 h-[78px] flex-shrink-0 px-1.5 pb-[max(0.35rem,env(safe-area-inset-bottom))] [@media(orientation:landscape)]:h-[62px] [@media(orientation:landscape)]:pb-[max(0.2rem,env(safe-area-inset-bottom))]">
+              <div className="simulator-mobile-event-bar pointer-events-auto flex gap-1 overflow-x-auto rounded-lg border border-white/20 bg-[rgba(19,27,44,0.88)] px-1.5 py-1.5 backdrop-blur-sm [@media(orientation:landscape)]:gap-0.5 [@media(orientation:landscape)]:rounded-md [@media(orientation:landscape)]:py-1">
                 {MOBILE_PRIMARY_EVENT_KINDS.map((kind) => (
                   <Button
                     key={kind}
                     type="button"
                     variant="secondary"
                     className={cn(
-                      "mobile-stats-event-btn h-12 min-w-[6.25rem] shrink-0 rounded-lg border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.02em]",
+                      "mobile-stats-event-btn h-10 min-w-[5.75rem] shrink-0 rounded-md border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.02em] [@media(orientation:landscape)]:h-8 [@media(orientation:landscape)]:min-w-[5.1rem] [@media(orientation:landscape)]:px-2 [@media(orientation:landscape)]:text-[8px]",
                       statsArm === kind
                         ? "border-emerald-300/65 bg-emerald-700/45 text-emerald-50"
                         : "border-white/20 bg-[rgba(34,38,48,0.84)] text-stone-100",
