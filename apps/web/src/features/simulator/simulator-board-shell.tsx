@@ -223,18 +223,19 @@ const grassFieldStyle: CSSProperties = {
  */
 const mobileStatsStadiumBackdropStyle: CSSProperties = {
   backgroundImage: [
-    "radial-gradient(ellipse 132% 74% at 50% 112%, rgba(18,29,54,0.28) 0%, rgba(18,29,54,0.18) 45%, transparent 72%)",
-    "radial-gradient(ellipse 98% 66% at 50% -14%, rgba(245,248,255,0.24) 0%, rgba(188,208,255,0.08) 38%, transparent 72%)",
-    "linear-gradient(90deg, rgba(28,40,69,0.36) 0%, rgba(23,35,58,0.14) 15%, transparent 32%, transparent 68%, rgba(23,35,58,0.14) 85%, rgba(28,40,69,0.36) 100%)",
-    "linear-gradient(180deg, rgba(240,246,255,0.11) 0%, rgba(176,196,236,0.04) 12%, transparent 42%, rgba(16,25,44,0.18) 100%)",
+    "radial-gradient(ellipse 132% 74% at 50% 112%, rgba(18,29,54,0.22) 0%, rgba(18,29,54,0.14) 45%, transparent 72%)",
+    "radial-gradient(ellipse 98% 66% at 50% -14%, rgba(245,248,255,0.19) 0%, rgba(188,208,255,0.06) 38%, transparent 72%)",
+    "linear-gradient(90deg, rgba(28,40,69,0.29) 0%, rgba(23,35,58,0.11) 15%, transparent 32%, transparent 68%, rgba(23,35,58,0.11) 85%, rgba(28,40,69,0.29) 100%)",
+    "linear-gradient(180deg, rgba(240,246,255,0.09) 0%, rgba(176,196,236,0.03) 12%, transparent 42%, rgba(16,25,44,0.14) 100%)",
+    "radial-gradient(ellipse 94% 64% at 50% 52%, rgba(8,14,28,0) 40%, rgba(10,17,33,0.16) 72%, rgba(7,12,24,0.28) 100%)",
   ].join(", "),
 };
 
 const mobileStatsStadiumFloodlightStyle: CSSProperties = {
   backgroundImage: [
-    "radial-gradient(circle at 8% 6%, rgba(255,255,255,0.2) 0%, rgba(242,248,255,0.11) 18%, transparent 45%)",
-    "radial-gradient(circle at 92% 6%, rgba(255,255,255,0.2) 0%, rgba(242,248,255,0.11) 18%, transparent 45%)",
-    "radial-gradient(ellipse 82% 56% at 50% 100%, rgba(32,52,90,0.16) 0%, transparent 72%)",
+    "radial-gradient(circle at 8% 6%, rgba(255,255,255,0.16) 0%, rgba(242,248,255,0.09) 18%, transparent 45%)",
+    "radial-gradient(circle at 92% 6%, rgba(255,255,255,0.16) 0%, rgba(242,248,255,0.09) 18%, transparent 45%)",
+    "radial-gradient(ellipse 82% 56% at 50% 100%, rgba(32,52,90,0.13) 0%, transparent 72%)",
   ].join(", "),
 };
 
@@ -942,13 +943,18 @@ export function SimulatorBoardShell({
             aria-hidden
           />
           <div
-            className="pointer-events-none absolute inset-0 z-[1]"
+            className="pointer-events-none absolute inset-0 z-[1] blur-[3px]"
             style={mobileStatsStadiumBackdropStyle}
             aria-hidden
           />
           <div
-            className="pointer-events-none absolute inset-0 z-[2] opacity-80"
+            className="pointer-events-none absolute inset-0 z-[2] opacity-70 blur-[2px]"
             style={mobileStatsStadiumFloodlightStyle}
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-0 z-[3]"
+            style={mobileStatsStadiumEdgeFadeStyle}
             aria-hidden
           />
           <div className="pointer-events-none absolute inset-0 z-10 flex min-h-0 flex-col overflow-hidden">
