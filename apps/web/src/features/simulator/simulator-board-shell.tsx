@@ -911,16 +911,7 @@ export function SimulatorBoardShell({
       {surfaceMode === "STATS" ? (
         <div
           className="fixed inset-0 z-40 h-[100dvh] w-screen overflow-hidden md:hidden"
-          style={grassFieldStyle}
         >
-          <div
-            className="pointer-events-none absolute inset-0 z-0 opacity-[0.028] mix-blend-multiply"
-            style={{
-              backgroundImage: grassNoiseDataUrl,
-              backgroundSize: "240px 240px",
-            }}
-            aria-hidden
-          />
           <div
             className="pointer-events-none absolute inset-0 z-[1] blur-[3px]"
             style={mobileStatsStadiumBackdropStyle}
