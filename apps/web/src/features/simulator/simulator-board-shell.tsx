@@ -399,6 +399,7 @@ export function SimulatorBoardShell({
   const [clearLogConfirmOpen, setClearLogConfirmOpen] = useState(false);
   const [mobileStatsDrawerOpen, setMobileStatsDrawerOpen] = useState(false);
   const [mobileStatsLogDrawerOpen, setMobileStatsLogDrawerOpen] = useState(false);
+  const [isMdViewport, setIsMdViewport] = useState(false);
   const [mobileLogBubbleY, setMobileLogBubbleY] = useState<number | null>(null);
   const [mobileLogBubbleYHydrated, setMobileLogBubbleYHydrated] = useState(false);
   const mobileLogBubbleDragRef = useRef<MobileLogBubbleDragState | null>(null);
@@ -414,6 +415,17 @@ export function SimulatorBoardShell({
         clearTimeout(persistErrorClearTimerRef.current);
         persistErrorClearTimerRef.current = null;
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mediaQuery = window.matchMedia("(min-width: 768px)");
+    const onChange = () => setIsMdViewport(mediaQuery.matches);
+    onChange();
+    mediaQuery.addEventListener("change", onChange);
+    return () => {
+      mediaQuery.removeEventListener("change", onChange);
     };
   }, []);
 
@@ -893,20 +905,24 @@ export function SimulatorBoardShell({
     [],
   );
 
+  const hideGreenShellForMobileStats = surfaceMode === "STATS" && !isMdViewport;
+
   return (
     <div
       className="relative flex h-[100dvh] min-h-0 flex-col overflow-hidden text-stone-800"
-      style={grassFieldStyle}
+      style={hideGreenShellForMobileStats ? undefined : grassFieldStyle}
     >
       {/* Minimal grain only (~2.8%) — enough to kill “flat UI”, not noisy. */}
-      <div
-        className="pointer-events-none absolute inset-0 z-0 opacity-[0.028] mix-blend-multiply"
-        style={{
-          backgroundImage: grassNoiseDataUrl,
-          backgroundSize: "240px 240px",
-        }}
-        aria-hidden
-      />
+      {hideGreenShellForMobileStats ? null : (
+        <div
+          className="pointer-events-none absolute inset-0 z-0 opacity-[0.028] mix-blend-multiply"
+          style={{
+            backgroundImage: grassNoiseDataUrl,
+            backgroundSize: "240px 240px",
+          }}
+          aria-hidden
+        />
+      )}
 
       {surfaceMode === "STATS" ? (
         <div
@@ -946,7 +962,7 @@ export function SimulatorBoardShell({
             </div>
 
             <aside
-              className="pointer-events-none absolute left-[max(0.45rem,env(safe-area-inset-left))] top-[calc(max(0.55rem,env(safe-area-inset-top))+6.25rem)] z-30 flex flex-col gap-2.5"
+              className="pointer-events-none absolute left-[12px] top-1/2 z-30 flex -translate-y-1/2 flex-col gap-2.5"
               aria-label="Mobile match utility"
             >
               <Button
