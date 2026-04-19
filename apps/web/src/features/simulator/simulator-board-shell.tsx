@@ -955,7 +955,7 @@ export function SimulatorBoardShell({
             </div>
 
             <aside
-              className="pointer-events-none absolute left-[max(0.45rem,env(safe-area-inset-left))] top-[max(0.55rem,env(safe-area-inset-top))] z-30 flex flex-col gap-1.5"
+              className="pointer-events-none absolute left-[max(0.45rem,env(safe-area-inset-left))] top-[calc(max(0.55rem,env(safe-area-inset-top))+4.5rem)] z-30 flex flex-col gap-2"
               aria-label="Mobile match utility"
             >
               <Button
