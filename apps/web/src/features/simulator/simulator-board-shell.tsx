@@ -216,6 +216,28 @@ const grassFieldStyle: CSSProperties = {
   ].join(", "),
 };
 
+/**
+ * Mobile STATS-only stadium ambience (visual-only):
+ * subtle crowd-bowl toning + floodlight bloom around outer field space.
+ * Sits behind pitch/controls and does not participate in layout.
+ */
+const mobileStatsStadiumBackdropStyle: CSSProperties = {
+  backgroundImage: [
+    "radial-gradient(ellipse 132% 74% at 50% 112%, rgba(18,29,54,0.28) 0%, rgba(18,29,54,0.18) 45%, transparent 72%)",
+    "radial-gradient(ellipse 98% 66% at 50% -14%, rgba(245,248,255,0.24) 0%, rgba(188,208,255,0.08) 38%, transparent 72%)",
+    "linear-gradient(90deg, rgba(28,40,69,0.36) 0%, rgba(23,35,58,0.14) 15%, transparent 32%, transparent 68%, rgba(23,35,58,0.14) 85%, rgba(28,40,69,0.36) 100%)",
+    "linear-gradient(180deg, rgba(240,246,255,0.11) 0%, rgba(176,196,236,0.04) 12%, transparent 42%, rgba(16,25,44,0.18) 100%)",
+  ].join(", "),
+};
+
+const mobileStatsStadiumFloodlightStyle: CSSProperties = {
+  backgroundImage: [
+    "radial-gradient(circle at 8% 6%, rgba(255,255,255,0.2) 0%, rgba(242,248,255,0.11) 18%, transparent 45%)",
+    "radial-gradient(circle at 92% 6%, rgba(255,255,255,0.2) 0%, rgba(242,248,255,0.11) 18%, transparent 45%)",
+    "radial-gradient(ellipse 82% 56% at 50% 100%, rgba(32,52,90,0.16) 0%, transparent 72%)",
+  ].join(", "),
+};
+
 const btnBase =
   "min-h-10 w-full justify-center rounded-[11px] px-3 py-2.5 text-[12px] font-medium leading-tight tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_8px_-2px_rgba(0,0,0,0.35)] transition-[transform,box-shadow,background-color,border-color,color] duration-200 sm:min-h-9 sm:py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(18,20,24,0.9)] active:translate-y-px active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.35)]";
 
@@ -917,6 +939,16 @@ export function SimulatorBoardShell({
               backgroundImage: grassNoiseDataUrl,
               backgroundSize: "240px 240px",
             }}
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-0 z-[1]"
+            style={mobileStatsStadiumBackdropStyle}
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-0 z-[2] opacity-80"
+            style={mobileStatsStadiumFloodlightStyle}
             aria-hidden
           />
           <div className="pointer-events-none absolute inset-0 z-10 flex min-h-0 flex-col overflow-hidden">
