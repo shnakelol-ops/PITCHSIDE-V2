@@ -633,8 +633,8 @@ export function SimulatorFloatingShell({
 
         @media (max-width: 900px) and (max-height: 520px) and (orientation: landscape) {
           .simulator-direct .simulator-pitch-slot {
-            padding-top: max(0.1rem, env(safe-area-inset-top));
-            padding-bottom: max(0.1rem, env(safe-area-inset-bottom));
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
           }
 
           .simulator-direct .simulator-pitch-frame {
@@ -649,13 +649,13 @@ export function SimulatorFloatingShell({
             width: min(
               100%,
               calc(
-                (100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 1.1rem) *
+                (100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 0.55rem) *
                   35 /
                   24
               )
             );
             max-height: calc(
-              100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 1.1rem
+              100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 0.55rem
             );
             margin-inline: auto;
           }
