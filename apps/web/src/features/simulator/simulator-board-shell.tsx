@@ -89,10 +89,10 @@ const MOBILE_PRIMARY_EVENT_KINDS: readonly StatsV1EventKind[] = [
   "KICKOUT_LOST",
 ];
 const MOBILE_LOG_BUBBLE_STORAGE_KEY = "pitchside.mobileStats.logEventBubbleY";
-const MOBILE_LOG_BUBBLE_FIXED_RIGHT = 14;
+const MOBILE_LOG_BUBBLE_FIXED_RIGHT = 12;
 const MOBILE_LOG_BUBBLE_MIN_TOP = 88;
 const MOBILE_LOG_BUBBLE_BOTTOM_SAFE_OFFSET = 160;
-const MOBILE_LOG_BUBBLE_DEFAULT_TOP_VH = 42;
+const MOBILE_LOG_BUBBLE_DEFAULT_TOP_VH = 50;
 
 type MobileLogBubbleDragState = {
   pointerId: number;
@@ -926,7 +926,7 @@ export function SimulatorBoardShell({
 
       {surfaceMode === "STATS" ? (
         <div
-          className="fixed inset-0 z-40 h-[100dvh] w-screen overflow-hidden md:hidden"
+          className="fixed inset-0 z-40 h-[100dvh] w-screen overflow-hidden bg-transparent md:hidden"
         >
           <div
             className="pointer-events-none absolute inset-0 z-[1] blur-[3px]"
@@ -962,7 +962,7 @@ export function SimulatorBoardShell({
             </div>
 
             <aside
-              className="pointer-events-none absolute left-[12px] top-1/2 z-30 flex -translate-y-1/2 flex-col gap-2.5"
+              className="pointer-events-none absolute left-[12px] top-1/2 z-30 flex -translate-y-1/2 flex-col gap-3"
               aria-label="Mobile match utility"
             >
               <Button
@@ -989,7 +989,7 @@ export function SimulatorBoardShell({
               </Button>
             </aside>
 
-            <aside className="pointer-events-none absolute right-[max(0.55rem,env(safe-area-inset-right))] top-[max(0.55rem,env(safe-area-inset-top))] z-30">
+            <aside className="pointer-events-none absolute right-[max(0.55rem,env(safe-area-inset-right))] top-[max(0.55rem,env(safe-area-inset-top))] z-50">
               <Drawer open={mobileStatsDrawerOpen} onOpenChange={setMobileStatsDrawerOpen}>
                 <DrawerTrigger asChild>
                   <Button
@@ -1139,7 +1139,7 @@ export function SimulatorBoardShell({
               </Drawer>
             </aside>
 
-            <div className="pointer-events-none absolute inset-0 z-30">
+            <div className="pointer-events-none absolute inset-0 z-40">
               <Drawer
                 open={mobileStatsLogDrawerOpen}
                 onOpenChange={setMobileStatsLogDrawerOpen}
@@ -1149,8 +1149,9 @@ export function SimulatorBoardShell({
                     type="button"
                     variant="secondary"
                     style={{
-                      right: `max(${MOBILE_LOG_BUBBLE_FIXED_RIGHT}px, calc(env(safe-area-inset-right) + 0.4rem))`,
+                      right: `${MOBILE_LOG_BUBBLE_FIXED_RIGHT}px`,
                       top: `${mobileLogBubbleY ?? computeDefaultMobileLogBubbleY()}px`,
+                      transform: "translateY(-50%)",
                       touchAction: "none",
                     }}
                     className="pointer-events-auto absolute flex h-[52px] items-center gap-2 rounded-full border border-white/20 bg-[rgba(18,28,46,0.84)] px-3.5 text-[11px] font-semibold text-stone-100 shadow-[0_10px_26px_-14px_rgba(0,0,0,0.85)] backdrop-blur-[10px]"
