@@ -955,7 +955,7 @@ export function SimulatorBoardShell({
             </div>
 
             <aside
-              className="pointer-events-none absolute left-[max(0.45rem,env(safe-area-inset-left))] top-[calc(max(0.55rem,env(safe-area-inset-top))+4.5rem)] z-30 flex flex-col gap-2"
+              className="pointer-events-none absolute left-[max(0.45rem,env(safe-area-inset-left))] top-[calc(max(0.55rem,env(safe-area-inset-top))+6.25rem)] z-30 flex flex-col gap-2.5"
               aria-label="Mobile match utility"
             >
               <Button
@@ -967,9 +967,6 @@ export function SimulatorBoardShell({
               >
                 {matchClockDisplay}
               </Button>
-              <div className="rounded-md border border-white/10 bg-black/25 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-stone-100/90">
-                {formatMatchPhaseLabel(matchPhase)}
-              </div>
               <Button
                 type="button"
                 variant="secondary"
@@ -1145,7 +1142,7 @@ export function SimulatorBoardShell({
                     type="button"
                     variant="secondary"
                     style={{
-                      right: `${MOBILE_LOG_BUBBLE_FIXED_RIGHT}px`,
+                      right: `max(${MOBILE_LOG_BUBBLE_FIXED_RIGHT}px, calc(env(safe-area-inset-right) + 0.4rem))`,
                       top: `${mobileLogBubbleY ?? computeDefaultMobileLogBubbleY()}px`,
                       touchAction: "none",
                     }}
