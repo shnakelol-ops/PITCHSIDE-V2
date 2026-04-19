@@ -10,6 +10,7 @@ import type { SimulatorSurfaceMode } from "@src/features/simulator/pixi/simulato
 import type { SimulatorMatchPhase } from "@src/features/stats/hooks/use-simulator-match-clock";
 import type { StatsLoggedEvent } from "@src/features/stats/model/stats-logged-event";
 import {
+  STATS_V1_EVENT_KINDS,
   STATS_V1_FIELD_KINDS,
   STATS_V1_SCORE_KINDS,
   type StatsV1EventKind,
@@ -37,11 +38,7 @@ const PITCH_VIEW_FILTER_CHIPS: {
   label: string;
 }[] = [
   { id: "all", label: "All" },
-  ...STATS_V1_FIELD_KINDS.map((k) => ({
-    id: k,
-    label: k.replace(/_/g, " "),
-  })),
-  ...STATS_V1_SCORE_KINDS.map((k) => ({
+  ...STATS_V1_EVENT_KINDS.map((k) => ({
     id: k,
     label: k.replace(/_/g, " "),
   })),
