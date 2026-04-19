@@ -776,7 +776,7 @@ export function SimulatorBoardShell({
               </Button>
             </aside>
 
-            <aside className="pointer-events-none absolute right-[max(0.55rem,env(safe-area-inset-right))] top-[max(0.55rem,env(safe-area-inset-top))] z-30">
+            <aside className="pointer-events-none absolute right-[max(0.55rem,env(safe-area-inset-right))] top-[max(0.55rem,env(safe-area-inset-top))] z-30 flex flex-col items-end gap-2.5">
               <Drawer open={mobileStatsDrawerOpen} onOpenChange={setMobileStatsDrawerOpen}>
                 <DrawerTrigger asChild>
                   <Button
@@ -924,9 +924,7 @@ export function SimulatorBoardShell({
                   </div>
                 </DrawerContent>
               </Drawer>
-            </aside>
 
-            <div className="pointer-events-none absolute inset-x-0 bottom-[max(0.55rem,env(safe-area-inset-bottom))] z-30 flex justify-center px-3">
               <Drawer
                 open={mobileStatsLogDrawerOpen}
                 onOpenChange={setMobileStatsLogDrawerOpen}
@@ -935,10 +933,10 @@ export function SimulatorBoardShell({
                   <Button
                     type="button"
                     variant="secondary"
-                    className="pointer-events-auto min-h-10 rounded-full border border-white/20 bg-[rgba(19,27,44,0.9)] px-4 py-2 text-[11px] font-semibold text-stone-100 shadow-[0_14px_34px_-20px_rgba(0,0,0,0.95)] backdrop-blur-md"
+                    className="pointer-events-auto min-h-9 rounded-full border border-white/20 bg-[rgba(19,27,44,0.88)] px-3 py-1.5 text-[10px] font-semibold text-stone-100 shadow-[0_12px_28px_-20px_rgba(0,0,0,0.9)] backdrop-blur-md"
                     aria-label="Open quick event logger"
                   >
-                    <CirclePlus className="mr-1.5 size-4" />
+                    <CirclePlus className="mr-1.5 size-3.5" />
                     Log Event
                   </Button>
                 </DrawerTrigger>
@@ -972,7 +970,7 @@ export function SimulatorBoardShell({
                   </div>
                 </DrawerContent>
               </Drawer>
-            </div>
+            </aside>
           </div>
         </div>
       ) : null}
