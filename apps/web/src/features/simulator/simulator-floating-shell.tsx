@@ -87,6 +87,7 @@ export function SimulatorFloatingShell({
   const [pendingVoiceId, setPendingVoiceId] = useState<string | null>(null);
   const [pitchMarkerViewFilter, setPitchMarkerViewFilter] =
     useState<PitchMarkerViewFilter>("all");
+  const [showLegacyTransport, setShowLegacyTransport] = useState(false);
 
   useEffect(() => {
     setSurfaceMode(initialSurfaceMode);
@@ -102,6 +103,19 @@ export function SimulatorFloatingShell({
         clearTimeout(persistErrorClearTimerRef.current);
         persistErrorClearTimerRef.current = null;
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(min-width: 1024px)");
+    const sync = () => {
+      setShowLegacyTransport(media.matches);
+    };
+    sync();
+    media.addEventListener("change", sync);
+    return () => {
+      media.removeEventListener("change", sync);
     };
   }, []);
 
@@ -473,82 +487,84 @@ export function SimulatorFloatingShell({
         </div>
       </div>
 
-      <div className="pointer-events-none absolute inset-0 z-30">
-        <div className="simulator-corner-badge pointer-events-none absolute left-3 top-2">
-          <p className="rounded-lg border border-white/10 bg-black/35 px-2 py-1 text-[9px] uppercase tracking-[0.2em] text-stone-200/70 backdrop-blur">
-            Simulator
-          </p>
-        </div>
+      {showLegacyTransport ? (
+        <div className="pointer-events-none absolute inset-0 z-30">
+          <div className="simulator-corner-badge pointer-events-none absolute left-3 top-2">
+            <p className="rounded-lg border border-white/10 bg-black/35 px-2 py-1 text-[9px] uppercase tracking-[0.2em] text-stone-200/70 backdrop-blur">
+              Simulator
+            </p>
+          </div>
 
-        <div className="simulator-transport-anchor pointer-events-none absolute bottom-[max(0.55rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2">
-          <div className="simulator-transport-strip pointer-events-none flex items-center gap-1 rounded-xl px-2 py-1 backdrop-blur-md">
-            {surfaceMode === "SIMULATOR" ? (
-              <>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="pointer-events-auto min-h-8 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-3 py-1 text-[11px] text-stone-100"
-                  onClick={() => surfaceRef.current?.play()}
-                >
-                  Play
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="pointer-events-auto min-h-8 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-3 py-1 text-[11px] text-stone-100"
-                  onClick={() => surfaceRef.current?.pause()}
-                >
-                  Pause
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="pointer-events-auto min-h-8 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-3 py-1 text-[11px] text-stone-100"
-                  onClick={() => surfaceRef.current?.reset()}
-                >
-                  Reset
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={matchPhase !== "pre_match"}
-                  className="pointer-events-auto min-h-8 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-3 py-1 text-[11px] text-stone-100 disabled:opacity-50"
-                  onClick={onStartMatch}
-                >
-                  Start
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={
-                    !matchClockRunning ||
-                    (matchPhase !== "first_half" && matchPhase !== "second_half")
-                  }
-                  className="pointer-events-auto min-h-8 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-3 py-1 text-[11px] text-stone-100 disabled:opacity-50"
-                  onClick={onStopMatch}
-                >
-                  Stop
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={
-                    matchClockRunning ||
-                    (matchPhase !== "first_half" && matchPhase !== "second_half")
-                  }
-                  className="pointer-events-auto min-h-8 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-3 py-1 text-[11px] text-stone-100 disabled:opacity-50"
-                  onClick={onResumeMatch}
-                >
-                  Resume
-                </Button>
-              </>
-            )}
+          <div className="simulator-transport-anchor pointer-events-none absolute bottom-[max(0.55rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2">
+            <div className="simulator-transport-strip pointer-events-none flex items-center gap-1 rounded-xl px-2 py-1 backdrop-blur-md">
+              {surfaceMode === "SIMULATOR" ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="pointer-events-auto min-h-8 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-3 py-1 text-[11px] text-stone-100"
+                    onClick={() => surfaceRef.current?.play()}
+                  >
+                    Play
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="pointer-events-auto min-h-8 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-3 py-1 text-[11px] text-stone-100"
+                    onClick={() => surfaceRef.current?.pause()}
+                  >
+                    Pause
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="pointer-events-auto min-h-8 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-3 py-1 text-[11px] text-stone-100"
+                    onClick={() => surfaceRef.current?.reset()}
+                  >
+                    Reset
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={matchPhase !== "pre_match"}
+                    className="pointer-events-auto min-h-8 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-3 py-1 text-[11px] text-stone-100 disabled:opacity-50"
+                    onClick={onStartMatch}
+                  >
+                    Start
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={
+                      !matchClockRunning ||
+                      (matchPhase !== "first_half" && matchPhase !== "second_half")
+                    }
+                    className="pointer-events-auto min-h-8 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-3 py-1 text-[11px] text-stone-100 disabled:opacity-50"
+                    onClick={onStopMatch}
+                  >
+                    Stop
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={
+                      matchClockRunning ||
+                      (matchPhase !== "first_half" && matchPhase !== "second_half")
+                    }
+                    className="pointer-events-auto min-h-8 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-3 py-1 text-[11px] text-stone-100 disabled:opacity-50"
+                    onClick={onResumeMatch}
+                  >
+                    Resume
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
       <MobileStatsOverlay
         surfaceMode={surfaceMode}
