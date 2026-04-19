@@ -646,9 +646,13 @@ export function SimulatorBoardShell({
     }
   };
 
+  useEffect(() => {
+    console.log("PIX MOUNTED");
+  }, []);
+
   return (
     <div
-      className="relative flex h-[100dvh] min-h-0 flex-col overflow-hidden text-stone-800"
+      className="relative flex min-h-[100dvh] flex-col overflow-hidden text-stone-800"
       style={grassFieldStyle}
     >
       {/* Minimal grain only (~2.8%) — enough to kill “flat UI”, not noisy. */}
@@ -844,6 +848,8 @@ export function SimulatorBoardShell({
                       "ring-2 ring-amber-400/35 ring-offset-0",
                   )}
                   style={{
+                    width: "100%",
+                    aspectRatio: "35 / 24",
                     backgroundColor: C.canvasWell,
                     boxShadow: [
                       `inset 0 0 0 1px ${CHALK_LINE}`,

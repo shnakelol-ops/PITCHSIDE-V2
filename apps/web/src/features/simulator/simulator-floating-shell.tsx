@@ -445,10 +445,14 @@ export function SimulatorFloatingShell({
     }
   };
 
+  useEffect(() => {
+    console.log("PIX MOUNTED");
+  }, []);
+
   return (
-    <div className="simulator-direct relative h-[100dvh] min-h-0 overflow-hidden bg-[#0b0f0c] text-stone-100">
-      <div ref={pitchHostRef} className="absolute inset-0">
-        <div className="h-[100vh] w-full">
+    <div className="simulator-direct relative flex min-h-[100dvh] flex-col overflow-hidden bg-[#0b0f0c] text-stone-100">
+      <div ref={pitchHostRef} className="relative z-0 flex flex-1 items-center justify-center">
+        <div className="w-full">
           <SimulatorPixiSurface
             ref={surfaceRef}
             sport={sport}
@@ -460,7 +464,7 @@ export function SimulatorFloatingShell({
             onStatsPitchTap={surfaceMode === "STATS" ? onStatsPitchTapGuarded : undefined}
             statsReviewMode={reviewMode}
             statsPitchInteractive={canStatsPitchLog}
-            className="h-full w-full"
+            className="w-full"
           />
         </div>
       </div>
