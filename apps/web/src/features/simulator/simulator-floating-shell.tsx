@@ -462,6 +462,7 @@ export function SimulatorFloatingShell({
             recordingMode={surfaceMode === "SIMULATOR" ? pathRecording : false}
             shadowRecordingMode={surfaceMode === "SIMULATOR" ? shadowRecording : false}
             surfaceMode={surfaceMode}
+            surfaceChrome="flat"
             statsArm={surfaceMode === "STATS" ? statsArm : null}
             statsLoggedEvents={surfaceMode === "STATS" ? statsEventsForPitchView : []}
             onStatsPitchTap={surfaceMode === "STATS" ? onStatsPitchTapGuarded : undefined}
