@@ -233,7 +233,10 @@ export function MobileStatsOverlay({
       </div>
 
       {surfaceMode === "STATS" ? (
-        <div className="pointer-events-none absolute right-[max(0.45rem,env(safe-area-inset-right))] top-1/2 z-50 -translate-y-1/2">
+        <div
+          className="pointer-events-none absolute top-1/2 z-50 -translate-y-1/2"
+          style={{ right: "max(0.45rem, env(safe-area-inset-right))" }}
+        >
           <Button
             type="button"
             variant="secondary"
@@ -502,7 +505,8 @@ export function MobileStatsOverlay({
 
       {surfaceMode === "STATS" && openPanel === "log" ? (
         <section
-          className="pointer-events-auto absolute right-[max(0.45rem,env(safe-area-inset-right))] top-1/2 z-50 max-h-[min(80dvh,34rem)] w-[min(17rem,calc(100vw-env(safe-area-inset-left)-env(safe-area-inset-right)-1.8rem))] -translate-y-1/2 overflow-y-auto rounded-[16px] border border-white/20 bg-[rgba(20,26,38,0.9)] p-2.5 shadow-[0_18px_42px_-24px_rgba(0,0,0,0.9)] backdrop-blur-md"
+          className="pointer-events-auto absolute top-1/2 z-50 max-h-[min(80dvh,34rem)] w-[min(17rem,calc(100vw-env(safe-area-inset-left)-env(safe-area-inset-right)-1.8rem))] -translate-y-1/2 overflow-y-auto rounded-[16px] border border-white/20 bg-[rgba(20,26,38,0.9)] p-2.5 shadow-[0_18px_42px_-24px_rgba(0,0,0,0.9)] backdrop-blur-md"
+          style={{ right: "max(0.45rem, env(safe-area-inset-right))" }}
           aria-label="Mobile log controls"
         >
           <div
