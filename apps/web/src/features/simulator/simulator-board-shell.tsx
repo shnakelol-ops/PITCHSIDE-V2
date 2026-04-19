@@ -1172,9 +1172,14 @@ export function SimulatorBoardShell({
                     ref={(el) => {
                       if (!el) return;
                       const rect = el.getBoundingClientRect();
-                      setMobileLogBubbleRect({
+                      const next = {
                         width: rect.width || MOBILE_LOG_BUBBLE_FALLBACK_SIZE.width,
                         height: rect.height || MOBILE_LOG_BUBBLE_FALLBACK_SIZE.height,
+                      };
+                      setMobileLogBubbleRect((prev) => {
+                        const widthUnchanged = Math.abs(prev.width - next.width) < 0.5;
+                        const heightUnchanged = Math.abs(prev.height - next.height) < 0.5;
+                        return widthUnchanged && heightUnchanged ? prev : next;
                       });
                     }}
                     type="button"
