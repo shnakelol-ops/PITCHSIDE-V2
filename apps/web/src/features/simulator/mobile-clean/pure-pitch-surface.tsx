@@ -30,6 +30,10 @@ export function PurePitchSurface() {
           app.stage.addChild(pitchContainer);
 
           const pitchRenderer = new GaelicPitchRenderer("gaelic");
+          const pitchBounds = pitchRenderer.root.getLocalBounds();
+          const pitchWidth = Math.max(pitchBounds.width, 1);
+          const pitchHeight = Math.max(pitchBounds.height, 1);
+          pitchRenderer.root.position.set(-pitchBounds.x, -pitchBounds.y);
           pitchContainer.addChild(pitchRenderer.root);
 
           const layoutPitch = () => {
@@ -37,16 +41,13 @@ export function PurePitchSurface() {
             const screenHeight = window.innerHeight;
             app.renderer.resize(screenWidth, screenHeight);
 
-            const bounds = pitchContainer.getLocalBounds();
-            const safeWidth = Math.max(bounds.width, 1);
-            const safeHeight = Math.max(bounds.height, 1);
-            const scale = Math.min(screenWidth / safeWidth, screenHeight / safeHeight);
+            const scale = Math.min(screenWidth / pitchWidth, screenHeight / pitchHeight);
 
-            const scaledWidth = safeWidth * scale;
-            const scaledHeight = safeHeight * scale;
+            const scaledWidth = pitchWidth * scale;
+            const scaledHeight = pitchHeight * scale;
             pitchContainer.scale.set(scale, scale);
-            pitchContainer.x = (screenWidth - scaledWidth) / 2 - bounds.x * scale;
-            pitchContainer.y = (screenHeight - scaledHeight) / 2 - bounds.y * scale;
+            pitchContainer.x = (screenWidth - scaledWidth) / 2;
+            pitchContainer.y = (screenHeight - scaledHeight) / 2;
             app.renderer.render(app.stage);
           };
 
