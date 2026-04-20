@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+import { MobileSimulatorScene } from "@src/features/simulator/mobile-simulator-scene";
 import { SimulatorFloatingShell } from "@src/features/simulator/simulator-floating-shell";
 
 /** Same heuristic as `POST /api/events` `matchId` (CUID). */
@@ -16,6 +18,29 @@ export default function SimulatorPageClient() {
   const matchIdRaw = sp.get("matchId");
   const initialSurfaceMode = mode === "stats" ? "STATS" : "SIMULATOR";
   const linkedMatchId = isPersistableMatchId(matchIdRaw) ? matchIdRaw : null;
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 900px)");
+    const sync = () => {
+      setIsMobileViewport(media.matches);
+    };
+    sync();
+    media.addEventListener("change", sync);
+    return () => {
+      media.removeEventListener("change", sync);
+    };
+  }, []);
+
+  if (isMobileViewport) {
+    return (
+      <MobileSimulatorScene
+        initialSurfaceMode={initialSurfaceMode}
+        linkedMatchId={linkedMatchId}
+      />
+    );
+  }
 
   return (
     <SimulatorFloatingShell
