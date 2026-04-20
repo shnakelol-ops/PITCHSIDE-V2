@@ -1,6 +1,8 @@
 "use client";
 
-import { Application, Graphics } from "pixi.js";
+import { Application, Container, Graphics } from "pixi.js";
+
+import { GaelicPitchRenderer } from "@src/features/simulator/renderer/GaelicPitchRenderer";
 
 export function PurePitchSurface() {
   return (
@@ -24,12 +26,17 @@ export function PurePitchSurface() {
 
           node.appendChild(app.canvas as HTMLCanvasElement);
 
-          const rectangle = new Graphics();
-          const rectWidth = 220;
-          const rectHeight = 140;
-          rectangle.rect(-rectWidth / 2, -rectHeight / 2, rectWidth, rectHeight).fill(0xff0000);
-          rectangle.position.set(app.screen.width / 2, app.screen.height / 2);
-          app.stage.addChild(rectangle);
+          const pitchContainer = new Container();
+          app.stage.addChild(pitchContainer);
+
+          const pitchRenderer = new GaelicPitchRenderer("gaelic");
+          pitchContainer.addChild(pitchRenderer.root);
+
+          const debugSquare = new Graphics();
+          debugSquare.rect(0, 0, 20, 20).fill(0xff0000);
+          debugSquare.position.set(10, 10);
+          app.stage.addChild(debugSquare);
+          app.renderer.render(app.stage);
         })();
       }}
       aria-label="Pixi minimal render test"
