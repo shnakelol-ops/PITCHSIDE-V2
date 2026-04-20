@@ -252,7 +252,11 @@ export function MobileStatsOverlay({
             className={cn("pointer-events-auto", bubbleButtonClass(openPanel === "menu"))}
             style={{ pointerEvents: "auto" }}
             aria-pressed={openPanel === "menu"}
-            onClick={onMenuPress}
+            onClick={() => {
+              console.log("MENU CLICKED");
+              alert("MENU WORKING");
+              onMenuPress();
+            }}
           >
             Menu
           </Button>
