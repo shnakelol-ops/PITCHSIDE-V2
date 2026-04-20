@@ -145,8 +145,40 @@ export function SimulatorFloatingShell({
     armKind("SHOT");
   }, [armKind, statsArm, surfaceMode]);
 
+  const [isPortraitMobile, setIsPortraitMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 900px) and (orientation: portrait)");
+    const sync = () => {
+      setIsPortraitMobile(media.matches);
+    };
+    sync();
+    media.addEventListener("change", sync);
+    return () => {
+      media.removeEventListener("change", sync);
+    };
+  }, []);
+
   return (
     <div className="simulator-direct relative h-[100dvh] min-h-0 overflow-hidden bg-[#0b0f0c] text-stone-100">
+      {isPortraitMobile ? (
+        <div className="absolute inset-0 z-[1200] flex items-center justify-center bg-[#050806] px-6 text-center">
+          <div className="flex max-w-xs flex-col items-center gap-4">
+            <div
+              className="relative h-16 w-10 rounded-lg border-2 border-[#b9ff00] bg-[#10170a]"
+              aria-hidden
+            >
+              <span className="absolute left-1/2 top-1.5 h-1 w-1 -translate-x-1/2 rounded-full bg-[#b9ff00]" />
+              <span className="absolute inset-1.5 rounded border border-[#b9ff00]/70" />
+            </div>
+            <p className="text-base font-semibold text-lime-100">
+              Rotate to landscape to use Matchday Mode
+            </p>
+            <p className="text-sm text-lime-200/75">Portrait is for setup only</p>
+          </div>
+        </div>
+      ) : null}
+
       <div className="absolute inset-0">
         <div className="h-[100vh] w-full">
           <SimulatorPixiSurface
@@ -164,7 +196,7 @@ export function SimulatorFloatingShell({
         </div>
       </div>
 
-      <MobileControlsOverlay />
+      {!isPortraitMobile ? <MobileControlsOverlay /> : null}
     </div>
   );
 }

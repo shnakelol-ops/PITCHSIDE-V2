@@ -3,13 +3,15 @@
 import { useState } from "react";
 
 type OverlayPanel = "menu" | "voice" | "event" | null;
+export type MobileControlsOverlayProps = {
+  visible?: boolean;
+};
 
 const baseButtonClass =
   "pointer-events-auto inline-flex items-center justify-center border-2 border-[#1b2400] bg-[#b9ff00] text-[11px] font-black uppercase tracking-[0.12em] text-[#182300] shadow-[0_14px_28px_-18px_rgba(0,0,0,0.95)] active:translate-y-px";
 
 function panelClass(side: "left" | "right"): string {
   return [
-    "pointer-events-auto absolute top-1/2 z-[1000] max-w-[min(16rem,calc(100vw-6.5rem))] -translate-y-1/2 rounded-2xl border border-lime-200/80 bg-[rgba(180,220,75,0.95)] px-4 py-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#1f2a08] shadow-[0_22px_46px_-30px_rgba(0,0,0,0.95)]",
     "pointer-events-auto absolute top-1/2 z-[1000] max-w-[min(16rem,calc(100vw-6.5rem))] -translate-y-1/2 rounded-2xl border-2 border-[#1b2400] bg-[#c7ff3f] px-4 py-3 text-[12px] font-black uppercase tracking-[0.12em] text-[#182300] shadow-[0_22px_46px_-30px_rgba(0,0,0,0.95)]",
     side === "left"
       ? "left-[max(5.8rem,calc(env(safe-area-inset-left)+5.2rem))]"
@@ -17,16 +19,18 @@ function panelClass(side: "left" | "right"): string {
   ].join(" ");
 }
 
-export function MobileControlsOverlay() {
+export function MobileControlsOverlay({ visible = true }: MobileControlsOverlayProps) {
   const [openPanel, setOpenPanel] = useState<OverlayPanel>(null);
 
   const togglePanel = (panel: Exclude<OverlayPanel, null>) => {
     setOpenPanel((current) => (current === panel ? null : panel));
   };
 
+  if (!visible) return null;
+
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-[999] md:hidden"
+      className="pointer-events-none absolute inset-0 z-[999]"
       style={{ pointerEvents: "none" }}
       aria-label="Mobile controls overlay"
     >
