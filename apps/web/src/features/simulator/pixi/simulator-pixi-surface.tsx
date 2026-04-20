@@ -239,6 +239,7 @@ export const SimulatorPixiSurface = forwardRef<
       app.canvas.style.display = "block";
       app.canvas.style.touchAction = "none";
       app.canvas.style.userSelect = "none";
+      app.canvas.style.pointerEvents = "none";
 
       const world = new Container();
       worldRef.current = world;
@@ -488,6 +489,7 @@ export const SimulatorPixiSurface = forwardRef<
         )}
         style={{
           aspectRatio: getPitchBoardAspectRatio(sport),
+          pointerEvents: "none",
           touchAction: "none",
           WebkitUserSelect: "none",
           userSelect: "none",

@@ -236,7 +236,11 @@ export function MobileStatsOverlay({
   };
 
   return (
-    <div ref={rootRef} className="pointer-events-none absolute inset-0 z-40">
+    <div
+      ref={rootRef}
+      className="absolute inset-0 z-40"
+      style={{ position: "absolute", zIndex: 10, pointerEvents: "auto" }}
+    >
       <div
         className="pointer-events-none absolute top-1/2 z-50 -translate-y-1/2"
         style={leftEdgeStyle}
