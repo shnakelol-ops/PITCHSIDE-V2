@@ -239,7 +239,7 @@ export function MobileStatsOverlay({
     <div
       ref={rootRef}
       className="absolute inset-0 z-40"
-      style={{ position: "absolute", zIndex: 10, pointerEvents: "auto" }}
+      style={{ position: "absolute", inset: 0, zIndex: 999, pointerEvents: "none" }}
     >
       <div
         className="pointer-events-none absolute top-1/2 z-50 -translate-y-1/2"
@@ -250,6 +250,7 @@ export function MobileStatsOverlay({
             type="button"
             variant="secondary"
             className={cn("pointer-events-auto", bubbleButtonClass(openPanel === "menu"))}
+            style={{ pointerEvents: "auto" }}
             aria-pressed={openPanel === "menu"}
             onClick={onMenuPress}
           >
@@ -263,6 +264,7 @@ export function MobileStatsOverlay({
                 "pointer-events-auto",
                 bubbleButtonClass(openPanel === "voice" || isVoiceRecording),
               )}
+              style={{ pointerEvents: "auto" }}
               aria-pressed={openPanel === "voice"}
               onClick={onVoicePress}
             >
@@ -281,6 +283,7 @@ export function MobileStatsOverlay({
             type="button"
             variant="secondary"
             className={cn("pointer-events-auto", bubbleButtonClass(openPanel === "log"))}
+            style={{ pointerEvents: "auto" }}
             aria-pressed={openPanel === "log"}
             onClick={onLogEventPress}
           >

@@ -233,6 +233,7 @@ export const SimulatorPixiSurface = forwardRef<
       }
 
       appRef.current = app;
+      app.stage.eventMode = "none";
       host.appendChild(app.canvas as HTMLCanvasElement);
       app.canvas.style.width = "100%";
       app.canvas.style.height = "100%";
