@@ -3,9 +3,6 @@
 import { useState } from "react";
 
 type OverlayPanel = "menu" | "voice" | "event" | null;
-export type MobileControlsOverlayProps = {
-  visible?: boolean;
-};
 
 const baseButtonClass =
   "pointer-events-auto inline-flex items-center justify-center border-2 border-[#1b2400] bg-[#b9ff00] text-[11px] font-black uppercase tracking-[0.12em] text-[#182300] shadow-[0_14px_28px_-18px_rgba(0,0,0,0.95)] active:translate-y-px";
@@ -19,20 +16,18 @@ function panelClass(side: "left" | "right"): string {
   ].join(" ");
 }
 
-export function MobileControlsOverlay({ visible = true }: MobileControlsOverlayProps) {
+export function MobileControlsOverlayV1() {
   const [openPanel, setOpenPanel] = useState<OverlayPanel>(null);
 
   const togglePanel = (panel: Exclude<OverlayPanel, null>) => {
     setOpenPanel((current) => (current === panel ? null : panel));
   };
 
-  if (!visible) return null;
-
   return (
     <div
       className="pointer-events-none absolute inset-0 z-[999]"
       style={{ pointerEvents: "none" }}
-      aria-label="Mobile controls overlay"
+      aria-label="Matchday controls overlay"
     >
       <div
         className="pointer-events-none absolute top-1/2 z-[1000] -translate-y-1/2"

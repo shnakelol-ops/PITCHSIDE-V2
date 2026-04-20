@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { persistSimulatorStatsEvent } from "@/lib/persist-simulator-stats-event";
-import { MobileControlsOverlay } from "@src/features/simulator/mobile-controls-overlay";
+import { MobileControlsOverlayV1 } from "@src/features/simulator/mobile-controls-overlay-v1";
 import {
   SimulatorPixiSurface,
   type SimulatorSurfaceMode,
@@ -25,15 +25,15 @@ const MATCH_PERIOD: Record<LinkedMatchPeriod, LinkedMatchPeriod> = {
   FULL_TIME: "FULL_TIME",
 };
 
-export type MobileSimulatorSceneProps = {
+export type SimulatorMatchdayScreenV1Props = {
   initialSurfaceMode?: SimulatorSurfaceMode;
   linkedMatchId?: string | null;
 };
 
-export function MobileSimulatorScene({
+export function SimulatorMatchdayScreenV1({
   initialSurfaceMode = "SIMULATOR",
   linkedMatchId = null,
-}: MobileSimulatorSceneProps = {}) {
+}: SimulatorMatchdayScreenV1Props = {}) {
   const [surfaceMode, setSurfaceMode] =
     useState<SimulatorSurfaceMode>(initialSurfaceMode);
 
@@ -159,14 +159,14 @@ export function MobileSimulatorScene({
   }, []);
 
   return (
-    <div className="relative min-h-[100dvh] w-full overflow-hidden bg-[#050806] text-stone-100">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#13210a_0%,#050806_72%)]" />
+    <div className="relative min-h-[100dvh] w-full overflow-hidden bg-[#040704] text-stone-100">
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_50%_45%,#102108_0%,#040704_72%)]" />
 
       {isPortraitMobile ? (
-        <div className="absolute inset-0 z-[1200] flex items-center justify-center px-6 text-center">
+        <div className="absolute inset-0 z-30 flex items-center justify-center px-6 text-center">
           <div className="flex max-w-xs flex-col items-center gap-4">
             <div
-              className="relative h-16 w-10 rounded-lg border-2 border-[#b9ff00] bg-[#10170a]"
+              className="relative h-16 w-10 rounded-lg border-2 border-[#b9ff00] bg-[#0f1708]"
               aria-hidden
             >
               <span className="absolute left-1/2 top-1.5 h-1 w-1 -translate-x-1/2 rounded-full bg-[#b9ff00]" />
@@ -206,7 +206,7 @@ export function MobileSimulatorScene({
           </div>
 
           <div className="pointer-events-none absolute inset-0 z-20">
-            <MobileControlsOverlay visible />
+            <MobileControlsOverlayV1 />
           </div>
         </>
       )}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { MobileSimulatorScene } from "@src/features/simulator/mobile-simulator-scene";
+import { SimulatorMatchdayScreenV1 } from "@src/features/simulator/simulator-matchday-screen-v1";
 import { SimulatorFloatingShell } from "@src/features/simulator/simulator-floating-shell";
 
 /** Same heuristic as `POST /api/events` `matchId` (CUID). */
@@ -35,7 +35,7 @@ export default function SimulatorPageClient() {
 
   if (isMobileViewport) {
     return (
-      <MobileSimulatorScene
+      <SimulatorMatchdayScreenV1
         initialSurfaceMode={initialSurfaceMode}
         linkedMatchId={linkedMatchId}
       />
