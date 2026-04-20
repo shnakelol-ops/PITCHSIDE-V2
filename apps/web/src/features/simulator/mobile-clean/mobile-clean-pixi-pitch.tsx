@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-import { Container, Graphics, type Application } from "pixi.js";
+import { Application, Container, Graphics } from "pixi.js";
 
 import { getPitchConfig } from "@/config/pitchConfig";
 import { BOARD_PITCH_VIEWBOX } from "@src/constants/pitch-space";
