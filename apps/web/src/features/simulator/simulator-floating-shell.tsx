@@ -8,10 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-
-import { SlidersHorizontal } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import type { PitchSport } from "@/config/pitchConfig";
 import {
   downloadPitchCanvasPng,
@@ -25,8 +21,6 @@ import {
   type SimulatorPixiSurfaceHandle,
   type SimulatorSurfaceMode,
 } from "@src/features/simulator/pixi/simulator-pixi-surface";
-import { StatsScorerStrip } from "@src/features/stats/controls/stats-scorer-strip";
-import { StatsVoiceStrip } from "@src/features/stats/controls/stats-voice-strip";
 import { useSimulatorMatchClock } from "@src/features/stats/hooks/use-simulator-match-clock";
 import { useStatsEventLog } from "@src/features/stats/hooks/use-stats-event-log";
 import { useStatsVoiceRecorder } from "@src/features/stats/hooks/use-stats-voice-recorder";
@@ -46,20 +40,6 @@ import {
   STATS_DEV_PLACEHOLDER_ROSTER,
   type StatsRosterPlayer,
 } from "@src/features/stats/types/stats-roster";
-import type { StatsReviewMode } from "@src/features/stats/types/stats-review-mode";
-import { cn } from "@pitchside/utils";
-
-const PITCH_OPTIONS: { id: PitchSport; label: string }[] = [
-  { id: "soccer", label: "Soccer" },
-  { id: "gaelic", label: "Gaelic" },
-  { id: "hurling", label: "Hurling" },
-];
-
-const STATS_REVIEW_CHIPS: { mode: StatsReviewMode; label: string }[] = [
-  { mode: "live", label: "Live" },
-  { mode: "halftime", label: "HT" },
-  { mode: "full_time", label: "FT" },
-];
 
 type PitchMarkerViewFilter = "all" | StatsV1EventKind;
 
@@ -72,35 +52,8 @@ const MATCH_PERIOD: Record<LinkedMatchPeriod, LinkedMatchPeriod> = {
   FULL_TIME: "FULL_TIME",
 };
 
-const PITCH_VIEW_FILTER_CHIPS: {
-  id: PitchMarkerViewFilter;
-  label: string;
-}[] = [
-  { id: "all", label: "All" },
-  ...STATS_V1_EVENT_KINDS.map((k) => ({
-    id: k,
-    label: k.replace(/_/g, " "),
-  })),
-];
-
-const btnBase =
-  "inline-flex min-h-8 items-center justify-center rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-2 py-1 text-[10px] text-stone-100 transition hover:border-white/25 hover:bg-[rgba(56,66,92,0.82)]";
-
-function reviewChipClass(active: boolean): string {
-  return cn(
-    btnBase,
-    "min-h-7 rounded-md px-1.5 py-1 text-[8px] font-bold uppercase tracking-wide sm:text-[8.5px]",
-    active &&
-      "border-amber-300/55 bg-[rgba(98,80,46,0.72)] text-amber-50 shadow-[0_0_0_1px_rgba(245,207,120,0.18)]",
-  );
-}
-
 function kindUiLabel(kind: string): string {
   return kind.replace(/_/g, " ").toLowerCase();
-}
-
-function formatMatchPhaseLabel(phase: string): string {
-  return phase.replace(/_/g, " ");
 }
 
 export type SimulatorFloatingShellProps = {
@@ -118,8 +71,6 @@ export function SimulatorFloatingShell({
   const [pathRecording, setPathRecording] = useState(false);
   const [shadowRecording, setShadowRecording] = useState(false);
 
-  const [utilityOpen, setUtilityOpen] = useState(false);
-  const utilityWrapRef = useRef<HTMLDivElement | null>(null);
   const pitchHostRef = useRef<HTMLDivElement | null>(null);
   const surfaceRef = useRef<SimulatorPixiSurfaceHandle>(null);
 
@@ -503,20 +454,6 @@ export function SimulatorFloatingShell({
     }
   };
 
-  useEffect(() => {
-    const onPointerDown = (e: PointerEvent) => {
-      if (!utilityOpen) return;
-      const target = e.target as Node | null;
-      if (!target) return;
-      if (utilityWrapRef.current?.contains(target)) return;
-      setUtilityOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-    };
-  }, [utilityOpen]);
-
   return (
     <div className="simulator-direct relative h-[100dvh] min-h-0 overflow-hidden bg-[#0b0f0c] text-stone-100">
       <div ref={pitchHostRef} className="absolute inset-0">
@@ -538,67 +475,6 @@ export function SimulatorFloatingShell({
       </div>
 
       <MobileControlsOverlay />
-
-      <style jsx global>{`
-        .simulator-direct .simulator-transport-strip {
-          border: 1px solid rgba(186, 198, 234, 0.22);
-          background: linear-gradient(
-            180deg,
-            rgba(32, 44, 69, 0.74) 0%,
-            rgba(20, 28, 47, 0.72) 100%
-          );
-          box-shadow: 0 14px 34px -24px rgba(0, 0, 0, 0.82);
-        }
-
-        .simulator-direct .simulator-live-rail {
-          border: 1px solid rgba(177, 191, 227, 0.22);
-          background: linear-gradient(
-            180deg,
-            rgba(38, 52, 80, 0.64) 0%,
-            rgba(23, 33, 54, 0.6) 100%
-          );
-          box-shadow: 0 16px 34px -26px rgba(0, 0, 0, 0.82);
-        }
-
-        .simulator-direct .simulator-live-rail-chip {
-          border: 1px solid rgba(175, 191, 226, 0.24) !important;
-          background: rgba(68, 84, 122, 0.5) !important;
-          color: #eef2ff !important;
-          box-shadow: 0 6px 16px -14px rgba(0, 0, 0, 0.72);
-        }
-
-        .simulator-direct .simulator-utility-trigger {
-          border-color: rgba(170, 188, 228, 0.46);
-          background: linear-gradient(
-            180deg,
-            rgba(38, 54, 84, 0.92) 0%,
-            rgba(23, 34, 56, 0.9) 100%
-          );
-          box-shadow:
-            0 10px 24px -18px rgba(0, 0, 0, 0.85),
-            0 0 0 1px rgba(148, 163, 184, 0.26);
-        }
-
-        .simulator-direct .simulator-utility-trigger.is-open {
-          border-color: rgba(245, 207, 120, 0.66);
-          box-shadow:
-            0 0 0 1px rgba(245, 207, 120, 0.28),
-            0 14px 30px -20px rgba(217, 145, 26, 0.6);
-        }
-
-        .simulator-direct .simulator-utility-panel {
-          border: 1px solid rgba(177, 191, 227, 0.26);
-          background: linear-gradient(
-            180deg,
-            rgba(37, 50, 78, 0.8) 0%,
-            rgba(22, 32, 53, 0.76) 100%
-          );
-          box-shadow:
-            0 20px 44px -28px rgba(0, 0, 0, 0.86),
-            0 0 0 1px rgba(148, 163, 184, 0.14),
-            0 0 18px -14px rgba(250, 204, 21, 0.34);
-        }
-      `}</style>
     </div>
   );
 }
