@@ -78,5 +78,26 @@ export function PitchApp() {
     };
   }, []);
 
-  return <div ref={hostRef} className="pitch-root" aria-label="Pixi pitch" role="img" />;
+  return (
+    <>
+      <div
+        ref={hostRef}
+        className="pitch-root"
+        aria-label="Pixi pitch"
+        role="img"
+      />
+      <div
+        style={{
+          position: "fixed",
+          top: "10px",
+          right: "10px",
+          width: "12px",
+          height: "12px",
+          background: "red",
+          borderRadius: "50%",
+          zIndex: 9999,
+        }}
+      />
+    </>
+  );
 }
