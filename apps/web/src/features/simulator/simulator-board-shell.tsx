@@ -7,11 +7,23 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 
+import { CirclePlus, Mic, SlidersHorizontal } from "lucide-react";
+
 import { normalizeMatchPeriod } from "@/components/match/MatchMode";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import type { PitchSport } from "@/config/pitchConfig";
 import {
   downloadPitchCanvasPng,
@@ -40,7 +52,6 @@ import type {
   StatsPeriodPhase,
 } from "@src/features/stats/model/stats-logged-event";
 import {
-  isStatsV1ScoreKind,
   STATS_V1_EVENT_KINDS,
   STATS_V1_FIELD_KINDS,
   STATS_V1_SCORE_KINDS,
@@ -59,6 +70,50 @@ const STATS_REVIEW_CHIPS: { mode: StatsReviewMode; label: string }[] = [
   { mode: "halftime", label: "Review · HT" },
   { mode: "full_time", label: "Review · FT" },
 ];
+const MOBILE_STATS_REVIEW_CHIPS: { mode: StatsReviewMode; label: string }[] = [
+  { mode: "live", label: "Live" },
+  { mode: "halftime", label: "HT" },
+  { mode: "full_time", label: "FT" },
+];
+const MOBILE_PRIMARY_EVENT_KINDS: readonly StatsV1EventKind[] = [
+  "GOAL",
+  "POINT",
+  "TWO_POINT",
+  "WIDE",
+  "SHOT",
+  "TURNOVER_WON",
+  "TURNOVER_LOST",
+  "FREE_WON",
+  "FREE_CONCEDED",
+  "KICKOUT_WON",
+  "KICKOUT_LOST",
+];
+const MOBILE_LOG_BUBBLE_STORAGE_KEY = "pitchside.mobileStats.logEventBubbleY";
+const MOBILE_LOG_BUBBLE_FIXED_RIGHT = 12;
+const MOBILE_LOG_BUBBLE_MIN_TOP = 88;
+const MOBILE_LOG_BUBBLE_BOTTOM_SAFE_OFFSET = 160;
+const MOBILE_LOG_BUBBLE_DEFAULT_TOP_VH = 50;
+
+type MobileLogBubbleDragState = {
+  pointerId: number;
+  startY: number;
+  originY: number;
+  dragging: boolean;
+};
+const MOBILE_LOG_BUBBLE_DRAG_THRESHOLD = 6;
+
+function readMobileLogBubbleY(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(MOBILE_LOG_BUBBLE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = Number.parseFloat(raw);
+    if (!Number.isFinite(parsed)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 
 /** Visual-only pitch dot filter (review); does not change stored events. */
 type PitchMarkerViewFilter = "all" | StatsV1EventKind;
@@ -156,6 +211,34 @@ const grassFieldStyle: CSSProperties = {
   ].join(", "),
 };
 
+/**
+ * Mobile STATS-only stadium ambience (visual-only):
+ * subtle crowd-bowl toning + floodlight bloom around outer field space.
+ * Sits behind pitch/controls and does not participate in layout.
+ */
+const mobileStatsStadiumBackdropStyle: CSSProperties = {
+  backgroundImage: [
+    "radial-gradient(ellipse 132% 74% at 50% 112%, rgba(18,29,54,0.22) 0%, rgba(18,29,54,0.14) 45%, transparent 72%)",
+    "radial-gradient(ellipse 98% 66% at 50% -14%, rgba(245,248,255,0.19) 0%, rgba(188,208,255,0.06) 38%, transparent 72%)",
+    "linear-gradient(90deg, rgba(28,40,69,0.29) 0%, rgba(23,35,58,0.11) 15%, transparent 32%, transparent 68%, rgba(23,35,58,0.11) 85%, rgba(28,40,69,0.29) 100%)",
+    "linear-gradient(180deg, rgba(240,246,255,0.09) 0%, rgba(176,196,236,0.03) 12%, transparent 42%, rgba(16,25,44,0.14) 100%)",
+    "radial-gradient(ellipse 94% 64% at 50% 52%, rgba(8,14,28,0) 40%, rgba(10,17,33,0.16) 72%, rgba(7,12,24,0.28) 100%)",
+  ].join(", "),
+};
+
+const mobileStatsStadiumFloodlightStyle: CSSProperties = {
+  backgroundImage: [
+    "radial-gradient(circle at 8% 6%, rgba(255,255,255,0.16) 0%, rgba(242,248,255,0.09) 18%, transparent 45%)",
+    "radial-gradient(circle at 92% 6%, rgba(255,255,255,0.16) 0%, rgba(242,248,255,0.09) 18%, transparent 45%)",
+    "radial-gradient(ellipse 82% 56% at 50% 100%, rgba(32,52,90,0.13) 0%, transparent 72%)",
+  ].join(", "),
+};
+
+const mobileStatsStadiumEdgeFadeStyle: CSSProperties = {
+  backgroundImage:
+    "radial-gradient(ellipse 88% 60% at 50% 54%, transparent 0%, transparent 56%, rgba(15,22,38,0.14) 74%, rgba(10,16,28,0.26) 100%)",
+};
+
 const btnBase =
   "min-h-10 w-full justify-center rounded-[11px] px-3 py-2.5 text-[12px] font-medium leading-tight tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_8px_-2px_rgba(0,0,0,0.35)] transition-[transform,box-shadow,background-color,border-color,color] duration-200 sm:min-h-9 sm:py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/15 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(18,20,24,0.9)] active:translate-y-px active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.35)]";
 
@@ -173,6 +256,8 @@ const btnShadowOn =
 
 const btnReviewOn =
   "!border !border-amber-500/28 !bg-[rgba(48,40,28,0.88)] !text-[rgba(255,251,235,0.96)] hover:!border-amber-400/35";
+const mobileActionBtnClass =
+  "min-h-9 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-2 py-1 text-[10px] text-stone-100 hover:border-white/25 hover:bg-[rgba(56,66,92,0.82)]";
 
 function reviewChipClass(active: boolean) {
   return cn(
@@ -227,19 +312,12 @@ function kindUiLabel(kind: string): string {
   return kind.replace(/_/g, " ").toLowerCase();
 }
 
-function matchMorphLabel(phase: SimulatorMatchPhase): string {
-  switch (phase) {
-    case "pre_match":
-      return "Start Match";
-    case "first_half":
-      return "Half Time";
-    case "halftime":
-      return "Start 2nd Half";
-    case "second_half":
-      return "Full Time";
-    case "full_time":
-      return "Match ended";
-  }
+function formatMatchPhaseLabel(phase: string): string {
+  return phase.replace(/_/g, " ");
+}
+
+function formatMobileEventLabel(kind: StatsV1EventKind): string {
+  return kind.replace(/_/g, " ");
 }
 
 function matchPhaseToStatsPeriodPhase(phase: SimulatorMatchPhase): StatsPeriodPhase {
@@ -319,6 +397,14 @@ export function SimulatorBoardShell({
     null,
   );
   const [clearLogConfirmOpen, setClearLogConfirmOpen] = useState(false);
+  const [mobileStatsDrawerOpen, setMobileStatsDrawerOpen] = useState(false);
+  const [mobileStatsLogDrawerOpen, setMobileStatsLogDrawerOpen] = useState(false);
+  const [isMdViewport, setIsMdViewport] = useState(false);
+  const [mobileLogBubbleY, setMobileLogBubbleY] = useState<number | null>(null);
+  const [mobileLogBubbleYHydrated, setMobileLogBubbleYHydrated] = useState(false);
+  const mobileLogBubbleDragRef = useRef<MobileLogBubbleDragState | null>(null);
+  const mobileLogBubbleLastPointerDownRef = useRef(0);
+  const mobileLogBubbleJustDraggedRef = useRef(false);
   const persistErrorClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -333,10 +419,89 @@ export function SimulatorBoardShell({
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mediaQuery = window.matchMedia("(min-width: 768px)");
+    const onChange = () => setIsMdViewport(mediaQuery.matches);
+    onChange();
+    mediaQuery.addEventListener("change", onChange);
+    return () => {
+      mediaQuery.removeEventListener("change", onChange);
+    };
+  }, []);
+
+  useEffect(() => {
     if (surfaceMode !== "STATS") {
       setClearLogConfirmOpen(false);
     }
   }, [surfaceMode]);
+
+  useEffect(() => {
+    if (surfaceMode !== "STATS") {
+      setMobileStatsDrawerOpen(false);
+      setMobileStatsLogDrawerOpen(false);
+    }
+  }, [surfaceMode]);
+
+  const clampMobileLogBubbleY = useCallback(
+    (y: number) => {
+      if (typeof window === "undefined") return y;
+      const viewportTop = window.visualViewport?.offsetTop ?? 0;
+      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+      const minTop = MOBILE_LOG_BUBBLE_MIN_TOP + viewportTop;
+      const maxTop = Math.max(
+        minTop,
+        viewportTop + viewportHeight - MOBILE_LOG_BUBBLE_BOTTOM_SAFE_OFFSET,
+      );
+      return Math.min(Math.max(y, minTop), maxTop);
+    },
+    [],
+  );
+
+  const computeDefaultMobileLogBubbleY = useCallback(() => {
+    if (typeof window === "undefined") return MOBILE_LOG_BUBBLE_MIN_TOP;
+    const viewportTop = window.visualViewport?.offsetTop ?? 0;
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    return clampMobileLogBubbleY(
+      viewportTop + (viewportHeight * MOBILE_LOG_BUBBLE_DEFAULT_TOP_VH) / 100,
+    );
+  }, [clampMobileLogBubbleY]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const savedY = readMobileLogBubbleY();
+    if (savedY != null) {
+      setMobileLogBubbleY(clampMobileLogBubbleY(savedY));
+    } else {
+      setMobileLogBubbleY(computeDefaultMobileLogBubbleY());
+    }
+    setMobileLogBubbleYHydrated(true);
+  }, [clampMobileLogBubbleY, computeDefaultMobileLogBubbleY]);
+
+  useEffect(() => {
+    if (!mobileLogBubbleYHydrated || mobileLogBubbleY == null) return;
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(MOBILE_LOG_BUBBLE_STORAGE_KEY, `${mobileLogBubbleY}`);
+  }, [mobileLogBubbleY, mobileLogBubbleYHydrated]);
+
+  useEffect(() => {
+    if (!mobileLogBubbleYHydrated) return;
+    if (typeof window === "undefined") return;
+    const onResize = () => {
+      setMobileLogBubbleY((prev) =>
+        clampMobileLogBubbleY(prev ?? computeDefaultMobileLogBubbleY()),
+      );
+    };
+    window.addEventListener("resize", onResize);
+    window.visualViewport?.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.visualViewport?.removeEventListener("resize", onResize);
+    };
+  }, [
+    clampMobileLogBubbleY,
+    computeDefaultMobileLogBubbleY,
+    mobileLogBubbleYHydrated,
+  ]);
 
   const matchClock = useSimulatorMatchClock(surfaceMode === "STATS");
   const {
@@ -537,6 +702,10 @@ export function SimulatorBoardShell({
     if (!pendingScore) return null;
     return `Tag ${kindUiLabel(pendingScore.kind)}`;
   }, [pendingScore]);
+  const activeScorerPlayer = useMemo(
+    () => statsPlayers.find((p) => p.id === activeScorerId) ?? null,
+    [activeScorerId, statsPlayers],
+  );
   const lastStatsEvent =
     statsEvents.length > 0 ? statsEvents[statsEvents.length - 1] : undefined;
   const eventsWithVoice = useMemo(
@@ -646,21 +815,400 @@ export function SimulatorBoardShell({
     }
   };
 
+  const onToggleMobileVoice = useCallback(() => {
+    if (recorder.isRecording) {
+      void onStopVoice();
+      return;
+    }
+    void onStartVoice();
+  }, [onStartVoice, onStopVoice, recorder.isRecording]);
+
+  const onLogMobileEventKind = useCallback(
+    (kind: StatsV1EventKind) => {
+      if (!canStatsPitchLog) return;
+      armKind(kind);
+      logTap({ nx: 0.5, ny: 0.5, atMs: Date.now(), stageX: 0, stageY: 0 });
+    },
+    [armKind, canStatsPitchLog, logTap],
+  );
+
+  const onMobileLogBubblePointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLButtonElement>) => {
+      if (e.button !== 0) return;
+      const now = Date.now();
+      if (now - mobileLogBubbleLastPointerDownRef.current < 250) return;
+      mobileLogBubbleLastPointerDownRef.current = now;
+      const currentY = mobileLogBubbleY ?? computeDefaultMobileLogBubbleY();
+      mobileLogBubbleDragRef.current = {
+        pointerId: e.pointerId,
+        startY: e.clientY,
+        originY: currentY,
+        dragging: false,
+      };
+      mobileLogBubbleJustDraggedRef.current = false;
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [computeDefaultMobileLogBubbleY, mobileLogBubbleY],
+  );
+
+  const onMobileLogBubblePointerMove = useCallback(
+    (e: ReactPointerEvent<HTMLButtonElement>) => {
+      const drag = mobileLogBubbleDragRef.current;
+      if (!drag || drag.pointerId !== e.pointerId) return;
+      const dy = e.clientY - drag.startY;
+      if (!drag.dragging && Math.abs(dy) > MOBILE_LOG_BUBBLE_DRAG_THRESHOLD) {
+        drag.dragging = true;
+      }
+      if (!drag.dragging) return;
+      setMobileLogBubbleY(clampMobileLogBubbleY(drag.originY + dy));
+      e.preventDefault();
+    },
+    [clampMobileLogBubbleY],
+  );
+
+  const onMobileLogBubblePointerUp = useCallback(
+    (e: ReactPointerEvent<HTMLButtonElement>) => {
+      const drag = mobileLogBubbleDragRef.current;
+      if (!drag || drag.pointerId !== e.pointerId) return;
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+      const wasDragging = drag.dragging;
+      mobileLogBubbleJustDraggedRef.current = wasDragging;
+      mobileLogBubbleDragRef.current = null;
+      if (wasDragging) {
+        e.preventDefault();
+      }
+    },
+    [],
+  );
+
+  const onMobileLogBubblePointerCancel = useCallback(
+    (e: ReactPointerEvent<HTMLButtonElement>) => {
+      const drag = mobileLogBubbleDragRef.current;
+      if (!drag || drag.pointerId !== e.pointerId) return;
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+      mobileLogBubbleDragRef.current = null;
+    },
+    [],
+  );
+
+  const onMobileLogBubbleClickCapture = useCallback(
+    (e: ReactPointerEvent<HTMLButtonElement>) => {
+      if (!mobileLogBubbleJustDraggedRef.current) return;
+      mobileLogBubbleJustDraggedRef.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    [],
+  );
+
+  const hideGreenShellForMobileStats = surfaceMode === "STATS" && !isMdViewport;
+
   return (
     <div
       className="relative flex h-[100dvh] min-h-0 flex-col overflow-hidden text-stone-800"
-      style={grassFieldStyle}
+      style={hideGreenShellForMobileStats ? undefined : grassFieldStyle}
     >
       {/* Minimal grain only (~2.8%) — enough to kill “flat UI”, not noisy. */}
-      <div
-        className="pointer-events-none absolute inset-0 z-0 opacity-[0.028] mix-blend-multiply"
-        style={{
-          backgroundImage: grassNoiseDataUrl,
-          backgroundSize: "240px 240px",
-        }}
-        aria-hidden
-      />
-      <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5">
+      {hideGreenShellForMobileStats ? null : (
+        <div
+          className="pointer-events-none absolute inset-0 z-0 opacity-[0.028] mix-blend-multiply"
+          style={{
+            backgroundImage: grassNoiseDataUrl,
+            backgroundSize: "240px 240px",
+          }}
+          aria-hidden
+        />
+      )}
+
+      {surfaceMode === "STATS" ? (
+        <div
+          className="fixed inset-0 z-40 h-[100dvh] w-screen overflow-hidden bg-transparent md:hidden"
+        >
+          <div
+            className="pointer-events-none absolute inset-0 z-[1] blur-[3px]"
+            style={mobileStatsStadiumBackdropStyle}
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-0 z-[2] opacity-70 blur-[2px]"
+            style={mobileStatsStadiumFloodlightStyle}
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-0 z-[3]"
+            style={mobileStatsStadiumEdgeFadeStyle}
+            aria-hidden
+          />
+          <div className="pointer-events-none absolute inset-0 z-10 flex min-h-0 flex-col overflow-hidden">
+            <div className="relative min-h-0 flex-1 overflow-hidden">
+              <SimulatorPixiSurface
+                ref={surfaceRef}
+                sport={sport}
+                recordingMode={false}
+                shadowRecordingMode={false}
+                surfaceMode={surfaceMode}
+                statsArm={statsArm}
+                statsLoggedEvents={statsEventsForPitchView}
+                onStatsPitchTap={onStatsPitchTapGuarded}
+                statsReviewMode={reviewMode}
+                statsPitchInteractive={canStatsPitchLog}
+                fullBleed
+                className="h-full w-full !mx-0 !max-w-none !rounded-none !border-0 !bg-transparent !shadow-none !ring-0"
+              />
+            </div>
+
+            <aside
+              className="pointer-events-none absolute left-[12px] top-1/2 z-30 flex -translate-y-1/2 flex-col gap-3"
+              aria-label="Mobile match utility"
+            >
+              <Button
+                type="button"
+                variant="secondary"
+                className="pointer-events-auto min-h-9 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-2.5 py-1 text-[9px] font-semibold text-stone-100"
+                aria-pressed={reviewMode === "live"}
+                onClick={() => setReviewMode("live")}
+              >
+                {matchClockDisplay}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className={cn(
+                  "pointer-events-auto min-h-9 rounded-lg border border-white/15 bg-[rgba(34,38,48,0.82)] px-2 py-1 text-[9px] font-semibold",
+                  recorder.isRecording &&
+                    "border-rose-300/60 bg-[rgba(120,42,54,0.82)] text-rose-50",
+                )}
+                onClick={onToggleMobileVoice}
+              >
+                <Mic className="mr-1 size-3.5" />
+                {recorder.isRecording ? "Stop" : "Voice"}
+              </Button>
+            </aside>
+
+            <aside className="pointer-events-none absolute right-[max(0.55rem,env(safe-area-inset-right))] top-[max(0.55rem,env(safe-area-inset-top))] z-50">
+              <Drawer open={mobileStatsDrawerOpen} onOpenChange={setMobileStatsDrawerOpen}>
+                <DrawerTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="pointer-events-auto min-h-10 rounded-full border border-white/20 bg-[rgba(32,44,69,0.92)] px-3 py-2 text-[11px] font-semibold text-stone-100 shadow-[0_12px_28px_-20px_rgba(0,0,0,0.9)]"
+                    aria-label="Open stats controls"
+                  >
+                    <SlidersHorizontal className="size-4" />
+                  </Button>
+                </DrawerTrigger>
+                <DrawerContent className="md:hidden">
+                  <DrawerHeader>
+                    <DrawerTitle>Stats controls</DrawerTitle>
+                    <DrawerDescription>
+                      Secondary controls for scorer, review, and voice.
+                    </DrawerDescription>
+                  </DrawerHeader>
+                  <div className="max-h-[calc(82dvh-4.25rem)] space-y-2.5 overflow-y-auto px-3 pb-[max(0.9rem,env(safe-area-inset-bottom))] pt-3">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle>Mode / review</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2.5">
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {MOBILE_STATS_REVIEW_CHIPS.map(({ mode, label }) => (
+                            <Button
+                              key={mode}
+                              type="button"
+                              variant="secondary"
+                              className={cn(
+                                mobileActionBtnClass,
+                                reviewMode === mode &&
+                                  "border-amber-300/55 bg-[rgba(98,80,46,0.72)] text-amber-50",
+                              )}
+                              aria-pressed={reviewMode === mode}
+                              onClick={() => setReviewMode(mode)}
+                            >
+                              {label}
+                            </Button>
+                          ))}
+                        </div>
+                        {!isStatsLive ? (
+                          <div className="space-y-1.5">
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-stone-300/85">
+                              Spatial filter
+                            </p>
+                            <div className="flex max-h-24 flex-wrap gap-1 overflow-y-auto pr-0.5">
+                              {PITCH_VIEW_FILTER_CHIPS.map(({ id, label }) => (
+                                <Button
+                                  key={id}
+                                  type="button"
+                                  variant="secondary"
+                                  className={cn(
+                                    "min-h-8 rounded-md px-2 py-1 text-[9px]",
+                                    pitchMarkerViewFilter === id &&
+                                      "border-amber-300/55 bg-[rgba(98,80,46,0.72)] text-amber-50",
+                                  )}
+                                  aria-pressed={pitchMarkerViewFilter === id}
+                                  onClick={() => setPitchMarkerViewFilter(id)}
+                                >
+                                  {label}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle>Scorer</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2.5">
+                        <p className="text-[10px] text-stone-200/80">
+                          Active scorer:{" "}
+                          <span className="font-semibold text-stone-100">
+                            {activeScorerPlayer
+                              ? `#${activeScorerPlayer.number} ${activeScorerPlayer.name}`
+                              : "No player"}
+                          </span>
+                        </p>
+                        {pendingScoreLabel ? (
+                          <p className="rounded-md border border-amber-300/40 bg-amber-500/15 px-2 py-1 text-[9px] font-semibold text-amber-100/95">
+                            {pendingScoreLabel}
+                          </p>
+                        ) : null}
+                        <div className="grid max-h-36 grid-cols-2 gap-1.5 overflow-y-auto pr-0.5">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className={cn(
+                              mobileActionBtnClass,
+                              activeScorerId == null &&
+                                "border-emerald-300/60 bg-emerald-600/25 text-emerald-50",
+                            )}
+                            aria-pressed={activeScorerId == null}
+                            onClick={() => setActiveScorer(null)}
+                          >
+                            No player
+                          </Button>
+                          {statsPlayers.map((p) => (
+                            <Button
+                              key={p.id}
+                              type="button"
+                              variant="secondary"
+                              className={cn(
+                                mobileActionBtnClass,
+                                activeScorerId === p.id &&
+                                  "border-emerald-300/60 bg-emerald-600/25 text-emerald-50",
+                              )}
+                              aria-pressed={activeScorerId === p.id}
+                              onClick={() => setActiveScorer(p.id)}
+                            >
+                              #{p.number} {p.name}
+                            </Button>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle>Voice</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <StatsVoiceStrip
+                          allowRecording={canStatsPitchLog}
+                          isRecording={recorder.isRecording}
+                          recordError={voiceError}
+                          onStartRecord={() => void onStartVoice()}
+                          onStopRecord={() => void onStopVoice()}
+                          pendingVoiceId={pendingVoiceId}
+                          canAttachToLastEvent={Boolean(lastStatsEvent && pendingVoiceId)}
+                          onAttachToLastEvent={onAttachVoiceToLastEvent}
+                          onAttachAsMoment={onAttachVoiceAsMoment}
+                          onDiscardPending={onDiscardPendingVoice}
+                          voiceMomentIds={voiceMomentIds}
+                          eventsWithVoice={eventsWithVoice}
+                          onPlay={playVoiceNote}
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
+                </DrawerContent>
+              </Drawer>
+            </aside>
+
+            <div className="pointer-events-none absolute inset-0 z-40">
+              <Drawer
+                open={mobileStatsLogDrawerOpen}
+                onOpenChange={setMobileStatsLogDrawerOpen}
+              >
+                <DrawerTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    style={{
+                      right: `${MOBILE_LOG_BUBBLE_FIXED_RIGHT}px`,
+                      top: `${mobileLogBubbleY ?? computeDefaultMobileLogBubbleY()}px`,
+                      transform: "translateY(-50%)",
+                      touchAction: "none",
+                    }}
+                    className="pointer-events-auto absolute flex h-[52px] items-center gap-2 rounded-full border border-white/20 bg-[rgba(18,28,46,0.84)] px-3.5 text-[11px] font-semibold text-stone-100 shadow-[0_10px_26px_-14px_rgba(0,0,0,0.85)] backdrop-blur-[10px]"
+                    aria-label="Open quick event logger"
+                    onPointerDown={onMobileLogBubblePointerDown}
+                    onPointerMove={onMobileLogBubblePointerMove}
+                    onPointerUp={onMobileLogBubblePointerUp}
+                    onPointerCancel={onMobileLogBubblePointerCancel}
+                    onClickCapture={onMobileLogBubbleClickCapture}
+                  >
+                    <span className="inline-flex size-7 items-center justify-center rounded-full border border-white/15 bg-white/10">
+                      <CirclePlus className="size-3.5" />
+                    </span>
+                    Log Event
+                  </Button>
+                </DrawerTrigger>
+                <DrawerContent className="md:hidden">
+                  <DrawerHeader>
+                    <DrawerTitle>Quick events</DrawerTitle>
+                    <DrawerDescription>
+                      Tap an event to log immediately.
+                    </DrawerDescription>
+                  </DrawerHeader>
+                  <div className="max-h-[calc(72dvh-3.5rem)] overflow-y-auto px-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] pt-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      {MOBILE_PRIMARY_EVENT_KINDS.map((kind) => (
+                        <Button
+                          key={kind}
+                          type="button"
+                          variant="secondary"
+                          className={cn(
+                            "min-h-11 rounded-lg border px-2.5 py-2 text-[10px] font-semibold uppercase tracking-[0.03em]",
+                            statsArm === kind
+                              ? "border-emerald-300/65 bg-emerald-700/45 text-emerald-50"
+                              : "border-white/20 bg-[rgba(34,38,48,0.84)] text-stone-100",
+                          )}
+                          disabled={!canStatsPitchLog}
+                          onClick={() => onLogMobileEventKind(kind)}
+                        >
+                          {formatMobileEventLabel(kind)}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </DrawerContent>
+              </Drawer>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <header
+        className={cn(
+          "relative z-10 flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5 md:flex",
+          surfaceMode === "STATS" && "hidden md:flex",
+        )}
+      >
         <div className="min-w-0 space-y-0.5">
           <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-stone-800/65">
             Pitchside
@@ -674,8 +1222,18 @@ export function SimulatorBoardShell({
         </div>
       </header>
 
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14">
-        <aside className="order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
+      <main
+        className={cn(
+          "relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 md:flex lg:flex-row lg:items-center lg:justify-center lg:gap-8 lg:px-10 lg:py-6 xl:gap-12 xl:px-14",
+          surfaceMode === "STATS" && "hidden gap-0 p-0 sm:gap-0 sm:p-0 md:flex md:gap-5 md:p-6",
+        )}
+      >
+        <aside
+          className={cn(
+            "order-2 flex shrink-0 flex-row gap-3.5 lg:order-1 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4",
+            surfaceMode === "STATS" && "hidden md:flex",
+          )}
+        >
           <ToolRail title="Transport" className="min-w-0 flex-1 lg:flex-none">
             {surfaceMode === "SIMULATOR" ? (
               <div
@@ -780,7 +1338,14 @@ export function SimulatorBoardShell({
           </ToolRail>
         </aside>
 
-        <div className="order-1 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center lg:order-2 lg:max-w-[min(96vw,74rem)]">
+        <div
+          className={cn(
+            "order-1 flex min-h-0 min-w-0 flex-1 flex-col lg:order-2 lg:max-w-[min(96vw,74rem)]",
+            surfaceMode === "STATS"
+              ? "items-stretch justify-start md:items-center md:justify-center"
+              : "items-center justify-center",
+          )}
+        >
           <div className="relative w-full max-w-full px-1 sm:px-2">
             {/* Soft lift behind pitch — no hard frame ring */}
             <div
@@ -888,7 +1453,12 @@ export function SimulatorBoardShell({
           </p>
         </div>
 
-        <aside className="order-3 flex shrink-0 flex-row flex-wrap gap-3.5 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4">
+        <aside
+          className={cn(
+            "order-3 flex shrink-0 flex-row flex-wrap gap-3.5 lg:w-[11.5rem] lg:flex-col lg:justify-center lg:gap-4",
+            surfaceMode === "STATS" && "hidden md:flex",
+          )}
+        >
           <ToolRail title="Mode" className="min-w-0 flex-1 basis-[48%] lg:basis-auto lg:flex-none">
             <div className="flex flex-col gap-2" role="group" aria-label="Canvas mode">
               <Button

@@ -225,27 +225,30 @@ export function SimulatorFloatingShell({
     }
   }, [matchPhase]);
 
-  const onStatsEventLogged = useCallback((event: StatsLoggedEvent) => {
-    const mid = linkedMatchIdRef.current;
-    if (!mid) return;
-    void persistSimulatorStatsEvent({
-      matchId: mid,
-      matchPeriod: linkedMatchPeriodRef.current,
-      clockLabel: matchClockLabelRef.current,
-      event,
-    }).catch((err: unknown) => {
-      console.error("[simulator-stats] persist failed", err);
-      const message = err instanceof Error ? err.message : "Couldn’t save event.";
-      setStatsPersistError(message);
-      if (persistErrorClearTimerRef.current != null) {
-        clearTimeout(persistErrorClearTimerRef.current);
-      }
-      persistErrorClearTimerRef.current = setTimeout(() => {
-        setStatsPersistError(null);
-        persistErrorClearTimerRef.current = null;
-      }, 8000);
-    });
-  }, []);
+  const onStatsEventLogged = useCallback(
+    (event: StatsLoggedEvent) => {
+      const mid = linkedMatchIdRef.current;
+      if (!mid) return;
+      void persistSimulatorStatsEvent({
+        matchId: mid,
+        matchPeriod: linkedMatchPeriodRef.current,
+        clockLabel: matchClockLabelRef.current,
+        event,
+      }).catch((err: unknown) => {
+        console.error("[simulator-stats] persist failed", err);
+        const message = err instanceof Error ? err.message : "Couldn’t save event.";
+        setStatsPersistError(message);
+        if (persistErrorClearTimerRef.current != null) {
+          clearTimeout(persistErrorClearTimerRef.current);
+        }
+        persistErrorClearTimerRef.current = setTimeout(() => {
+          setStatsPersistError(null);
+          persistErrorClearTimerRef.current = null;
+        }, 8000);
+      });
+    },
+    [matchClockLabelRef],
+  );
 
   const {
     events: statsEvents,
