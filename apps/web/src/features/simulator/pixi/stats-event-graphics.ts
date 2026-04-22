@@ -142,6 +142,7 @@ export function drawStatsEventsGraphics(
   opts?: DrawStatsEventsOptions,
 ): void {
   g.clear();
+  if (!Array.isArray(events) || events.length === 0) return;
   const scale = Math.max(opts?.worldToScreenScale ?? 1, 0.004);
   const minPx = opts?.minScreenRadiusPx ?? 3.35;
   const minWorldR = minPx / scale;
@@ -152,7 +153,24 @@ export function drawStatsEventsGraphics(
 
   let i = 0;
   for (const ev of events) {
+    if (
+      ev == null ||
+      typeof ev !== "object" ||
+      !Number.isFinite(ev.nx) ||
+      !Number.isFinite(ev.ny)
+    ) {
+      continue;
+    }
     const st = getStatsEventMarkerStyle(ev, opts);
+    if (
+      st == null ||
+      !Number.isFinite(st.radius) ||
+      !Number.isFinite(st.strokeWidth) ||
+      typeof st.fill !== "string" ||
+      typeof st.stroke !== "string"
+    ) {
+      continue;
+    }
     const p = boardNormToWorld(ev.nx, ev.ny);
     const { ox, oy } = separate ? drawOffsetForEvent(ev.id, i) : { ox: 0, oy: 0 };
     const x = p.x + ox;
