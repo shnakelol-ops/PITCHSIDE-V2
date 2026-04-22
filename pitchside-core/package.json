@@ -2,6 +2,7 @@
   "name": "pitchside-core",
   "private": true,
   "version": "0.0.0",
+  "packageManager": "npm@10.9.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,13 +11,13 @@
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "typescript": "~6.0.2",
-    "vite": "^8.0.9"
+    "@types/react-dom": "^19.2.3"
   },
   "dependencies": {
     "pixi.js": "^8.18.1",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.9"
   }
 }
