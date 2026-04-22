@@ -1,9 +1,5 @@
 /** @public Simulator engine (ARCHITECTURE.md §2, §8). */
 
-export {
-  SimulatorBoardShell,
-  type SimulatorBoardShellProps,
-} from "@src/features/simulator/simulator-board-shell";
 export { SimulatorPixiSurface } from "@src/features/simulator/pixi/simulator-pixi-surface";
 export type {
   SimulatorPixiSurfaceHandle,
