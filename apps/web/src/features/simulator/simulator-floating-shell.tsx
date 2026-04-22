@@ -517,9 +517,9 @@ export function SimulatorFloatingShell({
   }, [utilityOpen]);
 
   return (
-    <div className="simulator-direct relative h-[100dvh] min-h-0 overflow-hidden bg-[#0b0f0c] text-stone-100">
+    <div className="simulator-direct relative h-screen h-[100svh] h-[100dvh] min-h-0 overflow-hidden bg-[#0b0f0c] text-stone-100">
       <div ref={pitchHostRef} className="absolute inset-0">
-        <div className="w-full h-[100vh]">
+        <div className="h-full w-full">
           <SimulatorPixiSurface
             ref={surfaceRef}
             sport={sport}
@@ -531,7 +531,7 @@ export function SimulatorFloatingShell({
             onStatsPitchTap={surfaceMode === "STATS" ? onStatsPitchTapGuarded : undefined}
             statsReviewMode={reviewMode}
             statsPitchInteractive={canStatsPitchLog}
-            className="w-full h-full"
+            className="h-full w-full"
           />
         </div>
       </div>

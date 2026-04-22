@@ -71,6 +71,56 @@ export type SimulatorPixiSurfaceProps = {
 type PixiApp = import("pixi.js").Application;
 type PixiContainer = import("pixi.js").Container;
 
+function isAndroidMobileUserAgent(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Android|Adr/i.test(navigator.userAgent);
+}
+
+function safeRendererResolution(): number {
+  if (typeof window === "undefined") return 1;
+  const dpr = window.devicePixelRatio || 1;
+  const cap = isAndroidMobileUserAgent() ? 1.5 : 2;
+  return Math.max(1, Math.min(cap, dpr));
+}
+
+type SimulatorRenderDebugState = {
+  hostW: number;
+  hostH: number;
+  rendererW: number;
+  rendererH: number;
+  initRendererW: number;
+  initRendererH: number;
+  pixiMounted: boolean;
+  canvasMounted: boolean;
+  canvasDisplay: string;
+  canvasVisibility: string;
+  canvasOpacity: string;
+  canvasPosition: string;
+  canvasZIndex: string;
+  rendererKind: string;
+  webglStatus: string;
+  initError: string;
+};
+
+const INITIAL_DEBUG_STATE: SimulatorRenderDebugState = {
+  hostW: 0,
+  hostH: 0,
+  rendererW: 0,
+  rendererH: 0,
+  initRendererW: 0,
+  initRendererH: 0,
+  pixiMounted: false,
+  canvasMounted: false,
+  canvasDisplay: "n/a",
+  canvasVisibility: "n/a",
+  canvasOpacity: "n/a",
+  canvasPosition: "n/a",
+  canvasZIndex: "n/a",
+  rendererKind: "n/a",
+  webglStatus: "unknown",
+  initError: "",
+};
+
 /**
  * PixiJS pitch + paths + athletes + playback (ticker-driven, path store read-only).
  */
@@ -96,6 +146,8 @@ export const SimulatorPixiSurface = forwardRef<
   const appRef = useRef<PixiApp | null>(null);
   const worldRef = useRef<PixiContainer | null>(null);
   const pitchHolderRef = useRef<PixiContainer | null>(null);
+  const athletesLayerRef = useRef<PixiContainer | null>(null);
+  const attachPitchRef = useRef<((nextSport: PitchSport) => void) | null>(null);
   const pitchDisposeRef = useRef<(() => void) | null>(null);
   const athletesDisposeRef = useRef<(() => void) | null>(null);
   const sportRef = useRef<PitchSport>(sport);
@@ -118,6 +170,57 @@ export const SimulatorPixiSurface = forwardRef<
   const [statsOverlayEpoch, setStatsOverlayEpoch] = useState(0);
   /** Bumps on host resize so marker min-size tracks letterbox scale. */
   const [resizeGen, setResizeGen] = useState(0);
+  const [debugState, setDebugState] =
+    useState<SimulatorRenderDebugState>(INITIAL_DEBUG_STATE);
+  const androidMobile = useMemo(() => isAndroidMobileUserAgent(), []);
+
+  const patchDebugState = (patch: Partial<SimulatorRenderDebugState>) => {
+    setDebugState((prev) => {
+      const next = { ...prev, ...patch };
+      const keys = Object.keys(next) as (keyof SimulatorRenderDebugState)[];
+      for (const k of keys) {
+        if (next[k] !== prev[k]) return next;
+      }
+      return prev;
+    });
+  };
+
+  const refreshDebugSnapshot = () => {
+    const host = hostRef.current;
+    const app = appRef.current;
+    const hostRect = host?.getBoundingClientRect();
+    const hostW = Math.floor(host?.clientWidth || hostRect?.width || 0);
+    const hostH = Math.floor(host?.clientHeight || hostRect?.height || 0);
+    const canvas = app?.canvas as HTMLCanvasElement | undefined;
+    const styles =
+      canvas != null && typeof window !== "undefined"
+        ? window.getComputedStyle(canvas)
+        : null;
+    const rendererW = Math.floor(app?.renderer?.width ?? 0);
+    const rendererH = Math.floor(app?.renderer?.height ?? 0);
+    const glStatus =
+      app == null
+        ? "unknown"
+        : app.renderer.type === 1
+          ? "ok"
+          : app.renderer.type === 2
+            ? "webgpu"
+            : "unsupported";
+    patchDebugState({
+      hostW,
+      hostH,
+      rendererW,
+      rendererH,
+      pixiMounted: app != null,
+      canvasMounted: Boolean(canvas && host?.contains(canvas)),
+      canvasDisplay: styles?.display ?? "n/a",
+      canvasVisibility: styles?.visibility ?? "n/a",
+      canvasOpacity: styles?.opacity ?? "n/a",
+      canvasPosition: styles?.position ?? "n/a",
+      canvasZIndex: styles?.zIndex ?? "n/a",
+      webglStatus: glStatus,
+    });
+  };
 
   surfaceModeRef.current = surfaceMode;
   statsArmRef.current = statsArm;
@@ -175,54 +278,134 @@ export const SimulatorPixiSurface = forwardRef<
     const world = worldRef.current;
     const host = hostRef.current;
     if (!app || !world || !host) return;
-    const w = host.clientWidth;
-    const h = host.clientHeight;
-    if (w <= 0 || h <= 0) return;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const rect = host.getBoundingClientRect();
+    const w = Math.floor(host.clientWidth || rect.width);
+    const h = Math.floor(host.clientHeight || rect.height);
+    if (w <= 0 || h <= 0) {
+      patchDebugState({ hostW: w, hostH: h });
+      return;
+    }
+    const dpr = safeRendererResolution();
     app.renderer.resolution = dpr;
     app.renderer.resize(w, h);
     const { scale, offsetX, offsetY } = letterboxPitchWorld(w, h);
     worldScaleRef.current = scale;
     world.scale.set(scale);
     world.position.set(offsetX, offsetY);
-  };
-
-  const attachPitch = (nextSport: PitchSport) => {
-    pitchDisposeRef.current?.();
-    pitchDisposeRef.current = null;
-    const holder = pitchHolderRef.current;
-    if (!holder) return;
-    const { root, dispose } =
-      nextSport === "gaelic" || nextSport === "hurling"
-        ? mountGaelicPitchRenderer(nextSport)
-        : mountPremiumPitchRenderer(nextSport);
-    holder.removeChildren();
-    holder.addChild(root);
-    pitchDisposeRef.current = dispose;
+    refreshDebugSnapshot();
   };
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    patchDebugState({
+      initError: "",
+      pixiMounted: false,
+      canvasMounted: false,
+    });
 
     let cancelled = false;
     let ro: ResizeObserver | null = null;
     let unsubPaths: (() => void) | null = null;
     let redrawPaths: (() => void) | null = null;
+    let warmupRaf = 0;
+    let warmupTimer = 0;
+    let orientationTimer = 0;
+    let onViewportResize: (() => void) | null = null;
+
+    const readHostSize = () => {
+      const rect = host.getBoundingClientRect();
+      return {
+        w: Math.floor(host.clientWidth || rect.width || 0),
+        h: Math.floor(host.clientHeight || rect.height || 0),
+      };
+    };
+
+    const waitForHostSize = async (): Promise<{ w: number; h: number }> => {
+      for (let i = 0; i < 30; i++) {
+        const size = readHostSize();
+        if (size.w > 8 && size.h > 8) return size;
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        if (cancelled) break;
+      }
+      const fallback = readHostSize();
+      return {
+        w: Math.max(fallback.w, 640),
+        h: Math.max(fallback.h, 400),
+      };
+    };
 
     void (async () => {
       const { Application, Container, Graphics } = await import("pixi.js");
       if (cancelled || !hostRef.current) return;
 
-      const app = new Application();
-      await app.init({
-        width: host.clientWidth || 640,
-        height: host.clientHeight || 400,
-        backgroundAlpha: 0,
-        antialias: true,
-        autoDensity: true,
-        resolution: Math.min(2, window.devicePixelRatio || 1),
-      });
+      const createInitializedApp = async () => {
+        const size = await waitForHostSize();
+        patchDebugState({
+          hostW: size.w,
+          hostH: size.h,
+        });
+        const initVariants = [
+          {
+            width: size.w,
+            height: size.h,
+            backgroundAlpha: 0,
+            antialias: true,
+            autoDensity: true,
+            resolution: safeRendererResolution(),
+            preference: "webgl" as const,
+          },
+          {
+            width: size.w,
+            height: size.h,
+            backgroundAlpha: 0,
+            antialias: false,
+            autoDensity: true,
+            resolution: 1,
+            preference: "webgl" as const,
+          },
+        ];
+        let lastErr: unknown = null;
+        for (const variant of initVariants) {
+          const candidate = new Application();
+          try {
+            await candidate.init(variant);
+            const webglStatus =
+              candidate.renderer.type === 1
+                ? "ok"
+                : candidate.renderer.type === 2
+                  ? "webgpu"
+                  : "unsupported";
+            patchDebugState({
+              initRendererW: Math.floor(candidate.renderer.width),
+              initRendererH: Math.floor(candidate.renderer.height),
+              rendererKind: String(candidate.renderer.type),
+              webglStatus,
+            });
+            return candidate;
+          } catch (err) {
+            lastErr = err;
+            patchDebugState({
+              initError: err instanceof Error ? err.message : String(err),
+            });
+            candidate.destroy(true);
+          }
+        }
+        throw lastErr ?? new Error("Unable to initialize Pixi application.");
+      };
+
+      let app: import("pixi.js").Application;
+      try {
+        app = await createInitializedApp();
+      } catch (err) {
+        console.error("[simulator] Pixi initialization failed on this device.", err);
+        patchDebugState({
+          initError: err instanceof Error ? err.message : String(err),
+          pixiMounted: false,
+          canvasMounted: false,
+        });
+        return;
+      }
 
       if (cancelled) {
         app.destroy(true);
@@ -234,8 +417,11 @@ export const SimulatorPixiSurface = forwardRef<
       app.canvas.style.width = "100%";
       app.canvas.style.height = "100%";
       app.canvas.style.display = "block";
+      app.canvas.style.position = "absolute";
+      app.canvas.style.inset = "0";
       app.canvas.style.touchAction = "none";
       app.canvas.style.userSelect = "none";
+      refreshDebugSnapshot();
 
       const world = new Container();
       worldRef.current = world;
@@ -256,6 +442,8 @@ export const SimulatorPixiSurface = forwardRef<
       const shadowGhostGraphics = new Graphics();
       shadowGhostLayer.addChild(shadowGhostGraphics);
       const athletesLayer = new Container();
+      athletesLayer.visible = surfaceModeRef.current === "SIMULATOR";
+      athletesLayerRef.current = athletesLayer;
       world.addChild(pitchHolder);
       world.addChild(pathsLayer);
       world.addChild(shadowGhostLayer);
@@ -287,6 +475,55 @@ export const SimulatorPixiSurface = forwardRef<
         worldToScreenScale: worldScaleRef.current,
       });
 
+      const createFallbackPitchMount = (): {
+        root: import("pixi.js").Container;
+        dispose: () => void;
+      } => {
+        const root = new Container();
+        const base = new Graphics();
+        base.rect(0, 0, BOARD_PITCH_VIEWBOX.w, BOARD_PITCH_VIEWBOX.h).fill({
+          color: 0x0b5a3d,
+          alpha: 1,
+        });
+        base
+          .rect(0.6, 0.6, BOARD_PITCH_VIEWBOX.w - 1.2, BOARD_PITCH_VIEWBOX.h - 1.2)
+          .stroke({ width: 0.5, color: 0xeaf4f0, alpha: 0.5 });
+        base
+          .moveTo(BOARD_PITCH_VIEWBOX.w / 2, 0)
+          .lineTo(BOARD_PITCH_VIEWBOX.w / 2, BOARD_PITCH_VIEWBOX.h)
+          .stroke({ width: 0.35, color: 0xeaf4f0, alpha: 0.5 });
+        base
+          .circle(BOARD_PITCH_VIEWBOX.w / 2, BOARD_PITCH_VIEWBOX.h / 2, 9)
+          .stroke({ width: 0.34, color: 0xeaf4f0, alpha: 0.5 });
+        root.addChild(base);
+        return {
+          root,
+          dispose: () => root.destroy({ children: true }),
+        };
+      };
+
+      const attachPitchSafe = (nextSport: PitchSport) => {
+        pitchDisposeRef.current?.();
+        pitchDisposeRef.current = null;
+        const holder = pitchHolderRef.current;
+        if (!holder) return;
+        holder.removeChildren();
+        try {
+          const mount =
+            nextSport === "gaelic" || nextSport === "hurling"
+              ? mountGaelicPitchRenderer(nextSport)
+              : mountPremiumPitchRenderer(nextSport);
+          holder.addChild(mount.root);
+          pitchDisposeRef.current = mount.dispose;
+        } catch (err) {
+          console.error("[simulator] Premium pitch mount failed, using fallback pitch.", err);
+          const fallback = createFallbackPitchMount();
+          holder.addChild(fallback.root);
+          pitchDisposeRef.current = fallback.dispose;
+        }
+      };
+      attachPitchRef.current = attachPitchSafe;
+
       statsHit.on("pointerdown", (e: FederatedPointerEvent) => {
         if (surfaceModeRef.current !== "STATS") return;
         if (!statsPitchInteractiveRef.current) return;
@@ -316,8 +553,18 @@ export const SimulatorPixiSurface = forwardRef<
 
       setStatsOverlayEpoch((n) => n + 1);
 
-      attachPitch(sportRef.current);
+      attachPitchSafe(sportRef.current);
       layout();
+      warmupRaf = requestAnimationFrame(() => {
+        layout();
+        setResizeGen((n) => n + 1);
+        refreshDebugSnapshot();
+      });
+      warmupTimer = window.setTimeout(() => {
+        layout();
+        setResizeGen((n) => n + 1);
+        refreshDebugSnapshot();
+      }, 220);
 
       redrawPaths = () => {
         drawShadowRunsGraphics(shadowPathGraphics, pathStore.getAllShadowRuns());
@@ -376,12 +623,50 @@ export const SimulatorPixiSurface = forwardRef<
         setResizeGen((n) => n + 1);
       });
       ro.observe(host);
+
+      onViewportResize = () => {
+        layout();
+        setResizeGen((n) => n + 1);
+        refreshDebugSnapshot();
+      };
+      window.addEventListener("resize", onViewportResize, { passive: true });
+      window.addEventListener("orientationchange", onViewportResize);
+      window.visualViewport?.addEventListener("resize", onViewportResize, {
+        passive: true,
+      });
+      window.visualViewport?.addEventListener("scroll", onViewportResize, {
+        passive: true,
+      });
+      orientationTimer = window.setInterval(() => {
+        layout();
+        refreshDebugSnapshot();
+      }, 1000);
     })();
 
     return () => {
       cancelled = true;
+      attachPitchRef.current = null;
       ro?.disconnect();
       ro = null;
+      if (onViewportResize) {
+        window.removeEventListener("resize", onViewportResize);
+        window.removeEventListener("orientationchange", onViewportResize);
+        window.visualViewport?.removeEventListener("resize", onViewportResize);
+        window.visualViewport?.removeEventListener("scroll", onViewportResize);
+      }
+      onViewportResize = null;
+      if (warmupRaf !== 0) {
+        cancelAnimationFrame(warmupRaf);
+        warmupRaf = 0;
+      }
+      if (warmupTimer !== 0) {
+        window.clearTimeout(warmupTimer);
+        warmupTimer = 0;
+      }
+      if (orientationTimer !== 0) {
+        window.clearInterval(orientationTimer);
+        orientationTimer = 0;
+      }
       unsubPaths?.();
       unsubPaths = null;
       playbackControllerRef.current?.destroy();
@@ -392,6 +677,7 @@ export const SimulatorPixiSurface = forwardRef<
       athletesDisposeRef.current?.();
       athletesDisposeRef.current = null;
       releaseAthleteInputRef.current = null;
+      athletesLayerRef.current = null;
       statsPixiRef.current = {
         statsLayer: null,
         statsHit: null,
@@ -409,8 +695,39 @@ export const SimulatorPixiSurface = forwardRef<
         }
         app.destroy(true, { children: true, texture: true });
       }
+      patchDebugState({
+        pixiMounted: false,
+        canvasMounted: false,
+      });
     };
   }, [pathStore]);
+
+  useEffect(() => {
+    patchDebugState({
+      rendererKind: androidMobile ? "android-mobile" : "non-android-mobile",
+    });
+  }, [androidMobile]);
+
+  useEffect(() => {
+    refreshDebugSnapshot();
+  }, [resizeGen, surfaceMode]);
+
+  useEffect(() => {
+    patchDebugState({
+      initError: debugState.initError,
+    });
+    // keep current mode visible in debug panel update cadence
+  }, [surfaceMode]);
+
+  useEffect(() => {
+    const athletesLayer = athletesLayerRef.current;
+    if (!athletesLayer) return;
+    const showSimulatorAthletes = surfaceMode === "SIMULATOR";
+    athletesLayer.visible = showSimulatorAthletes;
+    if (!showSimulatorAthletes) {
+      releaseAthleteInputRef.current?.();
+    }
+  }, [surfaceMode]);
 
   useEffect(() => {
     const { statsHit, statsDots, statsLayer } = statsPixiRef.current;
@@ -442,7 +759,7 @@ export const SimulatorPixiSurface = forwardRef<
 
   useEffect(() => {
     if (!pitchHolderRef.current) return;
-    attachPitch(sport);
+    attachPitchRef.current?.(sport);
     layout();
   }, [sport]);
 
@@ -482,7 +799,27 @@ export const SimulatorPixiSurface = forwardRef<
         }}
         aria-label="Simulator pitch"
         role="img"
-      />
+      >
+        <div
+          className="pointer-events-none absolute left-1.5 top-1.5 z-[9999] rounded border border-emerald-300/45 bg-black/75 px-1.5 py-1 font-mono text-[10px] leading-tight text-emerald-100 shadow"
+          data-testid="debug-pixi-panel"
+        >
+          <div>host: {debugState.hostW}x{debugState.hostH}</div>
+          <div>renderer: {debugState.rendererW}x{debugState.rendererH}</div>
+          <div>initRenderer: {debugState.initRendererW}x{debugState.initRendererH}</div>
+          <div>mode: {surfaceMode}</div>
+          <div>pixiMounted: {debugState.pixiMounted ? "yes" : "no"}</div>
+          <div>canvasMounted: {debugState.canvasMounted ? "yes" : "no"}</div>
+          <div>canvasDisplay: {debugState.canvasDisplay}</div>
+          <div>canvasVisibility: {debugState.canvasVisibility}</div>
+          <div>canvasOpacity: {debugState.canvasOpacity}</div>
+          <div>canvasPos/z: {debugState.canvasPosition}/{debugState.canvasZIndex}</div>
+          <div>webgl: {debugState.webglStatus}</div>
+          <div className="max-w-[13rem] truncate" title={debugState.initError || "-"}>
+            err: {debugState.initError || "-"}
+          </div>
+        </div>
+      </div>
     </div>
   );
 });
