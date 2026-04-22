@@ -153,11 +153,13 @@ export function createMicroAthleteView(): MicroAthleteView {
 
   const halo = new Graphics();
   halo.zIndex = 0;
-  halo.cacheAsBitmap = true;
+  // Keep cache disabled in Pixi v8 path to avoid unstable headless/preview draws.
+  halo.cacheAsBitmap = false;
 
   const aura = new Graphics();
   aura.zIndex = 1;
-  aura.cacheAsBitmap = true;
+  // Keep cache disabled in Pixi v8 path to avoid unstable headless/preview draws.
+  aura.cacheAsBitmap = false;
 
   const directionalFinRoot = new Container();
   directionalFinRoot.zIndex = 2;
