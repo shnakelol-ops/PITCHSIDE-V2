@@ -65,6 +65,8 @@ export type SimulatorPixiSurfaceProps = {
   statsReviewMode?: StatsReviewMode;
   /** When false (e.g. HT/FT review), pitch stops accepting logs; dots stay visible. */
   statsPitchInteractive?: boolean;
+  /** Decorative apron/backing around pitch host. */
+  surfaceChrome?: "decorated" | "flat";
   className?: string;
 };
 
@@ -88,6 +90,7 @@ export const SimulatorPixiSurface = forwardRef<
     onStatsPitchTap,
     statsReviewMode = "live",
     statsPitchInteractive = true,
+    surfaceChrome = "decorated",
     className,
   },
   ref,
@@ -230,12 +233,14 @@ export const SimulatorPixiSurface = forwardRef<
       }
 
       appRef.current = app;
+      app.stage.eventMode = "none";
       host.appendChild(app.canvas as HTMLCanvasElement);
       app.canvas.style.width = "100%";
       app.canvas.style.height = "100%";
       app.canvas.style.display = "block";
       app.canvas.style.touchAction = "none";
       app.canvas.style.userSelect = "none";
+      app.canvas.style.pointerEvents = "none";
 
       const world = new Container();
       worldRef.current = world;
@@ -448,26 +453,35 @@ export const SimulatorPixiSurface = forwardRef<
 
   return (
     <div
-      className="pitch-wrapper relative min-h-0 w-full flex-1 overflow-hidden rounded-2xl p-3 sm:p-4 md:p-5"
-      style={{
-        backgroundColor: "#4a2f25",
-        backgroundImage: [
-          "linear-gradient(175deg, rgba(100, 72, 60, 0.2) 0%, transparent 42%, rgba(22, 14, 10, 0.32) 100%)",
-          "linear-gradient(95deg, rgba(32, 20, 16, 0.4) 0%, transparent 48%, rgba(68, 48, 38, 0.22) 100%)",
-          "radial-gradient(ellipse 120% 80% at 50% 0%, rgba(78, 56, 44, 0.14), transparent 55%)",
-        ].join(", "),
-        boxShadow:
-          "inset 0 2px 12px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.045), inset 0 -2px 16px rgba(0, 0, 0, 0.2)",
-      }}
+      className={cn(
+        "relative min-h-0 w-full flex-1 overflow-hidden",
+        surfaceChrome === "decorated" && "pitch-wrapper rounded-2xl p-3 sm:p-4 md:p-5",
+      )}
+      style={
+        surfaceChrome === "decorated"
+          ? {
+              backgroundColor: "#4a2f25",
+              backgroundImage: [
+                "linear-gradient(175deg, rgba(100, 72, 60, 0.2) 0%, transparent 42%, rgba(22, 14, 10, 0.32) 100%)",
+                "linear-gradient(95deg, rgba(32, 20, 16, 0.4) 0%, transparent 48%, rgba(68, 48, 38, 0.22) 100%)",
+                "radial-gradient(ellipse 120% 80% at 50% 0%, rgba(78, 56, 44, 0.14), transparent 55%)",
+              ].join(", "),
+              boxShadow:
+                "inset 0 2px 12px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.045), inset 0 -2px 16px rgba(0, 0, 0, 0.2)",
+            }
+          : undefined
+      }
     >
-      <div
-        className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.045] mix-blend-multiply"
-        style={{
-          backgroundImage: pitchSurroundNoiseDataUrl,
-          backgroundSize: "200px 200px",
-        }}
-        aria-hidden
-      />
+      {surfaceChrome === "decorated" ? (
+        <div
+          className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.045] mix-blend-multiply"
+          style={{
+            backgroundImage: pitchSurroundNoiseDataUrl,
+            backgroundSize: "200px 200px",
+          }}
+          aria-hidden
+        />
+      ) : null}
       <div
         ref={hostRef}
         className={cn(
@@ -476,6 +490,7 @@ export const SimulatorPixiSurface = forwardRef<
         )}
         style={{
           aspectRatio: getPitchBoardAspectRatio(sport),
+          pointerEvents: "none",
           touchAction: "none",
           WebkitUserSelect: "none",
           userSelect: "none",
