@@ -5,6 +5,17 @@
 
 export type MicroAthleteTeam = "home" | "away";
 
+export type MicroAthleteJerseyStyle = {
+  /** Main jersey body color (hex number, e.g. `0x1f9d7a`). */
+  primaryColor?: number;
+  /** Secondary panel / sleeve color. */
+  secondaryColor?: number;
+  /** Accent trim color (collar / edge treatments). */
+  accentColor?: number;
+  /** Optional explicit number color; auto-contrast fallback is applied when omitted. */
+  numberColor?: number;
+};
+
 export type MicroAthleteInit = {
   id: string;
   nx: number;
@@ -12,6 +23,10 @@ export type MicroAthleteInit = {
   /** Facing / intent direction (radians). */
   headingRad: number;
   team: MicroAthleteTeam;
+  /** Tactical jersey number rendered on the token. */
+  jerseyNumber?: number | string;
+  /** Optional jersey color overrides. */
+  jerseyStyle?: MicroAthleteJerseyStyle;
 };
 
 /**
@@ -25,6 +40,8 @@ export class MicroAthlete {
   /** Facing / intent direction (radians). */
   headingRad: number;
   team: MicroAthleteTeam;
+  jerseyNumber?: number | string;
+  jerseyStyle?: MicroAthleteJerseyStyle;
 
   constructor(init: MicroAthleteInit) {
     this.id = init.id;
@@ -32,6 +49,8 @@ export class MicroAthlete {
     this.ny = init.ny;
     this.headingRad = init.headingRad;
     this.team = init.team;
+    this.jerseyNumber = init.jerseyNumber;
+    this.jerseyStyle = init.jerseyStyle;
   }
 }
 
@@ -52,6 +71,12 @@ export function createDefaultMicroAthletes(): MicroAthlete[] {
       ny: 0.48,
       headingRad: 0,
       team: "home",
+      jerseyNumber: 2,
+      jerseyStyle: {
+        primaryColor: 0x0f766e,
+        secondaryColor: 0x99f6e4,
+        accentColor: 0x134e4a,
+      },
     }),
     new MicroAthlete({
       id: "ma-2",
@@ -59,6 +84,12 @@ export function createDefaultMicroAthletes(): MicroAthlete[] {
       ny: 0.42,
       headingRad: Math.PI / 4,
       team: "home",
+      jerseyNumber: 8,
+      jerseyStyle: {
+        primaryColor: 0x0f766e,
+        secondaryColor: 0x99f6e4,
+        accentColor: 0x115e59,
+      },
     }),
     new MicroAthlete({
       id: "ma-3",
@@ -66,6 +97,12 @@ export function createDefaultMicroAthletes(): MicroAthlete[] {
       ny: 0.52,
       headingRad: Math.PI / 2,
       team: "away",
+      jerseyNumber: 10,
+      jerseyStyle: {
+        primaryColor: 0xb45309,
+        secondaryColor: 0xffedd5,
+        accentColor: 0x7c2d12,
+      },
     }),
     new MicroAthlete({
       id: "ma-4",
@@ -73,6 +110,12 @@ export function createDefaultMicroAthletes(): MicroAthlete[] {
       ny: 0.45,
       headingRad: -Math.PI / 3,
       team: "away",
+      jerseyNumber: 15,
+      jerseyStyle: {
+        primaryColor: 0xb45309,
+        secondaryColor: 0xffedd5,
+        accentColor: 0x9a3412,
+      },
     }),
   ];
 }
