@@ -65,11 +65,80 @@ export type SimulatorPixiSurfaceProps = {
   statsReviewMode?: StatsReviewMode;
   /** When false (e.g. HT/FT review), pitch stops accepting logs; dots stay visible. */
   statsPitchInteractive?: boolean;
+  /** "aspect" keeps sport ratio; "fill" stretches to container height (mobile full-screen shells). */
+  layoutMode?: "aspect" | "fill";
   className?: string;
 };
 
 type PixiApp = import("pixi.js").Application;
 type PixiContainer = import("pixi.js").Container;
+
+type SurfaceSize = { width: number; height: number };
+type WebglInitStatus = "pending" | "success-antialias" | "success-no-antialias" | "failed";
+
+type SurfaceDiagnostics = {
+  hostWidth: number;
+  hostHeight: number;
+  rendererWidth: number;
+  rendererHeight: number;
+  pixiMounted: boolean;
+  canvasInDom: boolean;
+  webglInit: WebglInitStatus;
+  fallback2d: boolean;
+  error: string | null;
+  layoutRetries: number;
+};
+
+function measureSurfaceSize(host: HTMLElement): SurfaceSize {
+  const rect = host.getBoundingClientRect();
+  let width = Math.round(rect.width || host.clientWidth || host.offsetWidth || 0);
+  let height = Math.round(rect.height || host.clientHeight || host.offsetHeight || 0);
+  if (width > 0 && height > 0) return { width, height };
+
+  const parentRect = host.parentElement?.getBoundingClientRect();
+  if (width <= 0) {
+    width = Math.round(parentRect?.width ?? 0);
+  }
+  if (height <= 0) {
+    height = Math.round(parentRect?.height ?? 0);
+  }
+  return { width: Math.max(0, width), height: Math.max(0, height) };
+}
+
+function drawCanvasFallbackPitch(canvas: HTMLCanvasElement, width: number, height: number): void {
+  const w = Math.max(320, Math.floor(width));
+  const h = Math.max(180, Math.floor(height));
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const inset = Math.max(12, Math.round(Math.min(w, h) * 0.04));
+  const lineW = Math.max(2, Math.round(Math.min(w, h) * 0.004));
+
+  ctx.clearRect(0, 0, w, h);
+  const turf = ctx.createLinearGradient(0, 0, 0, h);
+  turf.addColorStop(0, "#0f5132");
+  turf.addColorStop(1, "#0b3b25");
+  ctx.fillStyle = turf;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.strokeStyle = "rgba(236, 253, 245, 0.95)";
+  ctx.lineWidth = lineW;
+  ctx.strokeRect(inset, inset, w - inset * 2, h - inset * 2);
+
+  const cx = w * 0.5;
+  const cy = h * 0.5;
+  const circleR = Math.max(18, Math.min(w, h) * 0.12);
+  ctx.beginPath();
+  ctx.arc(cx, cy, circleR, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(cx, inset);
+  ctx.lineTo(cx, h - inset);
+  ctx.stroke();
+}
 
 /**
  * PixiJS pitch + paths + athletes + playback (ticker-driven, path store read-only).
@@ -88,6 +157,7 @@ export const SimulatorPixiSurface = forwardRef<
     onStatsPitchTap,
     statsReviewMode = "live",
     statsPitchInteractive = true,
+    layoutMode = "aspect",
     className,
   },
   ref,
@@ -118,6 +188,20 @@ export const SimulatorPixiSurface = forwardRef<
   const [statsOverlayEpoch, setStatsOverlayEpoch] = useState(0);
   /** Bumps on host resize so marker min-size tracks letterbox scale. */
   const [resizeGen, setResizeGen] = useState(0);
+  const [diagnostics, setDiagnostics] = useState<SurfaceDiagnostics>({
+    hostWidth: 0,
+    hostHeight: 0,
+    rendererWidth: 0,
+    rendererHeight: 0,
+    pixiMounted: false,
+    canvasInDom: false,
+    webglInit: "pending",
+    fallback2d: false,
+    error: null,
+    layoutRetries: 0,
+  });
+  const diagnosticsRef = useRef(diagnostics);
+  const diagnosticsKeyRef = useRef("");
 
   surfaceModeRef.current = surfaceMode;
   statsArmRef.current = statsArm;
@@ -132,6 +216,56 @@ export const SimulatorPixiSurface = forwardRef<
   );
   const releaseAthleteInputRef = useRef<(() => void) | null>(null);
   const pathStore = useMemo(() => new MovementPathStore(), []);
+
+  const publishDiagnostics = (
+    patch: Partial<SurfaceDiagnostics>,
+    forceLog = false,
+  ) => {
+    const next: SurfaceDiagnostics = { ...diagnosticsRef.current, ...patch };
+    const key = [
+      next.hostWidth,
+      next.hostHeight,
+      next.rendererWidth,
+      next.rendererHeight,
+      next.pixiMounted ? 1 : 0,
+      next.canvasInDom ? 1 : 0,
+      next.webglInit,
+      next.fallback2d ? 1 : 0,
+      next.error ?? "",
+      next.layoutRetries,
+    ].join("|");
+    if (!forceLog && key === diagnosticsKeyRef.current) return;
+    diagnosticsKeyRef.current = key;
+    diagnosticsRef.current = next;
+    setDiagnostics(next);
+    // Visible in mobile remote DevTools and local console traces.
+    console.info("[simulator-surface-diagnostics]", next);
+  };
+
+  const syncDiagnosticsFromDom = (
+    host: HTMLElement | null,
+    app: PixiApp | null,
+    patch: Partial<SurfaceDiagnostics> = {},
+  ) => {
+    if (!host) return;
+    const s = measureSurfaceSize(host);
+    const resolution = app?.renderer.resolution ?? 1;
+    const rendererWidth =
+      app != null ? Math.round((app.renderer.width ?? 0) / resolution) : 0;
+    const rendererHeight =
+      app != null ? Math.round((app.renderer.height ?? 0) / resolution) : 0;
+    publishDiagnostics({
+      hostWidth: s.width,
+      hostHeight: s.height,
+      rendererWidth,
+      rendererHeight,
+      pixiMounted: app != null,
+      canvasInDom: host.querySelector("canvas") != null,
+      ...patch,
+    });
+  };
+
+  const showDebugHud = layoutMode === "fill";
 
   sportRef.current = sport;
   recordingModeRef.current = recordingMode;
@@ -170,14 +304,17 @@ export const SimulatorPixiSurface = forwardRef<
     releaseAthleteInputRef.current?.();
   }, [recordingMode, shadowRecordingMode]);
 
-  const layout = () => {
+  const layout = (): boolean => {
     const app = appRef.current;
     const world = worldRef.current;
     const host = hostRef.current;
-    if (!app || !world || !host) return;
+    if (!app || !world || !host) return false;
     const w = host.clientWidth;
     const h = host.clientHeight;
-    if (w <= 0 || h <= 0) return;
+    if (w <= 0 || h <= 0) {
+      syncDiagnosticsFromDom(host, app, { error: "Host size is zero during layout." });
+      return false;
+    }
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     app.renderer.resolution = dpr;
     app.renderer.resize(w, h);
@@ -185,6 +322,8 @@ export const SimulatorPixiSurface = forwardRef<
     worldScaleRef.current = scale;
     world.scale.set(scale);
     world.position.set(offsetX, offsetY);
+    syncDiagnosticsFromDom(host, app, { error: null });
+    return true;
   };
 
   const attachPitch = (nextSport: PitchSport) => {
@@ -207,22 +346,108 @@ export const SimulatorPixiSurface = forwardRef<
 
     let cancelled = false;
     let ro: ResizeObserver | null = null;
+    let retryLayoutRafId = 0;
+    let retryCount = 0;
+    let fallbackCanvasEl: HTMLCanvasElement | null = null;
     let unsubPaths: (() => void) | null = null;
     let redrawPaths: (() => void) | null = null;
+
+    syncDiagnosticsFromDom(host, appRef.current, {
+      webglInit: "pending",
+      fallback2d: false,
+      error: null,
+      layoutRetries: 0,
+    });
 
     void (async () => {
       const { Application, Container, Graphics } = await import("pixi.js");
       if (cancelled || !hostRef.current) return;
 
-      const app = new Application();
-      await app.init({
-        width: host.clientWidth || 640,
-        height: host.clientHeight || 400,
+      const initialSize = measureSurfaceSize(host);
+      const ratio = Number(getPitchBoardAspectRatio(sportRef.current)) || 1;
+      const initialWidth = initialSize.width > 0 ? initialSize.width : 640;
+      const initialHeight =
+        initialSize.height > 0
+          ? initialSize.height
+          : layoutMode === "aspect"
+            ? Math.round(initialWidth / ratio)
+            : Math.max(400, Math.round(window.innerHeight || 0));
+
+      const initOptions = {
+        width: Math.max(1, initialWidth),
+        height: Math.max(1, initialHeight),
         backgroundAlpha: 0,
-        antialias: true,
         autoDensity: true,
         resolution: Math.min(2, window.devicePixelRatio || 1),
-      });
+        preference: "webgl" as const,
+      };
+
+      const initPixiApp = async (antialias: boolean) => {
+        const next = new Application();
+        try {
+          await next.init({
+            ...initOptions,
+            antialias,
+          });
+        } catch (err) {
+          next.destroy(true);
+          throw err;
+        }
+        return next;
+      };
+
+      let app: PixiApp | null = null;
+      try {
+        app = await initPixiApp(true);
+        publishDiagnostics({
+          webglInit: "success-antialias",
+          fallback2d: false,
+          error: null,
+        });
+      } catch (firstErr) {
+        const firstMessage =
+          firstErr instanceof Error ? firstErr.message : "WebGL init failed";
+        try {
+          app = await initPixiApp(false);
+          publishDiagnostics({
+            webglInit: "success-no-antialias",
+            fallback2d: false,
+            error: firstMessage,
+          });
+        } catch (secondErr) {
+          const secondMessage =
+            secondErr instanceof Error ? secondErr.message : "WebGL fallback failed";
+          publishDiagnostics(
+            {
+              webglInit: "failed",
+              fallback2d: true,
+              error: `${firstMessage}; ${secondMessage}`,
+            },
+            true,
+          );
+          if (!cancelled) {
+            fallbackCanvasEl = document.createElement("canvas");
+            fallbackCanvasEl.style.width = "100%";
+            fallbackCanvasEl.style.height = "100%";
+            fallbackCanvasEl.style.display = "block";
+            drawCanvasFallbackPitch(fallbackCanvasEl, initialWidth, initialHeight);
+            host.appendChild(fallbackCanvasEl);
+            syncDiagnosticsFromDom(host, null, {
+              pixiMounted: false,
+              canvasInDom: true,
+              fallback2d: true,
+            });
+            ro = new ResizeObserver(() => {
+              if (!fallbackCanvasEl) return;
+              const s = measureSurfaceSize(host);
+              drawCanvasFallbackPitch(fallbackCanvasEl, s.width, s.height);
+              syncDiagnosticsFromDom(host, null, { fallback2d: true });
+            });
+            ro.observe(host);
+          }
+          return;
+        }
+      }
 
       if (cancelled) {
         app.destroy(true);
@@ -236,6 +461,11 @@ export const SimulatorPixiSurface = forwardRef<
       app.canvas.style.display = "block";
       app.canvas.style.touchAction = "none";
       app.canvas.style.userSelect = "none";
+      syncDiagnosticsFromDom(host, app, {
+        pixiMounted: true,
+        canvasInDom: true,
+        fallback2d: false,
+      });
 
       const world = new Container();
       worldRef.current = world;
@@ -317,7 +547,22 @@ export const SimulatorPixiSurface = forwardRef<
       setStatsOverlayEpoch((n) => n + 1);
 
       attachPitch(sportRef.current);
-      layout();
+      const applyLayout = () => {
+        if (layout()) {
+          syncDiagnosticsFromDom(host, appRef.current);
+          return;
+        }
+        retryCount += 1;
+        syncDiagnosticsFromDom(host, appRef.current, {
+          layoutRetries: retryCount,
+          error:
+            diagnosticsRef.current.webglInit === "failed"
+              ? diagnosticsRef.current.error
+              : "Layout waiting for non-zero host size",
+        });
+        retryLayoutRafId = requestAnimationFrame(applyLayout);
+      };
+      applyLayout();
 
       redrawPaths = () => {
         drawShadowRunsGraphics(shadowPathGraphics, pathStore.getAllShadowRuns());
@@ -372,14 +617,25 @@ export const SimulatorPixiSurface = forwardRef<
       playbackControllerRef.current = playback;
 
       ro = new ResizeObserver(() => {
-        layout();
-        setResizeGen((n) => n + 1);
+        if (layout()) {
+          syncDiagnosticsFromDom(host, appRef.current, { layoutRetries: retryCount });
+          setResizeGen((n) => n + 1);
+          return;
+        }
+        syncDiagnosticsFromDom(host, appRef.current, {
+          layoutRetries: retryCount,
+          error: "Resize observed with zero-sized host",
+        });
       });
       ro.observe(host);
     })();
 
     return () => {
       cancelled = true;
+      if (retryLayoutRafId !== 0) {
+        cancelAnimationFrame(retryLayoutRafId);
+        retryLayoutRafId = 0;
+      }
       ro?.disconnect();
       ro = null;
       unsubPaths?.();
@@ -401,6 +657,10 @@ export const SimulatorPixiSurface = forwardRef<
       const app = appRef.current;
       appRef.current = null;
       worldRef.current = null;
+      if (fallbackCanvasEl && host.contains(fallbackCanvasEl)) {
+        host.removeChild(fallbackCanvasEl);
+      }
+      fallbackCanvasEl = null;
       if (app) {
         try {
           host.removeChild(app.canvas as HTMLCanvasElement);
@@ -409,6 +669,21 @@ export const SimulatorPixiSurface = forwardRef<
         }
         app.destroy(true, { children: true, texture: true });
       }
+      publishDiagnostics(
+        {
+          hostWidth: 0,
+          hostHeight: 0,
+          rendererWidth: 0,
+          rendererHeight: 0,
+          pixiMounted: false,
+          canvasInDom: false,
+          webglInit: "pending",
+          fallback2d: false,
+          error: null,
+          layoutRetries: 0,
+        },
+        true,
+      );
     };
   }, [pathStore]);
 
@@ -448,7 +723,10 @@ export const SimulatorPixiSurface = forwardRef<
 
   return (
     <div
-      className="pitch-wrapper relative min-h-0 w-full flex-1 overflow-hidden rounded-2xl p-3 sm:p-4 md:p-5"
+      className={cn(
+        "pitch-wrapper relative min-h-0 w-full flex-1 overflow-hidden",
+        layoutMode === "fill" ? "h-full rounded-none p-0" : "rounded-2xl p-3 sm:p-4 md:p-5",
+      )}
       style={{
         backgroundColor: "#4a2f25",
         backgroundImage: [
@@ -461,7 +739,10 @@ export const SimulatorPixiSurface = forwardRef<
       }}
     >
       <div
-        className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.045] mix-blend-multiply"
+        className={cn(
+          "pointer-events-none absolute inset-0 opacity-[0.045] mix-blend-multiply",
+          layoutMode === "fill" ? "rounded-none" : "rounded-2xl",
+        )}
         style={{
           backgroundImage: pitchSurroundNoiseDataUrl,
           backgroundSize: "200px 200px",
@@ -472,10 +753,13 @@ export const SimulatorPixiSurface = forwardRef<
         ref={hostRef}
         className={cn(
           "relative z-10 mx-auto min-h-0 w-full max-w-full overflow-hidden rounded-lg bg-transparent",
+          layoutMode === "fill" && "h-full rounded-none",
           className,
         )}
         style={{
-          aspectRatio: getPitchBoardAspectRatio(sport),
+          ...(layoutMode === "aspect"
+            ? { aspectRatio: getPitchBoardAspectRatio(sport) }
+            : { height: "100%" }),
           touchAction: "none",
           WebkitUserSelect: "none",
           userSelect: "none",
@@ -483,6 +767,22 @@ export const SimulatorPixiSurface = forwardRef<
         aria-label="Simulator pitch"
         role="img"
       />
+      <div
+        className="pointer-events-none absolute left-2 top-2 z-20 max-w-[92%] rounded-md border border-black/30 bg-black/55 px-2 py-1 font-mono text-[10px] leading-tight text-emerald-100/95 shadow-lg"
+        data-simulator-diagnostics
+        aria-live="polite"
+      >
+        <div>host: {diagnostics.hostWidth}x{diagnostics.hostHeight}</div>
+        <div>renderer: {diagnostics.rendererWidth}x{diagnostics.rendererHeight}</div>
+        <div>mounted: {diagnostics.pixiMounted ? "yes" : "no"}</div>
+        <div>canvas in DOM: {diagnostics.canvasInDom ? "yes" : "no"}</div>
+        <div>webgl: {diagnostics.webglInit}</div>
+        <div>2d fallback: {diagnostics.fallback2d ? "yes" : "no"}</div>
+        <div>layout retries: {diagnostics.layoutRetries}</div>
+        {diagnostics.error ? (
+          <div className="mt-0.5 text-amber-200/95">error: {diagnostics.error}</div>
+        ) : null}
+      </div>
     </div>
   );
 });
